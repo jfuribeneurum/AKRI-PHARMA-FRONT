@@ -72,58 +72,77 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
 
             <div class="form-grid">
               <label>
-                SKU
-                <input [(ngModel)]="form.sku">
+                Código interno
+                <input [(ngModel)]="form.codigo_interno" placeholder="Código único del producto">
               </label>
               <label>
-                Código de barras
-                <input [(ngModel)]="form.codigo_barras">
-              </label>
-              <label>
-                Nombre comercial
-                <input [(ngModel)]="form.nombre_comercial">
-              </label>
-              <label>
-                Principio activo
-                <input [(ngModel)]="form.principio_activo">
-              </label>
-              <label>
-                Concentración
-                <input [(ngModel)]="form.concentracion">
-              </label>
-              <label>
-                Forma farmacéutica (id)
-                <input type="number" [(ngModel)]="form.id_forma">
-              </label>
-              <label>
-                Categoría (id)
-                <input type="number" [(ngModel)]="form.id_categoria">
-              </label>
-              <label>
-                Tipo
+                Tipo de producto
                 <select [(ngModel)]="form.tipo_producto">
-                  <option value="medicamento">medicamento</option>
-                  <option value="insumo">insumo</option>
-                  <option value="controlado">controlado</option>
-                  <option value="vacuna">vacuna</option>
-                  <option value="dispositivo">dispositivo</option>
-                  <option value="otro">otro</option>
+                  <option value="">Seleccionar tipo</option>
+                  <option value="medicamento">Medicamento</option>
+                  <option value="insumo">Insumo</option>
+                  <option value="controlado">Controlado</option>
+                  <option value="vacuna">Vacuna</option>
+                  <option value="dispositivo">Dispositivo</option>
+                  <option value="otro">Otro</option>
                 </select>
               </label>
               <label>
-                Precio venta
-                <input type="number" [(ngModel)]="form.precio_venta">
+                Nombre del producto
+                <input [(ngModel)]="form.nombre_producto" placeholder="Nombre genérico">
               </label>
               <label>
-                Stock mínimo
-                <input type="number" [(ngModel)]="form.stock_minimo">
+                Nombre comercial
+                <input [(ngModel)]="form.nombre_comercial" placeholder="Marca comercial">
               </label>
-            </div>
-
-            <div class="toolbar" style="margin-top: 1rem;">
-              <label><input type="checkbox" [(ngModel)]="form.requiere_receta"> Requiere receta</label>
-              <label><input type="checkbox" [(ngModel)]="form.es_controlado"> Controlado</label>
-              <label><input type="checkbox" [(ngModel)]="form.requiere_cadena_frio"> Cadena de frío</label>
+              <label>
+                Laboratorio
+                <input [(ngModel)]="form.laboratorio" placeholder="Nombre del laboratorio">
+              </label>
+              <label>
+                Lote
+                <input [(ngModel)]="form.lote" placeholder="Número de lote">
+              </label>
+              <label>
+                Fecha de vencimiento
+                <input type="date" [(ngModel)]="form.fecha_vencimiento">
+              </label>
+              <label>
+                Presentación
+                <input type="number" [(ngModel)]="form.presentacion" placeholder="Ej: 500 (ml, mg, etc)">
+              </label>
+              <label>
+                Registro INVIMA
+                <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX">
+              </label>
+              <label>
+                CUM
+                <input type="number" [(ngModel)]="form.cum" placeholder="Código de medicamento">
+              </label>
+              <label>
+                Consecutivo CUM
+                <input type="number" [(ngModel)]="form.consecutivo_cum" placeholder="Número consecutivo">
+              </label>
+              <label>
+                ATC
+                <input [(ngModel)]="form.atc" placeholder="Código ATC">
+              </label>
+              <label>
+                Principio activo
+                <input [(ngModel)]="form.principio_activo" placeholder="Ingrediente principal">
+              </label>
+              <label>
+                Concentración
+                <input [(ngModel)]="form.concentracion" placeholder="Ej: 500mg">
+              </label>
+              <label>
+                Unidad
+                <input type="number" [(ngModel)]="form.unidad" placeholder="Cantidad de unidades">
+              </label>
+              <label>
+                IVA (%)
+                <input type="number" [(ngModel)]="form.iva" step="0.1" placeholder="Porcentaje de IVA">
+              </label>
             </div>
 
             <div class="form-actions">
@@ -252,19 +271,22 @@ export class ProductsComponent implements OnInit {
   };
 
   form: any = {
-    sku: '',
-    codigo_barras: '',
+    codigo_interno: '',
+    tipo_producto: '',
+    nombre_producto: '',
     nombre_comercial: '',
+    laboratorio: '',
+    lote: '',
+    fecha_vencimiento: '',
+    presentacion: 0,
+    registro_invima: '',
+    cum: 0,
+    consecutivo_cum: 0,
+    atc: '',
     principio_activo: '',
     concentracion: '',
-    id_forma: 1,
-    id_categoria: 1,
-    tipo_producto: 'medicamento',
-    precio_venta: 0,
-    stock_minimo: 0,
-    requiere_receta: false,
-    es_controlado: false,
-    requiere_cadena_frio: false
+    unidad: 0,
+    iva: 0
   };
 
   constructor(private readonly api: ApiService) {}
@@ -296,19 +318,22 @@ export class ProductsComponent implements OnInit {
     const response = await this.api.post<{ success: boolean; data: any }>('/products', this.form);
     this.message.set('Producto registrado correctamente.');
     this.form = {
-      sku: '',
-      codigo_barras: '',
+      codigo_interno: '',
+      tipo_producto: '',
+      nombre_producto: '',
       nombre_comercial: '',
+      laboratorio: '',
+      lote: '',
+      fecha_vencimiento: '',
+      presentacion: 0,
+      registro_invima: '',
+      cum: 0,
+      consecutivo_cum: 0,
+      atc: '',
       principio_activo: '',
       concentracion: '',
-      id_forma: 1,
-      id_categoria: 1,
-      tipo_producto: 'medicamento',
-      precio_venta: 0,
-      stock_minimo: 0,
-      requiere_receta: false,
-      es_controlado: false,
-      requiere_cadena_frio: false
+      unidad: 0,
+      iva: 0
     };
     await this.load(response.data.id_producto);
   }

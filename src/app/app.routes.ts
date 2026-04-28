@@ -7,6 +7,7 @@ import { ProductsComponent } from './pages/products.component';
 import { InventoryComponent } from './pages/inventory.component';
 import { PurchasesComponent } from './pages/purchases.component';
 import { SalesComponent } from './pages/sales.component';
+import { IngresosComponent } from './pages/ingresos.component';
 import { DispensingComponent } from './pages/dispensing.component';
 import { ColdChainComponent } from './pages/cold-chain.component';
 import { BillingComponent } from './pages/billing.component';
@@ -27,6 +28,7 @@ export const routes: Routes = [
       { path: 'inventory', component: InventoryComponent },
       { path: 'purchases', component: PurchasesComponent },
       { path: 'sales', component: SalesComponent },
+      { path: 'ingresos', component: IngresosComponent },
       { path: 'dispensing', component: DispensingComponent },
       { path: 'cold-chain', component: ColdChainComponent },
       { path: 'billing', component: BillingComponent },

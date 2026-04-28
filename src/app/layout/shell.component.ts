@@ -18,6 +18,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/rou
           <a routerLink="/inventory" routerLinkActive="active">Inventario y escaneo</a>
           <a routerLink="/purchases" routerLinkActive="active">Compras</a>
           <a routerLink="/sales" routerLinkActive="active">Ventas</a>
+          <a routerLink="/ingresos" routerLinkActive="active">Ingresos</a>
           <a routerLink="/dispensing" routerLinkActive="active">Dispensación</a>
           <a routerLink="/cold-chain" routerLinkActive="active">Cadena de frío</a>
           <a routerLink="/billing" routerLinkActive="active">Facturación</a>
