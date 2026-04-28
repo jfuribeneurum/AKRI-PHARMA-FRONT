@@ -167,7 +167,7 @@ export class SalesComponent implements OnInit {
       const response = await this.api.post<{ success: boolean; data: any }>('/inventory/barcode/resolve', {
         barcode: event.code,
         mode: 'egreso',
-        source: event.source === 'camera' ? 'camara' : event.source === 'manual' ? 'manual' : 'lector'
+        source: event.origin === 'camara' ? 'camara' : event.origin === 'manual' ? 'manual' : 'lector'
       });
       const payload = {
         ...response.data,
