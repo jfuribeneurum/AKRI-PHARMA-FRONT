@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lectores y auto-detección</title><link rel="stylesheet" href="./ops.css"></head>
+<body>
+<script src="./ops-runtime.js?v=26"></script>
+<div class="wrap"><div class="hero"><div><span class="chip primary">Lectores</span><h1>Canales disponibles, perfiles de hardware y registro por sede</h1><p>El sistema inspecciona WebHID, Web Serial, WebUSB, cámara y modo keyboard wedge. Si detecta un dispositivo nuevo, lanza un toast de configuración.</p></div><div class="toolbar end"><a class="btn secondary" href="./index.html?tab=scanners&v=26">Centro de control</a><button class="btn" id="detectBtn">Redetectar</button></div></div><div id="app"></div></div>
+<script>
+requireSession();
+const { api, html, escapeHtml, showToast, notifyParentHeight, openModal, closeModal } = window.akriOps;
+const app = document.getElementById('app');
+let lookups = null, profiles = [], channels = [];
+let previousSignature = '';
+
+async function detectChannels(){
+  const list = [{ channel:'keyboard_wedge', status:'Conectado', description:'Disponible por emulación de teclado', family:'generic_wedge', form:'desconocida' }];
+  if (navigator.hid) {
+    const devices = await navigator.hid.getDevices().catch(() => []);
+    list.push({ channel:'webhid', status: devices.length ? 'Conectado' : 'Disponible', description: devices.length ? `${devices.length} dispositivo(s) autorizado(s)` : 'API disponible', family:'desconocido', form:'desconocida', devices });
+  }
+  if (navigator.serial) {
+    const ports = await navigator.serial.getPorts().catch(() => []);
+    list.push({ channel:'webserial', status: ports.length ? 'Conectado' : 'Disponible', description: ports.length ? `${ports.length} puerto(s) autorizados` : 'API disponible', family:'desconocido', form:'wearable' });
+  }
+  if (navigator.usb) {
+    const usb = await navigator.usb.getDevices().catch(() => []);
+    list.push({ channel:'webusb', status: usb.length ? 'Conectado' : 'Disponible', description: usb.length ? `${usb.length} USB autorizado(s)` : 'API disponible', family:'desconocido', form:'desconocida' });
+  }
+  list.push({ channel:'camera', status: navigator.mediaDevices?.getUserMedia ? 'Disponible' : 'No disponible', description: typeof BarcodeDetector !== 'undefined' ? 'Cámara con BarcodeDetector' : 'Cámara sin BarcodeDetector', family:'imagen', form:'portatil' });
+  list.push({ channel:'image_upload', status:'Disponible', description:'Imagen importada o fotografía directa', family:'imagen', form:'mesa' });
+  return list;
+}
+async function load(){
+  [lookups, profiles, channels] = await Promise.all([api('/api/admin/lookups'), api('/api/scanners/profiles'), detectChannels()]);
+  const signature = channels.map((item) => `${item.channel}:${item.status}`).join('|');
+  if (previousSignature && signature !== previousSignature) showToast('Nuevo lector detectado. ¿Desea configurarlo?', 'info', 3200);
+  previousSignature = signature;
+  render();
+}
+function openAssignModal(prefill = {}){
+  const modal = openModal(`
+    <div class="toolbar between"><div><span class="chip info">Asignación de hardware</span><h2 style="margin:.35rem 0 0">Registrar lector</h2></div><button class="icon-button" data-close>✕</button></div>
+    <div class="form-grid" style="margin-top:1rem">
+      <div><label>Sede</label><select id="sede">${(lookups.sites || []).map((site) => `<option value="${site.id_sede}">${escapeHtml(site.nombre)}</option>`).join('')}</select></div>
+      <div><label>Nombre</label><input id="nombre" value="${escapeHtml(prefill.nombre || '')}" placeholder="Caja 1 · Zebra"></div>
+      <div><label>Canal</label><select id="canal">${['keyboard_wedge','webhid','webserial','webusb','camera','image_upload','manual'].map((channel) => `<option value="${channel}" ${channel===prefill.channel?'selected':''}>${channel}</option>`).join('')}</select></div>
+      <div><label>Tipo</label><select id="tipo">${['lapiz_optico','ranura','ccd','imagen','laser_pistola','generic_wedge','desconocido'].map((item) => `<option value="${item}">${item}</option>`).join('')}</select></div>
+      <div><label>Forma de uso</label><select id="forma">${['pistola','fijo','mesa','portatil','wearable','desconocida'].map((item) => `<option value="${item}">${item}</option>`).join('')}</select></div>
+      <div><label>Vendor ID</label><input id="vendor" placeholder="0x1234"></div>
+      <div><label>Product ID</label><input id="product" placeholder="0x5678"></div>
+      <div><label>Perfil de uso</label><input id="pattern" placeholder="Recepción / Dispensación"></div>
+    </div>
+    <div class="toolbar end" style="margin-top:1rem"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="saveScanner">Guardar</button></div><div class="helper" id="scannerMsg" style="margin-top:.65rem"></div>
+  `);
+  modal.querySelectorAll('[data-close]').forEach((node) => node.addEventListener('click', closeModal));
+  modal.querySelector('#saveScanner').addEventListener('click', async () => {
+    try {
+      await api('/api/scanners/profiles', { method:'POST', body:{ id_sede:Number(modal.querySelector('#sede').value), nombre:modal.querySelector('#nombre').value.trim(), canal_preferido:modal.querySelector('#canal').value, tipo_scanner:modal.querySelector('#tipo').value, forma_uso:modal.querySelector('#forma').value, vendor_id:modal.querySelector('#vendor').value.trim() || null, product_id:modal.querySelector('#product').value.trim() || null, patron_entrada:modal.querySelector('#pattern').value.trim() || null } });
+      closeModal();
+      showToast('Lector registrado.', 'success');
+      await load();
+    } catch (error) {
+      modal.querySelector('#scannerMsg').textContent = error.message || 'No fue posible registrar el lector.';
+    }
+  });
+}
+function render(){
+  app.innerHTML = html`
+    <div class="stats-grid"><div class="tile"><small>Indicador global</small><strong>${channels.some((row) => row.status === 'Conectado') ? 'Verde' : 'Rojo'}</strong><div class="helper">${channels.some((row) => row.status === 'Conectado') ? 'Hay lectores conectados' : 'Sin lectores conectados'}</div></div><div class="tile"><small>Canales detectados</small><strong>${channels.length}</strong><div class="helper">USB / Bluetooth / cámara / wedge</div></div><div class="tile"><small>Perfiles guardados</small><strong>${profiles.length}</strong><div class="helper">Hardware mapeado por sede</div></div><div class="tile"><small>Contexto seguro</small><strong>${window.isSecureContext ? 'Sí' : 'No'}</strong><div class="helper">Requerido para HID/Serial/USB</div></div></div>
+    <div class="grid two" style="margin-top:1rem"><div class="card"><div class="toolbar between"><div><h2 class="section-title">Dashboard de hardware</h2><div class="helper">Toast emergente y canales disponibles</div></div><button class="btn secondary small" id="assignNew">Configurar lector</button></div><div class="cards-grid">${channels.map((channel) => `<div class="tile"><div class="toolbar between"><span class="chip ${channel.status === 'Conectado' ? 'success' : channel.status === 'Disponible' ? 'info' : 'danger'}">${escapeHtml(channel.status)}</span><span class="chip soft">${escapeHtml(channel.channel)}</span></div><strong>${escapeHtml(channel.description)}</strong><div class="helper">Familia: ${escapeHtml(channel.family)} · Forma: ${escapeHtml(channel.form)}</div>${channel.status === 'Conectado' ? '<div style="margin-top:.75rem"><button class="btn secondary small" data-config-channel="'+escapeHtml(channel.channel)+'">Asignar</button></div>' : ''}</div>`).join('')}</div></div><div class="card"><h2 class="section-title">Lectores registrados</h2><div class="table-wrap"><table class="table"><thead><tr><th>Sede</th><th>Nombre</th><th>Canal</th><th>Tipo</th><th>Forma</th><th>Vendor/Product</th></tr></thead><tbody>${profiles.map((row) => `<tr><td>${escapeHtml(row.sede_nombre || row.id_sede)}</td><td><strong>${escapeHtml(row.nombre)}</strong></td><td>${escapeHtml(row.canal_preferido)}</td><td>${escapeHtml(row.tipo_scanner)}</td><td>${escapeHtml(row.forma_uso)}</td><td>${escapeHtml((row.vendor_id || '—') + ' / ' + (row.product_id || '—'))}</td></tr>`).join('') || '<tr><td colspan="6"><div class="empty-state">No hay lectores registrados.</div></td></tr>'}</tbody></table></div></div></div>`;
+  document.getElementById('assignNew').addEventListener('click', () => openAssignModal());
+  document.getElementById('detectBtn').addEventListener('click', () => load().catch(showError));
+  document.querySelectorAll('[data-config-channel]').forEach((button) => button.addEventListener('click', () => openAssignModal({ channel: button.dataset.configChannel, nombre: `Lector ${button.dataset.configChannel}` })));
+  notifyParentHeight();
+}
+function showError(error){ app.innerHTML = `<div class="card"><strong>Error:</strong> ${escapeHtml(error.message)}</div>`; notifyParentHeight(); }
+load().catch(showError);
+</script></body></html>
