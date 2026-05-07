@@ -13,20 +13,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/rou
         <div class="brand-subtitle">ERP farmacéutico multisede · multiusuario · cadena de frío automática · dispensación con firma</div>
 
         <nav>
-          <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-          <a routerLink="/products" routerLinkActive="active">Productos e imágenes</a>
-          <a routerLink="/ingresos" routerLinkActive="active">Ingresos</a>
-          <a routerLink="/sebas-ingresos" routerLinkActive="active">Ingresos Sebas</a>
-          <a routerLink="/inventory" routerLinkActive="active">Inventario y escaneo</a>
-          <a routerLink="/purchases" routerLinkActive="active">Compras</a>
-          <a routerLink="/sebas-purchase-order" routerLinkActive="active">Orden de compra Sebas</a>
-          <a routerLink="/sales" routerLinkActive="active">Ventas</a>
-          <a routerLink="/dispensing" routerLinkActive="active">Dispensación</a>
-          <a routerLink="/cold-chain" routerLinkActive="active">Cadena de frío</a>
-          <a routerLink="/billing" routerLinkActive="active">Facturación</a>
-          <a routerLink="/reports" routerLinkActive="active">Reportes y exportación</a>
-          <a routerLink="/admin" routerLinkActive="active">Administración</a>
-          <a routerLink="/settings" routerLinkActive="active">SIESA / Config</a>
+          <a *ngFor="let item of visibleNavItems()" [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
         </nav>
       </aside>
 
@@ -51,6 +38,40 @@ import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/rou
 })
 export class ShellComponent {
   constructor(private readonly router: Router) {}
+
+  readonly navItems = [
+    { path: '/dashboard', label: 'Dashboard', any: [] },
+    { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
+    { path: '/ingresos', label: 'Ingresos', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+    { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+    { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
+    { path: '/purchases', label: 'Compras', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
+    { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
+    { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
+    { path: '/dispensing', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/cold-chain', label: 'Cadena de frío', any: ['perm_cadena_frio_consulta', 'perm_cadena_frio_registro'] },
+    { path: '/billing', label: 'Facturación', any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
+    { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },
+    { path: '/admin', label: 'Administración', any: ['perm_usuarios_gestionar', 'perm_configuracion'] },
+    { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] }
+  ];
+
+  visibleNavItems() {
+    const user = this.currentUser();
+    if (user?.role === 'ADMINISTRADOR') {
+      return this.navItems;
+    }
+    const permissions = user?.permissions ?? {};
+    return this.navItems.filter((item) => !item.any.length || item.any.some((key) => Boolean(permissions[key])));
+  }
+
+  private currentUser(): any {
+    try {
+      return JSON.parse(localStorage.getItem('akri_user') ?? 'null');
+    } catch (_error) {
+      return null;
+    }
+  }
 
   logout() {
     localStorage.removeItem('akri_token');
