@@ -18,7 +18,7 @@
     inventory: { label: 'Inventario local y general', badge: 'Stock', path: './multisite-inventory.html?embedded=1' },
     scanners: { label: 'Lectores y auto-detección', badge: 'Hardware', path: './scanners.html?embedded=1' },
     dispensing: { label: 'Solicitudes de dispensación', badge: 'POS', path: './dispensing-requests.html?embedded=1' },
-    audit: { label: 'Auditoría administrativa', badge: 'Auditoría', path: './admin-audit.html?embedded=1' },
+    audit: { label: 'Trazabilidad terminada', badge: 'Auditoría', path: './audit.html?embedded=1' },
     permissions: { label: 'Asignaciones de perfil', badge: 'Matriz', path: './permissions.html?embedded=1' }
   };
   let context = null;
@@ -44,14 +44,12 @@
     const q = url.searchParams.get('tab');
     const hash = (window.location.hash || '').replace('#', '');
     const hashTab = hash.startsWith('control-center:') ? hash.split(':')[1] : '';
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return q || hashTab || (saved === 'overview' ? 'sites' : saved) || 'sites';
+    return q || hashTab || localStorage.getItem(STORAGE_KEY) || 'overview';
   }
 
   function setTab(next) {
     const allowed = permittedKeys(context);
-    const fallback = allowed.find((item) => item !== 'overview') || allowed[0];
-    activeTab = allowed.includes(next) ? next : fallback;
+    activeTab = allowed.includes(next) ? next : allowed[0];
     localStorage.setItem(STORAGE_KEY, activeTab);
     const url = new URL(window.location.href);
     url.searchParams.set('tab', activeTab);
@@ -152,9 +150,7 @@
 
   async function init() {
     context = await api('/api/multisite/context');
-    const allowed = permittedKeys(context);
-    const fallback = allowed.find((item) => item !== 'overview') || allowed[0];
-    activeTab = allowed.includes(requestedTab()) ? requestedTab() : fallback;
+    activeTab = permittedKeys(context).includes(requestedTab()) ? requestedTab() : permittedKeys(context)[0];
     render();
   }
 

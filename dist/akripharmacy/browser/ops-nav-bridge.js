@@ -10,7 +10,7 @@
     document.head.appendChild(style);
   }
   function removeLegacyLauncher() { document.getElementById('akri-v15-launcher')?.remove(); document.getElementById('akri-v15-launcher-style')?.remove(); }
-  function preferredTab() { const saved = localStorage.getItem(STORAGE_KEY); return !saved || saved === 'overview' ? 'sites' : saved; }
+  function preferredTab() { return localStorage.getItem(STORAGE_KEY) || 'overview'; }
   function controlCenterHref() { return `/dashboard#control-center:${preferredTab()}`; }
   function navigateToControlCenter(event) {
     event?.preventDefault?.();

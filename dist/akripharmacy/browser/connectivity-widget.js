@@ -127,7 +127,7 @@
         </div>
         <div class="akri-connectivity-actions">
           <span class="akri-chip ${overallClass}">${escapeHtml(data?.overall_label || 'Sin estado')}</span>
-          <a class="akri-connectivity-linkbtn primary" href="/dashboard#control-center:sites">Centro de control</a>
+          <a class="akri-connectivity-linkbtn primary" href="/dashboard#control-center:overview">Centro de control</a>
           <a class="akri-connectivity-linkbtn" href="/downloads/GUIA_DEFINITIVA_AkriPharmacy_v19.pdf" target="_blank" rel="noopener">Guía PDF</a>
           <button type="button" class="akri-connectivity-refresh">Actualizar conectividad</button>
         </div>
