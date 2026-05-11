@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { SignaturePadComponent } from '../shared/signature-pad.component';
 
@@ -12,7 +13,7 @@ import { SignaturePadComponent } from '../shared/signature-pad.component';
     <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Dispensación</h1>
+          <h1 class="page-title">{{ isSebasDispensing ? 'Dispensación Sebas' : 'Dispensación' }}</h1>
           <p class="page-subtitle">
             Registra domiciliarios, paciente, receptor, temperatura de entrega y firma digital de recepción a conformidad.
           </p>
@@ -91,6 +92,125 @@ import { SignaturePadComponent } from '../shared/signature-pad.component';
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div class="card missing-meds-card" *ngIf="isSebasDispensing">
+            <div class="card-header">
+              <div>
+                <h3>Medicamentos faltantes</h3>
+                <div class="helper">Evidencia los medicamentos que no se pudieron entregar.</div>
+              </div>
+              <span class="chip warn">{{ form.missing_items.length }} faltantes</span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Medicamento faltante
+                <input [(ngModel)]="missingDraft.nombre" placeholder="Nombre del medicamento">
+              </label>
+              <label>
+                Cantidad faltante
+                <input type="number" min="0.001" step="0.001" [(ngModel)]="missingDraft.cantidad">
+              </label>
+              <label>
+                Motivo
+                <select [(ngModel)]="missingDraft.motivo">
+                  <option value="Sin stock">Sin stock</option>
+                  <option value="Lote no disponible">Lote no disponible</option>
+                  <option value="Pendiente autorización">Pendiente autorización</option>
+                  <option value="No entregado por novedad">No entregado por novedad</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="report-label" style="margin-top: 0.9rem;">
+              Evidencia / observación
+              <textarea [(ngModel)]="missingDraft.evidencia" placeholder="Describe la novedad o soporte."></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="btn warn" (click)="addMissingItem()">Agregar faltante</button>
+            </div>
+
+            <div class="table-wrap compact" style="margin-top: 1rem;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Medicamento</th>
+                    <th>Cantidad</th>
+                    <th>Motivo</th>
+                    <th>Evidencia</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of form.missing_items; let index = index">
+                    <td><strong>{{ row.nombre }}</strong></td>
+                    <td>{{ row.cantidad }}</td>
+                    <td>{{ row.motivo }}</td>
+                    <td>{{ row.evidencia || 'Sin detalle' }}</td>
+                    <td><button class="btn secondary btn-small" (click)="removeMissingItem(index)">Quitar</button></td>
+                  </tr>
+                  <tr *ngIf="!form.missing_items.length">
+                    <td colspan="5" class="muted">No hay medicamentos faltantes registrados.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card adjustment-exit-card" *ngIf="isSebasDispensing">
+            <div class="card-header">
+              <div>
+                <h3>Salida de ajustes</h3>
+                <div class="helper">Descuenta inventario únicamente para corregir diferencias de stock.</div>
+              </div>
+              <span class="chip danger">Ajuste</span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Lote a ajustar
+                <select [(ngModel)]="adjustmentDraft.id_lote" (ngModelChange)="selectAdjustmentLot()">
+                  <option [ngValue]="null">Selecciona un lote</option>
+                  <option *ngFor="let row of catalog()" [ngValue]="row.id_lote">
+                    {{ row.nombre_comercial }} · {{ row.numero_lote }} · {{ row.ubicacion }} · {{ row.cantidad_disponible }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                Cantidad de salida
+                <input type="number" min="0.001" step="0.001" [(ngModel)]="adjustmentDraft.cantidad">
+              </label>
+              <label>
+                Motivo del ajuste
+                <select [(ngModel)]="adjustmentDraft.motivo">
+                  <option value="Ajuste por conteo físico">Ajuste por conteo físico</option>
+                  <option value="Avería o pérdida">Avería o pérdida</option>
+                  <option value="Vencimiento">Vencimiento</option>
+                  <option value="Diferencia de inventario">Diferencia de inventario</option>
+                  <option value="Otro ajuste">Otro ajuste</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="report-label" style="margin-top: 0.9rem;">
+              Soporte / observación
+              <textarea [(ngModel)]="adjustmentDraft.soporte" placeholder="Describe el soporte del ajuste de salida."></textarea>
+            </label>
+
+            <div *ngIf="selectedAdjustmentLot()" class="notice" style="margin-top: 0.75rem;">
+              <strong>{{ selectedAdjustmentLot()?.nombre_comercial }}</strong>
+              <div>
+                Lote {{ selectedAdjustmentLot()?.numero_lote }} · Disponible {{ selectedAdjustmentLot()?.cantidad_disponible }}
+                · {{ selectedAdjustmentLot()?.almacen }} / {{ selectedAdjustmentLot()?.ubicacion }}
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn danger" (click)="saveAdjustmentExit()">Registrar salida de ajuste</button>
+            </div>
           </div>
         </div>
 
@@ -354,17 +474,25 @@ export class DispensingComponent implements OnInit {
   readonly domiciliaries = signal<any[]>([]);
   readonly catalog = signal<any[]>([]);
   readonly selectedCatalog = signal<any | null>(null);
+  readonly selectedAdjustmentLot = signal<any | null>(null);
   readonly dispensations = signal<any[]>([]);
   readonly signatureReset = signal(0);
 
   catalogSearch = '';
   domiciliaryForm = this.blankDomiciliary();
   lineDraft: any = { id_lote: null, cantidad: 1, temperatura_entrega: null };
+  missingDraft: any = this.blankMissingDraft();
+  adjustmentDraft: any = this.blankAdjustmentDraft();
   form: any = this.blankForm();
+  isSebasDispensing = false;
 
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit() {
+    this.isSebasDispensing = this.router.url.includes('dispensing-sebas');
     void this.load();
   }
 
@@ -464,6 +592,80 @@ export class DispensingComponent implements OnInit {
     this.form.items = this.form.items.filter((_: any, rowIndex: number) => rowIndex !== index);
   }
 
+  addMissingItem() {
+    const quantity = Number(this.missingDraft.cantidad);
+    if (!this.missingDraft.nombre.trim()) {
+      this.error.set('Escribe el medicamento faltante.');
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      this.error.set('La cantidad faltante debe ser mayor que cero.');
+      return;
+    }
+
+    this.form.missing_items = [
+      ...this.form.missing_items,
+      {
+        nombre: this.missingDraft.nombre.trim(),
+        cantidad: quantity,
+        motivo: this.missingDraft.motivo,
+        evidencia: this.missingDraft.evidencia.trim()
+      }
+    ];
+    this.missingDraft = this.blankMissingDraft();
+    this.error.set('');
+  }
+
+  removeMissingItem(index: number) {
+    this.form.missing_items = this.form.missing_items.filter((_: any, rowIndex: number) => rowIndex !== index);
+  }
+
+  selectAdjustmentLot() {
+    const selected = this.catalog().find((row) => Number(row.id_lote) === Number(this.adjustmentDraft.id_lote)) ?? null;
+    this.selectedAdjustmentLot.set(selected);
+  }
+
+  async saveAdjustmentExit() {
+    const selected = this.selectedAdjustmentLot();
+    const quantity = Number(this.adjustmentDraft.cantidad);
+
+    if (!selected) {
+      this.error.set('Selecciona un lote para la salida de ajuste.');
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      this.error.set('La cantidad de salida debe ser mayor que cero.');
+      return;
+    }
+
+    if (quantity > Number(selected.cantidad_disponible)) {
+      this.error.set('La cantidad de salida no puede superar el disponible del lote.');
+      return;
+    }
+
+    try {
+      this.error.set('');
+      await this.api.post('/inventory/movements', {
+        tipo: 'merma',
+        id_lote: selected.id_lote,
+        id_almacen_origen: selected.id_almacen,
+        id_ubicacion_origen: selected.id_ubicacion,
+        cantidad: quantity,
+        motivo: `${this.adjustmentDraft.motivo}${this.adjustmentDraft.soporte ? ` - ${this.adjustmentDraft.soporte}` : ''}`,
+        referencia_tipo: 'AJUSTE_INVENTARIO_SEBAS',
+        referencia_id: null
+      });
+      this.message.set('Salida de ajuste registrada y descontada del inventario.');
+      this.adjustmentDraft = this.blankAdjustmentDraft();
+      this.selectedAdjustmentLot.set(null);
+      await this.loadCatalog();
+    } catch (error: any) {
+      this.error.set(error?.error?.message || 'No fue posible registrar la salida de ajuste.');
+    }
+  }
+
   useDomiciliary(row: any) {
     this.form.usar_domiciliario_receptor = true;
     this.form.id_domiciliario = row.id_domiciliario;
@@ -525,6 +727,7 @@ export class DispensingComponent implements OnInit {
 
       const payload = {
         ...this.form,
+        observaciones: this.buildObservations(),
         items: this.form.items.map((item: any) => ({
           id_lote: item.id_lote,
           cantidad: item.cantidad,
@@ -554,6 +757,37 @@ export class DispensingComponent implements OnInit {
     };
   }
 
+  private blankMissingDraft() {
+    return {
+      nombre: '',
+      cantidad: 1,
+      motivo: 'Sin stock',
+      evidencia: ''
+    };
+  }
+
+  private blankAdjustmentDraft() {
+    return {
+      id_lote: null,
+      cantidad: 1,
+      motivo: 'Ajuste por conteo físico',
+      soporte: ''
+    };
+  }
+
+  private buildObservations() {
+    const observations = String(this.form.observaciones ?? '').trim();
+    if (!this.isSebasDispensing || !this.form.missing_items.length) {
+      return observations;
+    }
+
+    const missingSummary = this.form.missing_items
+      .map((item: any, index: number) => `${index + 1}. ${item.nombre} | Cantidad: ${item.cantidad} | Motivo: ${item.motivo} | Evidencia: ${item.evidencia || 'Sin detalle'}`)
+      .join('\n');
+
+    return [observations, `Medicamentos faltantes:\n${missingSummary}`].filter(Boolean).join('\n\n');
+  }
+
   private blankForm() {
     return {
       id_sede: null,
@@ -578,7 +812,8 @@ export class DispensingComponent implements OnInit {
         nombre: '',
         data_url: ''
       },
-      items: []
+      items: [],
+      missing_items: []
     };
   }
 }

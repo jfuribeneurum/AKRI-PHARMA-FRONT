@@ -65,6 +65,7 @@ export class ShellComponent {
     { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
     { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
     { path: '/dispensing', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     { path: '/cold-chain', label: 'Cadena de frío', any: ['perm_cadena_frio_consulta', 'perm_cadena_frio_registro'] },
     { path: '/billing', label: 'Facturación', any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
     { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },

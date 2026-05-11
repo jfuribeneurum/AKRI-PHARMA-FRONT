@@ -796,6 +796,20 @@ textarea {
   gap: 1rem;
 }
 
+.missing-meds-card {
+  margin-top: 1rem;
+  box-shadow: none;
+  background: var(--warning-soft);
+  border-color: #FDE68A;
+}
+
+.adjustment-exit-card {
+  margin-top: 1rem;
+  box-shadow: none;
+  background: var(--danger-soft);
+  border-color: #FECACA;
+}
+
 @media (max-width: 1180px) {
   .analytics-grid,
   .product-layout,

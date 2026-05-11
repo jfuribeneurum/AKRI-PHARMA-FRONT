@@ -36,6 +36,7 @@ export const routes: Routes = [
       { path: 'ingresos', component: IngresosComponent },
       { path: 'sebas-ingresos', component: SebasIngresosComponent },
       { path: 'dispensing', component: DispensingComponent },
+      { path: 'dispensing-sebas', component: DispensingComponent },
       { path: 'cold-chain', component: ColdChainComponent },
       { path: 'billing', component: BillingComponent },
       { path: 'reports', component: ReportsComponent },
