@@ -4,6 +4,7 @@ import { ShellComponent } from './layout/shell.component';
 import { LoginComponent } from './pages/login.component';
 import { DashboardComponent } from './pages/dashboard.component';
 import { ProductsComponent } from './pages/products.component';
+import { ProvidersComponent } from './pages/providers.component';
 import { InventoryComponent } from './pages/inventory.component';
 import { PurchasesComponent } from './pages/purchases.component';
 import { SebasPurchaseOrderComponent } from './pages/sebas-purchase-order.component';
@@ -27,6 +28,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: DashboardComponent },
       { path: 'products', component: ProductsComponent },
+      { path: 'providers', component: ProvidersComponent },
       { path: 'inventory', component: InventoryComponent },
       { path: 'purchases', component: PurchasesComponent },
       { path: 'sebas-purchase-order', component: SebasPurchaseOrderComponent },

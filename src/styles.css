@@ -456,6 +456,9 @@ textarea {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .brand {
@@ -470,9 +473,38 @@ textarea {
   font-size: 0.95rem;
 }
 
-.sidebar nav {
+.sidebar nav,
+.sidebar-nav {
   display: grid;
   gap: 0.45rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-right: 0.25rem;
+  padding-bottom: 1rem;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.08);
+  touch-action: none;
+  user-select: none;
+}
+
+.sidebar-nav.dragging {
+  cursor: grabbing;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
 }
 
 .sidebar a {
@@ -781,6 +813,7 @@ textarea {
   .sidebar {
     position: static;
     height: auto;
+    max-height: 70vh;
   }
 }
 
