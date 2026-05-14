@@ -541,10 +541,20 @@ textarea {
     transition: transform 0.22s ease, box-shadow 0.22s ease;
   }
 
+  .sidebar ~ .content {
+    margin-left: 14px;
+    transition: margin-left 0.22s ease;
+  }
+
   .sidebar:hover,
   .sidebar:focus-within {
     transform: translateX(0);
     box-shadow: 20px 0 42px rgba(17, 24, 39, 0.24);
+  }
+
+  .sidebar:hover ~ .content,
+  .sidebar:focus-within ~ .content {
+    margin-left: 270px;
   }
 
   .sidebar::after {
