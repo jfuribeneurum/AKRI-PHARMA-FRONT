@@ -17,7 +17,7 @@ import { BillingComponent } from './pages/billing.component';
 import { ReportsComponent } from './pages/reports.component';
 import { SettingsComponent } from './pages/settings.component';
 import { AdminComponent } from './pages/admin.component';
-import { MaestroMxComponent } from './pages/maestro-mx.component';
+import { BodegasComponent } from './pages/bodegas.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -31,7 +31,7 @@ export const routes: Routes = [
       { path: 'products', component: ProductsComponent },
       { path: 'providers', component: ProvidersComponent },
       { path: 'inventory', component: InventoryComponent },
-      { path: 'maestro-mx', component: MaestroMxComponent },
+      { path: 'bodegas', component: BodegasComponent },
       { path: 'purchases', component: PurchasesComponent },
       { path: 'sebas-purchase-order', component: SebasPurchaseOrderComponent },
       { path: 'sales', component: SalesComponent },
