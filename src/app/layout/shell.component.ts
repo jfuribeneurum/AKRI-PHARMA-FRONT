@@ -22,7 +22,19 @@ import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/rou
           (pointercancel)="stopNavDrag($event)"
           (pointerleave)="stopNavDrag($event)"
         >
-          <a *ngFor="let item of visibleNavItems()" [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+          <ng-container *ngFor="let item of visibleItems">
+            <a *ngIf="!item.children" [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+            
+            <div class="nav-group" *ngIf="item.children">
+              <a class="nav-group-toggle" (click)="toggleGroup(item)" [class.expanded]="item.expanded">
+                {{ item.label }}
+                <span class="chevron" [class.rotated]="item.expanded">▼</span>
+              </a>
+              <div class="nav-group-items" *ngIf="item.expanded">
+                <a *ngFor="let child of item.children" [routerLink]="child.path" routerLinkActive="active">{{ child.label }}</a>
+              </div>
+            </div>
+          </ng-container>
         </nav>
       </aside>
 
@@ -52,17 +64,51 @@ export class ShellComponent {
   private dragStartY = 0;
   private dragStartScroll = 0;
 
-  constructor(private readonly router: Router) {}
+  visibleItems: any[] = [];
 
-  readonly navItems = [
+  constructor(private readonly router: Router) {
+    this.visibleItems = this.computeVisibleNavItems();
+  }
+
+  readonly navItems: any[] = [
     { path: '/dashboard', label: 'Dashboard', any: [] },
+    { 
+      label: 'Listados', 
+      any: [],
+      expanded: false,
+      children: [
+        { path: '/maestro-mx', label: 'Maestro MX', any: [] },
+        { path: '/providers', label: 'Proveedores', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
+        { path: '/pacientes', label: 'Pacientes', any: [] },
+        { path: '/bodegas', label: 'Bodegas', any: [] }
+      ]
+    },
     { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
-    { path: '/ingresos', label: 'Ingresos', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
     { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
     { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
-    { path: '/providers', label: 'Proveedores', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
-    { path: '/purchases', label: 'Compras', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
+    { 
+      label: 'Compras', 
+      any: [],
+      expanded: false,
+      children: [
+        { path: '/purchases', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
+        { path: '/ingresos', label: 'Ingreso pedido', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+        { path: '/devolucion-pedido', label: 'Devolución pedido', any: [] },
+        { path: '/alertas-entrega', label: 'Alertas pendientes de entrega', any: [] }
+      ]
+    },
     { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
+    { 
+      label: 'Movimientos', 
+      any: [],
+      expanded: false,
+      children: [
+        { path: '/salida', label: 'Salida', any: [] },
+        { path: '/entrada', label: 'Entrada', any: [] },
+        { path: '/traslados', label: 'Traslados', any: [] },
+        { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] }
+      ]
+    },
     { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
     { path: '/dispensing', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
@@ -73,13 +119,25 @@ export class ShellComponent {
     { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] }
   ];
 
-  visibleNavItems() {
+  computeVisibleNavItems() {
     const user = this.currentUser();
-    if (user?.role === 'ADMINISTRADOR') {
-      return this.navItems;
-    }
+    const isAdmin = user?.role === 'ADMINISTRADOR';
     const permissions = user?.permissions ?? {};
-    return this.navItems.filter((item) => !item.any.length || item.any.some((key) => Boolean(permissions[key])));
+
+    return this.navItems.map(item => {
+      if (item.children) {
+        const visibleChildren = isAdmin ? item.children : item.children.filter((child: any) => !child.any.length || child.any.some((key: string) => Boolean(permissions[key])));
+        return { ...item, children: visibleChildren };
+      }
+      return { ...item };
+    }).filter(item => {
+      if (item.children) return item.children.length > 0;
+      return isAdmin || !item.any.length || item.any.some((key: string) => Boolean(permissions[key]));
+    });
+  }
+
+  toggleGroup(item: any) {
+    item.expanded = !item.expanded;
   }
 
   private currentUser(): any {

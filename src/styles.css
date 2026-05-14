@@ -520,6 +520,45 @@ textarea {
   color: #FFFFFF;
 }
 
+.nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-group-toggle {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chevron {
+  font-size: 0.65rem;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  margin-left: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.nav-group-items a {
+  font-size: 0.85rem;
+  padding: 0.6rem 0.8rem;
+  color: rgba(237, 233, 254, 0.8);
+}
+
 .content {
   display: flex;
   flex-direction: column;
