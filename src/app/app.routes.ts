@@ -18,6 +18,7 @@ import { ReportsComponent } from './pages/reports.component';
 import { SettingsComponent } from './pages/settings.component';
 import { AdminComponent } from './pages/admin.component';
 import { BodegasComponent } from './pages/bodegas.component';
+import { MaestroMxComponent } from './pages/maestro-mx.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -43,7 +44,8 @@ export const routes: Routes = [
       { path: 'billing', component: BillingComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'settings', component: SettingsComponent },
-      { path: 'admin', component: AdminComponent }
+      { path: 'admin', component: AdminComponent },
+      { path: 'maestro-mx', component: MaestroMxComponent }
     ]
   },
   { path: '**', redirectTo: '' }
