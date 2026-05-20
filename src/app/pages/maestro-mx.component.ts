@@ -58,12 +58,6 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
                 }
               </select>
             </label>
-            <label>Lote
-              <input [(ngModel)]="form.lote" placeholder="Número de lote">
-            </label>
-            <label>Fecha de vencimiento
-              <input type="date" [(ngModel)]="form.fecha_vencimiento">
-            </label>
             <label>Presentación
               <input type="number" [(ngModel)]="form.presentacion" placeholder="Ej: 500 (ml, mg, etc)">
             </label>
@@ -85,8 +79,11 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
             <label>Concentración
               <input [(ngModel)]="form.concentracion" placeholder="Ej: 500mg">
             </label>
-            <label>Unidad
-              <input type="number" [(ngModel)]="form.unidad" placeholder="Cantidad de unidades">
+            <label>Forma farmacéutica
+              <input [(ngModel)]="form.forma_farmaceutica" placeholder="Ej: Tableta, Jarabe, Ampolla">
+            </label>
+            <label>Clasificación
+              <input [(ngModel)]="form.clasificacion" placeholder="Ej: Analgésico, Antibiótico">
             </label>
             <label>IVA (%)
               <input type="number" [(ngModel)]="form.iva" step="0.1" placeholder="Porcentaje de IVA">
@@ -427,8 +424,6 @@ export class MaestroMxComponent implements OnInit {
     nombre_producto: '',
     nombre_comercial: '',
     id_laboratorio: null,
-    lote: '',
-    fecha_vencimiento: '',
     presentacion: 0,
     registro_invima: '',
     cum: 0,
@@ -436,7 +431,8 @@ export class MaestroMxComponent implements OnInit {
     atc: '',
     principio_activo: '',
     concentracion: '',
-    unidad: 0,
+    forma_farmaceutica: '',
+    clasificacion: '',
     iva: 0
   };
 
@@ -545,8 +541,6 @@ export class MaestroMxComponent implements OnInit {
       nombre_producto: '',
       nombre_comercial: '',
       id_laboratorio: null,
-      lote: '',
-      fecha_vencimiento: '',
       presentacion: 0,
       registro_invima: '',
       cum: 0,
@@ -554,7 +548,8 @@ export class MaestroMxComponent implements OnInit {
       atc: '',
       principio_activo: '',
       concentracion: '',
-      unidad: 0,
+      forma_farmaceutica: '',
+      clasificacion: '',
       iva: 0
     };
   }
