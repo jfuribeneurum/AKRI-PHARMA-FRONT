@@ -16,9 +16,11 @@ import { ApiService } from '../core/api.service';
           En modo demo puedes dejar URL vacía. El backend responderá en modo mock.
         </div>
 
-        <div *ngIf="message" class="success-box" style="margin-bottom: 1rem;">
-          {{ message }}
-        </div>
+        @if (message) {
+          <div class="success-box" style="margin-bottom: 1rem;">
+            {{ message }}
+          </div>
+        }
 
         <div class="form-grid">
           <label>

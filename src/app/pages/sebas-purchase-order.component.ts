@@ -16,8 +16,8 @@ import { ApiService } from '../core/api.service';
         </div>
       </div>
 
-      <div *ngIf="message()" class="success-box">{{ message() }}</div>
-      <div *ngIf="error()" class="error-box">{{ error() }}</div>
+      @if (message()) { <div class="success-box">{{ message() }}</div> }
+      @if (error()) { <div class="error-box">{{ error() }}</div> }
 
       <div class="card">
         <div class="section-head">

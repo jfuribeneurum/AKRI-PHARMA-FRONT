@@ -18,9 +18,11 @@ import { ApiService } from '../core/api.service';
           Demo: admin / Akri123*
         </div>
 
-        <div *ngIf="error()" class="error" style="margin-bottom: 1rem;">
-          {{ error() }}
-        </div>
+        @if (error()) {
+          <div class="error" style="margin-bottom: 1rem;">
+            {{ error() }}
+          </div>
+        }
 
         <div class="form-grid" style="grid-template-columns: 1fr;">
           <label>

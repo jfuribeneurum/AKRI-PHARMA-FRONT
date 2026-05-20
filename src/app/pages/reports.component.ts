@@ -38,8 +38,8 @@ type ReportKey =
         </div>
       </div>
 
-      <div *ngIf="message()" class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
-      <div *ngIf="error()" class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+      @if (message()) { <div class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div> }
+      @if (error()) { <div class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div> }
 
       <div class="grid grid-2">
         <div class="card">

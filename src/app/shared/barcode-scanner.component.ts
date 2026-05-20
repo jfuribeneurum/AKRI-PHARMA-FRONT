@@ -42,9 +42,11 @@ export interface BarcodeScanEvent {
         </label>
       </div>
 
-      <div class="scanner-video-wrap" *ngIf="cameraActive()">
-        <video #preview playsinline muted></video>
-      </div>
+      @if (cameraActive()) {
+        <div class="scanner-video-wrap">
+          <video #preview playsinline muted></video>
+        </div>
+      }
     </div>
   `
 })
