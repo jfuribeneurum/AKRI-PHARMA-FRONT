@@ -72,8 +72,8 @@ export class ShellComponent {
 
   readonly navItems: any[] = [
     { path: '/dashboard', label: 'Dashboard', any: [] },
-    { 
-      label: 'Listados', 
+    {
+      label: 'Listados',
       any: [],
       expanded: false,
       children: [
@@ -83,11 +83,8 @@ export class ShellComponent {
         { path: '/bodegas', label: 'Bodegas', any: [] }
       ]
     },
-    { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
-    { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
-    { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
-    { 
-      label: 'Compras', 
+    {
+      label: 'Compras',
       any: [],
       expanded: false,
       children: [
@@ -97,9 +94,8 @@ export class ShellComponent {
         { path: '/alertas-entrega', label: 'Alertas pendientes de entrega', any: [] }
       ]
     },
-    { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
-    { 
-      label: 'Movimientos', 
+    {
+      label: 'Movimientos',
       any: [],
       expanded: false,
       children: [
@@ -109,9 +105,13 @@ export class ShellComponent {
         { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] }
       ]
     },
+    { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
+    { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+    { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
+    { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
     { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
     { path: '/dispensing', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
-    { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     { path: '/cold-chain', label: 'Cadena de frío', any: ['perm_cadena_frio_consulta', 'perm_cadena_frio_registro'] },
     { path: '/billing', label: 'Facturación', any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
     { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },

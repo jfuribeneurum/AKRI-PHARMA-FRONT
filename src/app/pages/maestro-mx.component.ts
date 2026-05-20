@@ -10,14 +10,14 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <!-- Modal: agregar producto -->
+    <!-- Modal: agregar / editar producto -->
     @if (showModal()) {
       <div class="modal-backdrop" (click)="closeModal()">
         <div class="modal-panel" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <h3>Nuevo producto</h3>
-              <div class="helper">Alta rápida del maestro de catálogo.</div>
+              <h3>{{ editingId() ? 'Editar producto' : 'Nuevo producto' }}</h3>
+              <div class="helper">{{ editingId() ? 'Modifica los datos del catálogo.' : 'Alta rápida del maestro de catálogo.' }}</div>
             </div>
             <button class="btn secondary" (click)="closeModal()">✕ Cerrar</button>
           </div>
@@ -92,7 +92,7 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
 
           <div class="form-actions">
             <button class="btn secondary" (click)="closeModal()">Cancelar</button>
-            <button class="btn" (click)="create()">Guardar producto</button>
+            <button class="btn" (click)="save()">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
           </div>
         </div>
       </div>
@@ -292,6 +292,7 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
                 <th>Código</th>
                 <th>Stock</th>
                 <th>Imagen</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -316,10 +317,13 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
                       <span class="chip warn">Pendiente</span>
                     }
                   </td>
+                  <td (click)="$event.stopPropagation()">
+                    <button class="btn secondary btn-small" (click)="openEditModal(p)">Editar</button>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="muted" style="text-align:center; padding: 2rem;">
+                  <td colspan="6" class="muted" style="text-align:center; padding: 2rem;">
                     No hay productos registrados. Usa "+ Agregar producto" para comenzar.
                   </td>
                 </tr>
@@ -396,6 +400,21 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
     .lab-field span {
       font-size: 0.875rem;
     }
+    .btn-icon {
+      background: none;
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 8px;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      color: var(--muted, #6b7280);
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-icon:hover {
+      background: var(--surface-alt, #f3f4f6);
+      color: var(--fg, #111);
+    }
   `]
 })
 export class MaestroMxComponent implements OnInit {
@@ -412,6 +431,7 @@ export class MaestroMxComponent implements OnInit {
 
   showModal = signal(false);
   showDetailModal = signal(false);
+  editingId = signal<number | null>(null);
 
   mediaForm: { tipo_origen: MediaSourceType; descripcion: string } = {
     tipo_origen: 'importada',
@@ -453,6 +473,8 @@ export class MaestroMxComponent implements OnInit {
   }
 
   openModal() {
+    this.editingId.set(null);
+    this.resetForm();
     this.formMessage.set('');
     this.formError.set('');
     this.showModal.set(true);
@@ -460,6 +482,31 @@ export class MaestroMxComponent implements OnInit {
 
   closeModal() {
     this.showModal.set(false);
+    this.editingId.set(null);
+  }
+
+  openEditModal(p: any) {
+    this.editingId.set(p.id_producto);
+    this.form = {
+      codigo_interno: p.sku ?? '',
+      tipo_producto: p.tipo_producto ?? '',
+      nombre_producto: p.principio_activo ?? '',
+      nombre_comercial: p.nombre_comercial ?? '',
+      id_laboratorio: p.id_laboratorio ?? null,
+      presentacion: 0,
+      registro_invima: '',
+      cum: 0,
+      consecutivo_cum: 0,
+      atc: p.codigo_atc ?? '',
+      principio_activo: p.principio_activo ?? '',
+      concentracion: p.concentracion ?? '',
+      forma_farmaceutica: '',
+      clasificacion: '',
+      iva: p.iva_tasa ?? 0
+    };
+    this.formMessage.set('');
+    this.formError.set('');
+    this.showModal.set(true);
   }
 
   async openDetail(id: number) {
@@ -487,10 +534,18 @@ export class MaestroMxComponent implements OnInit {
     this.selected.set(response.data);
   }
 
+  async save() {
+    if (this.editingId()) {
+      await this.update();
+    } else {
+      await this.create();
+    }
+  }
+
   async create() {
     this.formError.set('');
     try {
-      const response = await this.api.post<{ success: boolean; data: any }>('/products', this.form);
+      const response = await this.api.post<{ success: boolean; data: any }>('/products', this.buildApiPayload());
       this.formMessage.set('Producto registrado correctamente.');
       this.resetForm();
       this.closeModal();
@@ -499,6 +554,31 @@ export class MaestroMxComponent implements OnInit {
     } catch (err: any) {
       this.formError.set(err?.error?.message || 'No fue posible guardar el producto.');
     }
+  }
+
+  async update() {
+    this.formError.set('');
+    try {
+      await this.api.put(`/products/${this.editingId()}`, this.buildApiPayload());
+      this.closeModal();
+      this.message.set('Producto actualizado correctamente.');
+      await this.load(this.editingId()!);
+    } catch (err: any) {
+      this.formError.set(err?.error?.message || 'No fue posible actualizar el producto.');
+    }
+  }
+
+  private buildApiPayload() {
+    return {
+      sku: this.form.codigo_interno,
+      nombre_comercial: this.form.nombre_comercial,
+      principio_activo: this.form.principio_activo || this.form.nombre_producto || null,
+      concentracion: this.form.concentracion || null,
+      tipo_producto: this.form.tipo_producto || undefined,
+      id_laboratorio: this.form.id_laboratorio || null,
+      codigo_atc: this.form.atc || null,
+      iva_tasa: Number(this.form.iva ?? 0)
+    };
   }
 
   async onImageSelected(event: Event, sourceType: MediaSourceType) {
