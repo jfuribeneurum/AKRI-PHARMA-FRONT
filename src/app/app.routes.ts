@@ -22,6 +22,7 @@ import { MaestroMxComponent } from './pages/maestro-mx.component';
 import { DevolucionPedidoComponent } from './pages/devolucion-pedido.component';
 import { MovimientoEntradaComponent } from './pages/movimiento-entrada.component';
 import { MovimientoSalidaComponent } from './pages/movimiento-salida.component';
+import { PacientesComponent } from './pages/pacientes.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -51,7 +52,8 @@ export const routes: Routes = [
       { path: 'maestro-mx', component: MaestroMxComponent },
       { path: 'devolucion-pedido', component: DevolucionPedidoComponent },
       { path: 'entrada', component: MovimientoEntradaComponent },
-      { path: 'salida', component: MovimientoSalidaComponent }
+      { path: 'salida', component: MovimientoSalidaComponent },
+      { path: 'pacientes', component: PacientesComponent }
     ]
   },
   { path: '**', redirectTo: '' }

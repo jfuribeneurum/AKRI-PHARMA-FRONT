@@ -116,7 +116,8 @@ export class ShellComponent {
     { path: '/billing', label: 'Facturación', any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
     { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },
     { path: '/admin', label: 'Administración', any: ['perm_usuarios_gestionar', 'perm_configuracion'] },
-    { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] }
+    { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] },
+    { path: '/pacientes', label: 'Pacientes HealthSphere', any: [] }
   ];
 
   computeVisibleNavItems() {
