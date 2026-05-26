@@ -353,11 +353,12 @@ export class SebasPurchaseOrderComponent implements OnInit {
   async loadOrders() {
     this.loading.set(true);
     try {
-      const data = await this.api.get<any[]>('/purchases');
-      this.allOrders.set(data ?? []);
+      const resp: any = await this.api.get<any>('/purchases');
+      const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.allOrders.set(lista);
       this.applyFilter();
-    } catch {
-      /* silencioso — el usuario puede reintentar con Actualizar */
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudieron cargar las órdenes.');
     } finally {
       this.loading.set(false);
     }

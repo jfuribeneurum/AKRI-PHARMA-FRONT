@@ -89,7 +89,7 @@ export class ShellComponent {
       expanded: false,
       children: [
         { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
-        { path: '/ingresos', label: 'Ingreso pedido', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+        { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
         { path: '/devolucion-pedido', label: 'Devolución pedido', any: [] },
         { path: '/alertas-entrega', label: 'Alertas pendientes de entrega', any: [] }
       ]
@@ -107,7 +107,7 @@ export class ShellComponent {
     },
     { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
-    { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+    { path: '/ingresos', label: 'Ingreso pedido', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
     { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
     { path: '/purchases', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
     { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
