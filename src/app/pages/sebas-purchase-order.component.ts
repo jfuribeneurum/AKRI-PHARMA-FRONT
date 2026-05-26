@@ -3,16 +3,56 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 
+interface OrderItem {
+  id_producto: number;
+  codigo: string;
+  nombre: string;
+  laboratorio: string;
+  cantidad: number;
+  valor_unitario: number;
+}
+
 @Component({
   selector: 'akri-sebas-purchase-order',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  styles: [`
+    .po-section { margin-bottom: 1.5rem; }
+    .po-section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-primary, #2563eb);
+      border-bottom: 2px solid var(--color-primary, #2563eb);
+      padding-bottom: 0.35rem;
+      margin-bottom: 1rem;
+    }
+    .items-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .items-table th {
+      background: var(--color-surface-2, #f3f4f6);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+    .items-table td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--color-border, #e5e7eb); vertical-align: middle; }
+    .items-table input { width: 100%; min-width: 0; padding: 0.3rem 0.45rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 4px; font-size: 0.85rem; background: var(--color-surface, #fff); color: inherit; }
+    .items-table input:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
+    .total-row td { font-weight: 700; background: var(--color-surface-2, #f9fafb); padding: 0.5rem 0.6rem; }
+    .valor-total-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; padding: 0 0.3rem; line-height: 1; }
+    .btn-remove:hover { color: #b91c1c; }
+    .btn-add-row { margin-top: 0.6rem; }
+    .grand-total { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; padding: 0.75rem 0 0; font-size: 1rem; font-weight: 700; }
+    .grand-total span { font-size: 1.15rem; color: var(--color-primary, #2563eb); }
+  `],
   template: `
     <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Orden de compra Sebas</h1>
-          <p class="page-subtitle">Formulario separado para registrar ordenes de compra con datos completos de proveedor, entrega, condiciones e item.</p>
+          <h1 class="page-title">Orden de Compra</h1>
         </div>
       </div>
 
@@ -20,128 +60,134 @@ import { ApiService } from '../core/api.service';
       @if (error()) { <div class="error-box">{{ error() }}</div> }
 
       <div class="card">
-        <div class="section-head">
-          <div>
-            <h3>Nueva orden</h3>
-            <span class="muted">Los campos adicionales se guardan en observaciones de la OC</span>
+
+        <!-- ── 1. ENCABEZADO ───────────────────────────────────────── -->
+        <div class="po-section">
+          <div class="po-section-title">Encabezado</div>
+          <div class="form-grid">
+            <label>
+              Consecutivo
+              <input [(ngModel)]="order.consecutivo">
+            </label>
+            <label>
+              Fecha
+              <input type="date" [(ngModel)]="order.fecha">
+            </label>
           </div>
         </div>
 
-        <div class="form-grid">
-          <label>
-            Numero OC
-            <input [(ngModel)]="purchase.numero_oc">
-          </label>
-          <label>
-            Fecha orden
-            <input type="date" [(ngModel)]="sebasOrder.fecha_orden">
-          </label>
-          <label>
-            Estado
-            <select [(ngModel)]="purchase.estado">
-              <option value="borrador">Borrador</option>
-              <option value="aprobada">Aprobada</option>
-            </select>
-          </label>
-          <label>
-            Proveedor (id)
-            <input type="number" [(ngModel)]="purchase.id_proveedor">
-          </label>
-          <label>
-            Proveedor
-            <input [(ngModel)]="sebasOrder.proveedor_nombre" placeholder="Nombre del proveedor">
-          </label>
-          <label>
-            NIT proveedor
-            <input [(ngModel)]="sebasOrder.proveedor_nit">
-          </label>
-          <label>
-            Contacto proveedor
-            <input [(ngModel)]="sebasOrder.proveedor_contacto">
-          </label>
-          <label>
-            Telefono proveedor
-            <input [(ngModel)]="sebasOrder.proveedor_telefono">
-          </label>
-          <label class="full">
-            Direccion proveedor
-            <input [(ngModel)]="sebasOrder.proveedor_direccion">
-          </label>
-          <label>
-            Solicitante
-            <input [(ngModel)]="sebasOrder.solicitante">
-          </label>
-          <label>
-            Comprador
-            <input [(ngModel)]="sebasOrder.comprador">
-          </label>
-          <label>
-            Sede entrega
-            <input [(ngModel)]="sebasOrder.sede_entrega">
-          </label>
-          <label>
-            Ciudad entrega
-            <input [(ngModel)]="sebasOrder.ciudad_entrega">
-          </label>
-          <label class="full">
-            Direccion entrega
-            <input [(ngModel)]="sebasOrder.direccion_entrega">
-          </label>
-          <label>
-            Fecha requerida
-            <input type="date" [(ngModel)]="purchase.items[0].fecha_requerida">
-          </label>
-          <label>
-            Forma de pago
-            <input [(ngModel)]="sebasOrder.forma_pago" placeholder="Credito, contado, etc.">
-          </label>
-          <label>
-            Plazo de pago
-            <input [(ngModel)]="sebasOrder.plazo_pago" placeholder="30 dias">
-          </label>
-          <label>
-            Moneda
-            <input [(ngModel)]="sebasOrder.moneda">
-          </label>
-          <label>
-            Producto (id)
-            <input type="number" [(ngModel)]="purchase.items[0].id_producto">
-          </label>
-          <label>
-            Codigo producto
-            <input [(ngModel)]="sebasOrder.item_codigo">
-          </label>
-          <label class="full">
-            Descripcion producto
-            <input [(ngModel)]="sebasOrder.item_descripcion">
-          </label>
-          <label>
-            Presentacion
-            <input [(ngModel)]="sebasOrder.item_presentacion">
-          </label>
-          <label>
-            Cantidad
-            <input type="number" [(ngModel)]="purchase.items[0].cantidad">
-          </label>
-          <label>
-            Precio unitario
-            <input type="number" [(ngModel)]="purchase.items[0].precio_unitario">
-          </label>
-          <label>
-            Descuento
-            <input type="number" [(ngModel)]="purchase.items[0].descuento">
-          </label>
-          <label>
-            IVA / impuesto
-            <input type="number" [(ngModel)]="purchase.items[0].impuesto">
-          </label>
-          <label class="full">
-            Observaciones
-            <textarea [(ngModel)]="purchase.observaciones" placeholder="Condiciones, notas o instrucciones especiales"></textarea>
-          </label>
+        <!-- ── 2. DATOS DE LA SEDE ─────────────────────────────────── -->
+        <div class="po-section">
+          <div class="po-section-title">Datos de la sede</div>
+          <div class="form-grid">
+            <label>
+              Sede
+              <input [(ngModel)]="order.sede" placeholder="Nombre de la sede">
+            </label>
+            <label>
+              Bodega
+              <input [(ngModel)]="order.bodega" placeholder="Bodega de destino">
+            </label>
+            <label>
+              Direccion
+              <input [(ngModel)]="order.direccion_sede" placeholder="Direccion de la sede">
+            </label>
+            <label>
+              Ciudad
+              <input [(ngModel)]="order.ciudad_sede" placeholder="Ciudad">
+            </label>
+          </div>
         </div>
 
-        <button class="btn" (click)="createPurchase()">Crear orden Sebas</button>
+        <!-- ── 3. DATOS DEL PROVEEDOR ──────────────────────────────── -->
+        <div class="po-section">
+          <div class="po-section-title">Datos del proveedor</div>
+          <div class="form-grid">
+            <label>
+              Nombre
+              <input [(ngModel)]="order.proveedor_nombre" placeholder="Nombre del proveedor">
+            </label>
+            <label>
+              NIT
+              <input [(ngModel)]="order.proveedor_nit">
+            </label>
+            <label>
+              Contacto
+              <input [(ngModel)]="order.proveedor_contacto">
+            </label>
+            <label>
+              Telefono
+              <input [(ngModel)]="order.proveedor_telefono">
+            </label>
+            <label class="full">
+              Direccion proveedor
+              <input [(ngModel)]="order.proveedor_direccion">
+            </label>
+          </div>
+        </div>
+
+        <!-- ── 4. DETALLE ──────────────────────────────────────────── -->
+        <div class="po-section">
+          <div class="po-section-title">Detalle</div>
+          <div style="overflow-x:auto;">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Laboratorio</th>
+                  <th style="text-align:right">Cantidad</th>
+                  <th style="text-align:right">Valor unitario</th>
+                  <th style="text-align:right">Valor total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of items; track $index) {
+                  <tr>
+                    <td style="color:#9ca3af; font-size:0.8rem;">{{ $index + 1 }}</td>
+                    <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
+                    <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                    <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                    <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                    <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                    <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    <td>
+                      @if (items.length > 1) {
+                        <button class="btn-remove" (click)="removeItem($index)" title="Eliminar fila">&times;</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td colspan="6" style="text-align:right">Total</td>
+                  <td class="valor-total-cell">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <button class="btn btn-outline btn-add-row" (click)="addItem()">+ Agregar item</button>
+        </div>
+
+        <!-- ── OBSERVACIONES ───────────────────────────────────────── -->
+        <div class="po-section">
+          <div class="form-grid">
+            <label class="full">
+              Observaciones
+              <textarea [(ngModel)]="order.observaciones" placeholder="Condiciones, notas o instrucciones especiales"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
+          <button class="btn" (click)="createPurchase()" [disabled]="saving()">
+            {{ saving() ? 'Guardando...' : 'Crear orden de compra' }}
+          </button>
+        </div>
       </div>
     </section>
   `
@@ -149,69 +195,90 @@ import { ApiService } from '../core/api.service';
 export class SebasPurchaseOrderComponent {
   readonly message = signal('');
   readonly error = signal('');
+  readonly saving = signal(false);
 
-  purchase: any = {
-    numero_oc: `OC-${Date.now()}`,
-    id_proveedor: 1,
-    estado: 'borrador',
-    observaciones: '',
-    items: [{ id_producto: 1, cantidad: 10, precio_unitario: 1500, descuento: 0, impuesto: 0, fecha_requerida: null }]
-  };
-
-  sebasOrder: any = {
-    fecha_orden: new Date().toISOString().slice(0, 10),
+  order: any = {
+    consecutivo: `OC-${Date.now()}`,
+    fecha: new Date().toISOString().slice(0, 10),
+    sede: '',
+    bodega: '',
+    direccion_sede: '',
+    ciudad_sede: '',
     proveedor_nombre: '',
     proveedor_nit: '',
     proveedor_contacto: '',
     proveedor_telefono: '',
     proveedor_direccion: '',
-    solicitante: '',
-    comprador: '',
-    sede_entrega: 'Sede Central Bogota',
-    ciudad_entrega: 'Bogota',
-    direccion_entrega: '',
-    forma_pago: '',
-    plazo_pago: '',
-    moneda: 'COP',
-    item_codigo: '',
-    item_descripcion: '',
-    item_presentacion: ''
+    observaciones: ''
   };
+
+  items: OrderItem[] = [
+    { id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0 }
+  ];
 
   constructor(private readonly api: ApiService) {}
 
+  itemTotal(item: OrderItem): number {
+    return (item.cantidad ?? 0) * (item.valor_unitario ?? 0);
+  }
+
+  grandTotal(): number {
+    return this.items.reduce((sum, item) => sum + this.itemTotal(item), 0);
+  }
+
+  addItem() {
+    this.items.push({ id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0 });
+  }
+
+  removeItem(index: number) {
+    this.items.splice(index, 1);
+  }
+
   async createPurchase() {
+    this.error.set('');
+    this.message.set('');
+    this.saving.set(true);
     try {
-      this.error.set('');
-      await this.api.post('/purchases', this.purchasePayload());
-      this.message.set('Orden de compra Sebas creada.');
-    } catch (error: any) {
-      this.error.set(error?.error?.message || 'No fue posible crear la orden de compra Sebas.');
+      await this.api.post('/purchases', this.buildPayload());
+      this.message.set('Orden de compra creada correctamente.');
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No fue posible crear la orden de compra.');
+    } finally {
+      this.saving.set(false);
     }
   }
 
-  private purchasePayload() {
-    const sebasNotes = Object.entries(this.sebasOrder)
-      .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n');
-    const baseNotes = String(this.purchase.observaciones ?? '').trim();
+  private buildPayload() {
+    const meta = [
+      `Sede: ${this.order.sede}`,
+      `Bodega: ${this.order.bodega}`,
+      `Direccion sede: ${this.order.direccion_sede}`,
+      `Ciudad: ${this.order.ciudad_sede}`,
+      `Proveedor: ${this.order.proveedor_nombre}`,
+      `NIT: ${this.order.proveedor_nit}`,
+      `Contacto: ${this.order.proveedor_contacto}`,
+      `Telefono: ${this.order.proveedor_telefono}`,
+      `Direccion proveedor: ${this.order.proveedor_direccion}`,
+      `Total OC: ${this.grandTotal()}`
+    ].filter(line => !line.endsWith(': ')).join('\n');
+
+    const notes = [this.order.observaciones?.trim(), meta].filter(Boolean).join('\n\n');
 
     return {
-      numero_oc: this.purchase.numero_oc,
-      id_proveedor: Number(this.purchase.id_proveedor),
-      estado: this.purchase.estado,
-      observaciones: [baseNotes, sebasNotes ? `Orden de compra Sebas\n${sebasNotes}` : '']
-        .filter(Boolean)
-        .join('\n\n'),
-      items: this.purchase.items.map((item: any) => ({
-        id_producto: Number(item.id_producto),
-        cantidad: Number(item.cantidad),
-        precio_unitario: Number(item.precio_unitario),
-        descuento: Number(item.descuento ?? 0),
-        impuesto: Number(item.impuesto ?? 0),
-        fecha_requerida: item.fecha_requerida || null
-      }))
+      numero_oc: this.order.consecutivo,
+      id_proveedor: 1,
+      estado: 'borrador',
+      observaciones: notes,
+      items: this.items
+        .filter(i => i.cantidad > 0)
+        .map(i => ({
+          id_producto: Number(i.id_producto) || 1,
+          cantidad: Number(i.cantidad),
+          precio_unitario: Number(i.valor_unitario),
+          descuento: 0,
+          impuesto: 0,
+          fecha_requerida: null
+        }))
     };
   }
 }
