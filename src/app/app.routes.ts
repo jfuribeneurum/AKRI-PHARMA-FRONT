@@ -19,6 +19,7 @@ import { SettingsComponent } from './pages/settings.component';
 import { AdminComponent } from './pages/admin.component';
 import { BodegasComponent } from './pages/bodegas.component';
 import { MaestroMxComponent } from './pages/maestro-mx.component';
+import { DevolucionPedidoComponent } from './pages/devolucion-pedido.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -45,7 +46,8 @@ export const routes: Routes = [
       { path: 'reports', component: ReportsComponent },
       { path: 'settings', component: SettingsComponent },
       { path: 'admin', component: AdminComponent },
-      { path: 'maestro-mx', component: MaestroMxComponent }
+      { path: 'maestro-mx', component: MaestroMxComponent },
+      { path: 'devolucion-pedido', component: DevolucionPedidoComponent }
     ]
   },
   { path: '**', redirectTo: '' }
