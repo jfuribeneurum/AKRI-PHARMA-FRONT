@@ -325,68 +325,140 @@ import { ApiService } from '../core/api.service';
       <!-- ══ FORMULARIO SIN ORDEN ══════════════════════════════════ -->
       @if (modo() === 'sin_orden') {
         <div class="card">
-          <div class="po-section-title">Nuevo ingreso sin orden</div>
 
           <!-- 1. ENCABEZADO -->
           <div class="po-section">
             <div class="po-section-title">Encabezado</div>
             <div class="form-grid">
-              <label>Referencia ingreso<input [(ngModel)]="ingreso.referencia" placeholder="ING-SEBAS-001"></label>
-              <label>Fecha recepcion<input type="date" [(ngModel)]="factura.fecha_recepcion"></label>
-              <label>Estado
-                <select [(ngModel)]="ingreso.estado">
-                  <option value="pendiente">Pendiente</option>
-                  <option value="recibido">Recibido</option>
-                  <option value="almacenado">Almacenado</option>
-                  <option value="cancelado">Cancelado</option>
-                </select>
+              <label>
+                Consecutivo
+                <input [(ngModel)]="ocMeta.consecutivo" placeholder="ING-SEBAS-...">
+              </label>
+              <label>
+                Fecha recepcion
+                <input type="date" [(ngModel)]="ingresoExtra.fecha_recepcion">
               </label>
             </div>
           </div>
 
-          <!-- 2. DATOS DEL PROVEEDOR -->
+          <!-- 2. DATOS DE LA SEDE -->
+          <div class="po-section">
+            <div class="po-section-title">Datos de la sede</div>
+            <div class="form-grid">
+              <label>Sede<input [(ngModel)]="ocMeta.sede" placeholder="Nombre de la sede"></label>
+              <label>Bodega<input [(ngModel)]="ocMeta.bodega" placeholder="Bodega de destino"></label>
+              <label>Direccion<input [(ngModel)]="ocMeta.direccion_sede" placeholder="Direccion de la sede"></label>
+              <label>Ciudad<input [(ngModel)]="ocMeta.ciudad_sede" placeholder="Ciudad"></label>
+            </div>
+          </div>
+
+          <!-- 3. DATOS DEL PROVEEDOR -->
           <div class="po-section">
             <div class="po-section-title">Datos del proveedor</div>
             <div class="form-grid">
-              <label>Proveedor<input [(ngModel)]="factura.proveedor_nombre"></label>
-              <label>NIT proveedor<input [(ngModel)]="factura.proveedor_nit"></label>
-              <label>Telefono proveedor<input [(ngModel)]="factura.proveedor_telefono"></label>
-              <label class="full">Direccion proveedor<input [(ngModel)]="factura.proveedor_direccion"></label>
+              <label>Nombre<input [(ngModel)]="ocMeta.proveedor_nombre" placeholder="Nombre del proveedor"></label>
+              <label>NIT<input [(ngModel)]="ocMeta.proveedor_nit"></label>
+              <label>Contacto<input [(ngModel)]="ocMeta.proveedor_contacto"></label>
+              <label>Telefono<input [(ngModel)]="ocMeta.proveedor_telefono"></label>
+              <label class="full">Direccion proveedor<input [(ngModel)]="ocMeta.proveedor_direccion"></label>
             </div>
           </div>
 
-          <!-- 3. DETALLE -->
+          <!-- 4. DETALLE -->
           <div class="po-section">
             <div class="po-section-title">Detalle</div>
-            <div class="form-grid">
-              <label>Codigo producto<input [(ngModel)]="factura.codigo_producto"></label>
-              <label class="full">Producto / descripcion<input [(ngModel)]="ingreso.producto" placeholder="Descripcion del producto"></label>
-              <label>Laboratorio<input [(ngModel)]="factura.laboratorio"></label>
-              <label>Presentacion<input [(ngModel)]="factura.presentacion"></label>
-              <label>Invima / registro sanitario<input [(ngModel)]="factura.registro_sanitario"></label>
-              <label>Lote<input [(ngModel)]="ingreso.lote"></label>
-              <label>Fecha vencimiento<input type="date" [(ngModel)]="ingreso.fecha_vencimiento"></label>
-              <label>Cantidad<input type="number" [(ngModel)]="ingreso.cantidad"></label>
-              <label>Unidad medida<input [(ngModel)]="factura.unidad_medida"></label>
-              <label>Valor unitario<input type="number" [(ngModel)]="factura.valor_unitario"></label>
-              <label>Descuento<input type="number" [(ngModel)]="factura.descuento"></label>
-              <label>IVA / impuesto<input type="number" [(ngModel)]="factura.impuesto"></label>
-              <label>Subtotal<input type="number" [(ngModel)]="factura.subtotal"></label>
-              <label>Total factura<input type="number" [(ngModel)]="factura.total"></label>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Codigo</th>
+                    <th>Nombre</th>
+                    <th>Laboratorio</th>
+                    <th style="text-align:right">Cantidad</th>
+                    <th style="text-align:right">Valor unitario</th>
+                    <th>Lote</th>
+                    <th>Vencimiento</th>
+                    <th style="text-align:right">Valor total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of ocItems; track $index) {
+                    <tr>
+                      <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
+                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
+                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                      <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
+                      <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
+                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="8" style="text-align:right">Total</td>
+                    <td class="valor-total-cell">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <button class="btn btn-outline" style="margin-top:0.6rem" (click)="agregarItem()">+ Agregar item</button>
+          </div>
+
+          <!-- 5. DATOS DEL MEDICAMENTO -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del medicamento</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Registro Invima MX</th>
+                    <th>CUM</th>
+                    <th>Consecutivo CUM</th>
+                    <th>Presentacion</th>
+                    <th>IVA (%)</th>
+                    <th>Temperatura</th>
+                    <th>Criterio de empleo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.registro_invima" placeholder="INVIMA-..."></td>
+                    <td><input [(ngModel)]="ingresoExtra.cum" placeholder="Codigo unico"></td>
+                    <td><input [(ngModel)]="ingresoExtra.consecutivo_cum"></td>
+                    <td><input [(ngModel)]="ingresoExtra.presentacion" placeholder="Ej: Tabletas x 20"></td>
+                    <td><input type="number" min="0" [(ngModel)]="ingresoExtra.iva" style="width:70px"></td>
+                    <td><input [(ngModel)]="ingresoExtra.temperatura" placeholder="Ej: 2-8°C"></td>
+                    <td><input [(ngModel)]="ingresoExtra.criterio_empleo" placeholder="Condicion de uso"></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <!-- 4. DATOS DE FACTURA -->
+          <!-- 6. DATOS DEL INGRESO -->
           <div class="po-section">
-            <div class="po-section-title">Datos de la factura</div>
-            <div class="form-grid">
-              <label>Numero factura<input [(ngModel)]="factura.numero_factura"></label>
-              <label>CUFE / CUDE<input [(ngModel)]="factura.cufe"></label>
-              <label>Fecha emision<input type="date" [(ngModel)]="factura.fecha_emision"></label>
-              <label>Remision<input [(ngModel)]="factura.remision"></label>
-              <label>Forma de pago<input [(ngModel)]="factura.forma_pago"></label>
-              <label>Medio de pago<input [(ngModel)]="factura.medio_pago"></label>
-              <label class="full">Observaciones<textarea [(ngModel)]="factura.observaciones" placeholder="Notas del ingreso, novedades o diferencias contra factura"></textarea></label>
+            <div class="po-section-title">Datos del ingreso</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Numero factura</th>
+                    <th>CUFE / CUDE</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.numero_factura"></td>
+                    <td><input [(ngModel)]="ingresoExtra.cufe"></td>
+                    <td><input [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura"></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -476,6 +548,11 @@ export class SebasIngresosComponent implements OnInit {
     this.modo.set('sin_orden');
     this.ordenSeleccionada.set(null);
     this.limpiar();
+    this.ocMeta.consecutivo = `ING-SEBAS-${Date.now()}`;
+  }
+
+  agregarItem() {
+    this.ocItems.push(this.emptyOcItem());
   }
 
   private precargarDesdeOrden(oc: any) {
@@ -566,19 +643,15 @@ export class SebasIngresosComponent implements OnInit {
     try {
       this.error.set('');
       this.message.set('');
-      if (this.modo() === 'con_orden') {
-        if (!this.ocItems.some(i => Number(i.cantidad) > 0)) {
-          this.error.set('Agrega al menos un item con cantidad.');
-          return;
-        }
-        await this.api.post('/ingresos', this.ingresoConOrdenPayload());
-      } else {
-        if (!this.ingreso.referencia || !this.ingreso.producto || !Number(this.ingreso.cantidad)) {
-          this.error.set('Completa referencia, producto y cantidad.');
-          return;
-        }
-        await this.api.post('/ingresos', this.ingresoSinOrdenPayload());
+      if (!this.ocMeta.consecutivo) {
+        this.error.set('El consecutivo es obligatorio.');
+        return;
       }
+      if (!this.ocItems.some(i => Number(i.cantidad) > 0)) {
+        this.error.set('Agrega al menos un item con cantidad.');
+        return;
+      }
+      await this.api.post('/ingresos', this.ingresoConOrdenPayload());
       this.message.set('Ingreso Sebas creado exitosamente.');
       this.limpiar();
       this.ordenSeleccionada.set(null);
@@ -626,20 +699,6 @@ export class SebasIngresosComponent implements OnInit {
     };
   }
 
-  private ingresoSinOrdenPayload() {
-    const facturaNotes = Object.entries(this.factura)
-      .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
-      .map(([key, value]) => `${key}: ${value}`)
-      .join(' | ');
-    return {
-      referencia: [this.ingreso.referencia, this.factura.numero_factura ? `Factura ${this.factura.numero_factura}` : ''].filter(Boolean).join(' - '),
-      producto: [this.ingreso.producto, facturaNotes ? `Datos factura: ${facturaNotes}` : ''].filter(Boolean).join('\n'),
-      cantidad: Number(this.ingreso.cantidad),
-      lote: this.ingreso.lote || null,
-      fecha_vencimiento: this.ingreso.fecha_vencimiento || null,
-      estado: this.ingreso.estado
-    };
-  }
 
   private emptyOcMeta() {
     return {
