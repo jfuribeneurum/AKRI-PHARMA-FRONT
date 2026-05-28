@@ -29,68 +29,173 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
             <div class="error-box" style="margin-bottom: 1rem;">{{ formError() }}</div>
           }
 
-          <div class="form-grid">
-            <label>Código interno
-              <input [(ngModel)]="form.codigo_interno" placeholder="Código único del producto">
-            </label>
-            <label>Tipo de producto
-              <select [(ngModel)]="form.tipo_producto">
-                <option value="">Seleccionar tipo</option>
-                <option value="medicamento">Medicamento</option>
-                <option value="insumo">Insumo</option>
-                <option value="controlado">Controlado</option>
-                <option value="vacuna">Vacuna</option>
-                <option value="dispositivo">Dispositivo</option>
-                <option value="otro">Otro</option>
-              </select>
-            </label>
-            <label>Nombre del producto
-              <input [(ngModel)]="form.nombre_producto" placeholder="Nombre genérico">
-            </label>
-            <label>Nombre comercial
-              <input [(ngModel)]="form.nombre_comercial" placeholder="Marca comercial">
-            </label>
-            <label>Laboratorio
-              <select [(ngModel)]="form.id_laboratorio">
-                <option [value]="null">Sin laboratorio</option>
-                @for (lab of laboratorios(); track lab.id_laboratorio) {
-                  <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
+          <!-- Sección 1: Medicamento base desde HS -->
+          <div class="hs-section">
+            <div class="hs-section-title">Medicamento base <span class="chip info" style="font-size:0.7rem;vertical-align:middle;">HealthSphere</span></div>
+
+            @if (form.id_medicamento_hs) {
+              <div class="hs-linked">
+                <div class="hs-linked-info">
+                  <strong>{{ form.nombre_comercial }}</strong>
+                  <span class="muted">{{ form.principio_activo }}{{ form.concentracion ? ' · ' + form.concentracion : '' }}{{ form.atc ? ' · ATC: ' + form.atc : '' }}</span>
+                </div>
+                <button class="btn secondary btn-small" (click)="clearHsMed()">Cambiar</button>
+              </div>
+            } @else {
+              <div class="hs-search-row">
+                <input [(ngModel)]="hsSearch" (ngModelChange)="onHsSearchChange($event)" placeholder="Buscar medicamento por nombre, principio activo o ATC…" autocomplete="off">
+                @if (hsSearching()) {
+                  <span class="hs-spinner">Buscando…</span>
                 }
-              </select>
-            </label>
-            <label>Presentación
-              <input type="number" [(ngModel)]="form.presentacion" placeholder="Ej: 500 (ml, mg, etc)">
-            </label>
-            <label>Registro INVIMA
-              <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX">
-            </label>
-            <label>CUM
-              <input type="number" [(ngModel)]="form.cum" placeholder="Código de medicamento">
-            </label>
-            <label>Consecutivo CUM
-              <input type="number" [(ngModel)]="form.consecutivo_cum" placeholder="Número consecutivo">
-            </label>
-            <label>ATC
-              <input [(ngModel)]="form.atc" placeholder="Código ATC">
-            </label>
-            <label>Principio activo
-              <input [(ngModel)]="form.principio_activo" placeholder="Ingrediente principal">
-            </label>
-            <label>Concentración
-              <input [(ngModel)]="form.concentracion" placeholder="Ej: 500mg">
-            </label>
-            <label>Forma farmacéutica
-              <input [(ngModel)]="form.forma_farmaceutica" placeholder="Ej: Tableta, Jarabe, Ampolla">
-            </label>
-            <label>Clasificación
-              <input [(ngModel)]="form.clasificacion" placeholder="Ej: Analgésico, Antibiótico">
-            </label>
-            <label>IVA (%)
-              <input type="number" [(ngModel)]="form.iva" step="0.1" placeholder="Porcentaje de IVA">
-            </label>
+              </div>
+
+              @if (hsResults().length) {
+                <div class="hs-results">
+                  @for (med of hsResults(); track med.id) {
+                    <div class="hs-result-row" (click)="selectHsMed(med)">
+                      <div>
+                        <strong>{{ med.nombreComercial || med.nombre }}</strong>
+                        @if (med.nombreComercial && med.nombreComercial !== med.nombre) {
+                          <span class="muted"> · {{ med.nombre }}</span>
+                        }
+                        <span class="muted"> · {{ med.principioActivo }}{{ med.concentracion ? ' · ' + med.concentracion : '' }}</span>
+                      </div>
+                      @if (med.atc) {
+                        <span class="chip primary" style="font-size:0.7rem;">{{ med.atc }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (hsNoResults()) {
+                <div class="notice">No se encontraron medicamentos para "{{ hsSearch }}".</div>
+              }
+            }
           </div>
 
-          <div class="form-actions">
+          <!-- Sección 2: Datos completos -->
+          <div class="form-two-col" style="margin-top:1.25rem;">
+
+            <!-- Columna izquierda: info del medicamento (algunos pre-llenados por HS) -->
+            <div>
+              <div class="hs-section-title">
+                Información del medicamento
+                @if (form.id_medicamento_hs) {
+                  <span class="chip info" style="font-size:0.65rem;vertical-align:middle;margin-left:0.4rem;">Desde HealthSphere</span>
+                }
+              </div>
+              <div class="form-grid form-grid-1">
+                <label>
+                  Nombre comercial
+                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca" [class.hs-filled]="form.id_medicamento_hs">
+                </label>
+                <label>
+                  Principio activo
+                  <input [(ngModel)]="form.principio_activo" placeholder="Ingrediente principal" [class.hs-filled]="form.id_medicamento_hs">
+                </label>
+                <label>
+                  Concentración
+                  <input [(ngModel)]="form.concentracion" placeholder="Ej: 500 mg, 100 mg/ml" [class.hs-filled]="form.id_medicamento_hs">
+                </label>
+                <label>
+                  Código ATC
+                  <input [(ngModel)]="form.atc" placeholder="Ej: N02BE01" [class.hs-filled]="form.id_medicamento_hs">
+                </label>
+                <label>
+                  Forma farmacéutica
+                  <select [(ngModel)]="form.id_forma" [class.hs-filled]="form.id_medicamento_hs && form.id_forma">
+                    <option [value]="null">Sin especificar</option>
+                    @for (f of formas(); track f.id_forma) {
+                      <option [value]="f.id_forma">{{ f.nombre }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  Clasificación
+                  <input [(ngModel)]="form.clasificacion" placeholder="Ej: Analgésico, Antibiótico">
+                </label>
+              </div>
+            </div>
+
+            <!-- Columna derecha: datos de farmacia -->
+            <div>
+              <div class="hs-section-title">Datos de farmacia</div>
+              <div class="form-grid form-grid-2">
+                <label>
+                  Código interno
+                  <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único">
+                </label>
+                <label>
+                  Tipo de producto
+                  <select [(ngModel)]="form.tipo_producto">
+                    <option value="">Seleccionar tipo</option>
+                    <option value="medicamento">Medicamento</option>
+                    <option value="insumo">Insumo</option>
+                    <option value="controlado">Controlado</option>
+                    <option value="vacuna">Vacuna</option>
+                    <option value="dispositivo">Dispositivo</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Unidad de medida
+                  <input [(ngModel)]="form.unidad_medida" placeholder="UND, TAB, CAP, ML…">
+                </label>
+                <label>
+                  Presentación
+                  <input [(ngModel)]="form.presentacion" placeholder="Ej: 30 tabletas / caja">
+                </label>
+                <label>
+                  Registro INVIMA
+                  <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX">
+                </label>
+                <label>
+                  CUM
+                  <input type="number" [(ngModel)]="form.cum" placeholder="Código único de medicamento">
+                </label>
+                <label>
+                  Consecutivo CUM
+                  <input type="number" [(ngModel)]="form.consecutivo_cum" placeholder="Número consecutivo">
+                </label>
+                <label>
+                  Proveedor / Laboratorio
+                  <select [(ngModel)]="form.id_laboratorio">
+                    <option [value]="null">Sin proveedor</option>
+                    @for (lab of laboratorios(); track lab.id_laboratorio) {
+                      <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  IVA (%)
+                  <input type="number" [(ngModel)]="form.iva" step="0.1" placeholder="0">
+                </label>
+                <label>
+                  Precio de venta
+                  <input type="number" [(ngModel)]="form.precio_venta" placeholder="0">
+                </label>
+                <label>
+                  Costo de referencia
+                  <input type="number" [(ngModel)]="form.costo_referencia" placeholder="0">
+                </label>
+              </div>
+
+              <div class="switch-row" style="margin-top:1rem;gap:1.5rem;">
+                <label style="display:flex;align-items:center;gap:0.4rem;">
+                  <input type="checkbox" [(ngModel)]="form.requiere_receta"> Requiere receta
+                </label>
+                <label style="display:flex;align-items:center;gap:0.4rem;">
+                  <input type="checkbox" [(ngModel)]="form.es_controlado"> Controlado
+                </label>
+                <label style="display:flex;align-items:center;gap:0.4rem;">
+                  <input type="checkbox" [(ngModel)]="form.requiere_cadena_frio"> Cadena de frío
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top:1.5rem;">
             <button class="btn secondary" (click)="closeModal()">Cancelar</button>
             <button class="btn" (click)="save()">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
           </div>
@@ -289,9 +394,7 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
               <tr>
                 <th>Producto</th>
                 <th>Laboratorio</th>
-                <th>Código</th>
                 <th>Stock</th>
-                <th>Imagen</th>
                 <th>Acción</th>
               </tr>
             </thead>
@@ -303,27 +406,14 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
                     <span class="muted">{{ p.sku }} · {{ p.principio_activo || 'Sin principio activo' }}</span>
                   </td>
                   <td>{{ p.laboratorio_nombre || '—' }}</td>
-                  <td>
-                    <div>{{ p.codigo_barras || '—' }}</div>
-                    <span class="chip" [ngClass]="p.requiere_cadena_frio ? 'info' : (p.es_controlado ? 'accent' : 'primary')">
-                      {{ p.requiere_cadena_frio ? 'Frío' : (p.es_controlado ? 'Controlado' : p.tipo_producto) }}
-                    </span>
-                  </td>
                   <td>{{ p.stock_actual }}</td>
-                  <td>
-                    @if (p.imagen_principal_url) {
-                      <span class="chip success">Sí</span>
-                    } @else {
-                      <span class="chip warn">Pendiente</span>
-                    }
-                  </td>
                   <td (click)="$event.stopPropagation()">
                     <button class="btn secondary btn-small" (click)="openEditModal(p)">Editar</button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="muted" style="text-align:center; padding: 2rem;">
+                  <td colspan="4" class="muted" style="text-align:center; padding: 2rem;">
                     No hay productos registrados. Usa "+ Agregar producto" para comenzar.
                   </td>
                 </tr>
@@ -338,7 +428,7 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.55);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -348,15 +438,15 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
     .modal-panel {
       background: var(--surface, #fff);
       border-radius: 18px;
-      padding: 1.5rem;
+      padding: 2rem 2.5rem;
       width: 100%;
-      max-width: 760px;
-      max-height: 90vh;
+      max-width: calc(100vw - 2rem);
+      height: calc(100vh - 2rem);
       overflow-y: auto;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.22);
     }
     .modal-panel--wide {
-      max-width: 960px;
+      max-width: calc(100vw - 2rem);
     }
     .modal-header {
       display: flex;
@@ -415,6 +505,80 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
       background: var(--surface-alt, #f3f4f6);
       color: var(--fg, #111);
     }
+    .hs-section {
+      background: var(--surface-alt, #f8f9fa);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .hs-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted, #6b7280);
+      margin-bottom: 0.75rem;
+    }
+    .hs-linked {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .hs-linked-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .hs-search-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .hs-search-row input {
+      flex: 1;
+    }
+    .hs-spinner {
+      font-size: 0.8rem;
+      color: var(--muted, #6b7280);
+      white-space: nowrap;
+      align-self: center;
+    }
+    .form-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    .form-grid-1 {
+      grid-template-columns: 1fr;
+    }
+    .form-grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+    .hs-filled {
+      background: color-mix(in srgb, var(--info, #3b82f6) 8%, transparent);
+      border-color: var(--info, #3b82f6) !important;
+    }
+    .hs-results {
+      margin-top: 0.5rem;
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 8px;
+      overflow: hidden;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .hs-result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border, #e5e7eb);
+      transition: background 0.12s;
+      background: var(--surface, #fff);
+    }
+    .hs-result-row:last-child { border-bottom: none; }
+    .hs-result-row:hover { background: var(--surface-alt, #f3f4f6); }
   `]
 })
 export class MaestroMxComponent implements OnInit {
@@ -422,6 +586,7 @@ export class MaestroMxComponent implements OnInit {
   products = signal<any[]>([]);
   selected = signal<any | null>(null);
   laboratorios = signal<any[]>([]);
+  formas = signal<any[]>([]);
 
   message = signal('');
   formMessage = signal('');
@@ -433,40 +598,32 @@ export class MaestroMxComponent implements OnInit {
   showDetailModal = signal(false);
   editingId = signal<number | null>(null);
 
+  hsSearch = '';
+  hsResults = signal<any[]>([]);
+  hsSearching = signal(false);
+  hsNoResults = signal(false);
+  private hsDebounce: ReturnType<typeof setTimeout> | null = null;
+
   mediaForm: { tipo_origen: MediaSourceType; descripcion: string } = {
     tipo_origen: 'importada',
     descripcion: ''
   };
 
-  form: any = {
-    codigo_interno: '',
-    tipo_producto: '',
-    nombre_producto: '',
-    nombre_comercial: '',
-    id_laboratorio: null,
-    presentacion: 0,
-    registro_invima: '',
-    cum: 0,
-    consecutivo_cum: 0,
-    atc: '',
-    principio_activo: '',
-    concentracion: '',
-    forma_farmaceutica: '',
-    clasificacion: '',
-    iva: 0
-  };
+  form: any = {};
 
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
+    this.form = this.blankForm();
     void this.loadLookups();
     void this.load();
   }
 
   private async loadLookups() {
     try {
-      const response = await this.api.get<{ success: boolean; data: { laboratorios: any[] } }>('/products/lookups');
+      const response = await this.api.get<{ success: boolean; data: { laboratorios: any[]; formas: any[] } }>('/products/lookups');
       this.laboratorios.set(response.data.laboratorios ?? []);
+      this.formas.set(response.data.formas ?? []);
     } catch {
       // non-fatal — form just won't have a lab dropdown populated
     }
@@ -475,6 +632,9 @@ export class MaestroMxComponent implements OnInit {
   openModal() {
     this.editingId.set(null);
     this.resetForm();
+    this.hsSearch = '';
+    this.hsResults.set([]);
+    this.hsNoResults.set(false);
     this.formMessage.set('');
     this.formError.set('');
     this.showModal.set(true);
@@ -485,27 +645,43 @@ export class MaestroMxComponent implements OnInit {
     this.editingId.set(null);
   }
 
-  openEditModal(p: any) {
-    this.editingId.set(p.id_producto);
-    this.form = {
-      codigo_interno: p.sku ?? '',
-      tipo_producto: p.tipo_producto ?? '',
-      nombre_producto: p.principio_activo ?? '',
-      nombre_comercial: p.nombre_comercial ?? '',
-      id_laboratorio: p.id_laboratorio ?? null,
-      presentacion: 0,
-      registro_invima: '',
-      cum: 0,
-      consecutivo_cum: 0,
-      atc: p.codigo_atc ?? '',
-      principio_activo: p.principio_activo ?? '',
-      concentracion: p.concentracion ?? '',
-      forma_farmaceutica: '',
-      clasificacion: '',
-      iva: p.iva_tasa ?? 0
-    };
+  async openEditModal(p: any) {
     this.formMessage.set('');
     this.formError.set('');
+    this.hsSearch = '';
+    this.hsResults.set([]);
+    this.hsNoResults.set(false);
+
+    let full = p;
+    try {
+      const resp = await this.api.get<{ success: boolean; data: any }>(`/products/${p.id_producto}`);
+      full = resp.data;
+    } catch { /* usa datos del listado como fallback */ }
+
+    this.editingId.set(full.id_producto);
+    this.form = {
+      id_medicamento_hs:    full.id_medicamento_hs ?? null,
+      codigo_interno:       full.sku ?? '',
+      tipo_producto:        full.tipo_producto ?? '',
+      nombre_comercial:     full.nombre_comercial ?? '',
+      principio_activo:     full.principio_activo ?? '',
+      concentracion:        full.concentracion ?? '',
+      presentacion:         full.presentacion ?? '',
+      atc:                  full.codigo_atc ?? '',
+      id_forma:             full.id_forma ?? null,
+      clasificacion:        full.clasificacion ?? '',
+      unidad_medida:        full.unidad_medida ?? '',
+      registro_invima:      full.registro_invima ?? '',
+      cum:                  full.cum ?? null,
+      consecutivo_cum:      full.consecutivo_cum ?? null,
+      id_laboratorio:       full.id_laboratorio ?? null,
+      iva:                  full.iva_tasa ?? 0,
+      precio_venta:         full.precio_venta ?? 0,
+      costo_referencia:     full.costo_referencia ?? 0,
+      requiere_receta:      !!full.requiere_receta,
+      es_controlado:        !!full.es_controlado,
+      requiere_cadena_frio: !!full.requiere_cadena_frio
+    };
     this.showModal.set(true);
   }
 
@@ -568,16 +744,90 @@ export class MaestroMxComponent implements OnInit {
     }
   }
 
+  onHsSearchChange(value: string) {
+    if (this.hsDebounce) clearTimeout(this.hsDebounce);
+    if (!value.trim()) {
+      this.hsResults.set([]);
+      this.hsNoResults.set(false);
+      return;
+    }
+    this.hsDebounce = setTimeout(() => this.searchHsMed(), 300);
+  }
+
+  async searchHsMed() {
+    const term = this.hsSearch.trim();
+    if (!term) return;
+    this.hsSearching.set(true);
+    this.hsNoResults.set(false);
+    this.hsResults.set([]);
+    try {
+      const resp: any = await this.api.get(`/medicamentos-hs?search=${encodeURIComponent(term)}&limit=20`);
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.hsResults.set(lista);
+      this.hsNoResults.set(lista.length === 0);
+    } catch {
+      this.hsNoResults.set(true);
+    } finally {
+      this.hsSearching.set(false);
+    }
+  }
+
+  selectHsMed(med: any) {
+    this.form.id_medicamento_hs = med.id;
+    this.form.codigo_interno    = med.codigo ?? '';
+    this.form.nombre_comercial  = med.nombreComercial || med.nombre || '';
+    this.form.principio_activo  = med.principioActivo ?? '';
+    this.form.concentracion     = med.concentracion ?? '';
+    this.form.atc               = med.atc ?? '';
+    this.form.id_forma          = this.matchForma(med.forma_farmaceutica);
+    this.hsResults.set([]);
+    this.hsSearch = '';
+    this.hsNoResults.set(false);
+  }
+
+  private matchForma(hsText: string | null): number | null {
+    if (!hsText) return null;
+    const norm = (s: string) => s.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const hsNorm = norm(hsText);
+    const match = this.formas().find(f => hsNorm.includes(norm(f.nombre)));
+    return match?.id_forma ?? null;
+  }
+
+  clearHsMed() {
+    this.form.id_medicamento_hs  = null;
+    this.form.nombre_comercial   = '';
+    this.form.principio_activo   = '';
+    this.form.concentracion      = '';
+    this.form.atc               = '';
+    this.form.id_forma          = null;
+    this.hsResults.set([]);
+    this.hsSearch = '';
+    this.hsNoResults.set(false);
+  }
+
   private buildApiPayload() {
     return {
-      sku: this.form.codigo_interno,
-      nombre_comercial: this.form.nombre_comercial,
-      principio_activo: this.form.principio_activo || this.form.nombre_producto || null,
-      concentracion: this.form.concentracion || null,
-      tipo_producto: this.form.tipo_producto || undefined,
-      id_laboratorio: this.form.id_laboratorio || null,
-      codigo_atc: this.form.atc || null,
-      iva_tasa: Number(this.form.iva ?? 0)
+      id_medicamento_hs:    this.form.id_medicamento_hs ?? null,
+      sku:                  this.form.codigo_interno,
+      nombre_comercial:     this.form.nombre_comercial,
+      principio_activo:     this.form.principio_activo || null,
+      concentracion:        this.form.concentracion || null,
+      presentacion:         this.form.presentacion || null,
+      unidad_medida:        this.form.unidad_medida || 'UND',
+      registro_invima:      this.form.registro_invima || null,
+      cum:                  this.form.cum ? Number(this.form.cum) : null,
+      consecutivo_cum:      this.form.consecutivo_cum ? Number(this.form.consecutivo_cum) : null,
+      codigo_atc:           this.form.atc || null,
+      id_forma:             this.form.id_forma || null,
+      tipo_producto:        this.form.tipo_producto || undefined,
+      id_laboratorio:       this.form.id_laboratorio || null,
+      iva_tasa:             Number(this.form.iva ?? 0),
+      precio_venta:         Number(this.form.precio_venta ?? 0),
+      costo_referencia:     Number(this.form.costo_referencia ?? 0),
+      requiere_receta:      !!this.form.requiere_receta,
+      es_controlado:        !!this.form.es_controlado,
+      requiere_cadena_frio: !!this.form.requiere_cadena_frio
     };
   }
 
@@ -615,22 +865,32 @@ export class MaestroMxComponent implements OnInit {
   }
 
   private resetForm() {
-    this.form = {
-      codigo_interno: '',
-      tipo_producto: '',
-      nombre_producto: '',
-      nombre_comercial: '',
-      id_laboratorio: null,
-      presentacion: 0,
-      registro_invima: '',
-      cum: 0,
-      consecutivo_cum: 0,
-      atc: '',
-      principio_activo: '',
-      concentracion: '',
-      forma_farmaceutica: '',
-      clasificacion: '',
-      iva: 0
+    this.form = this.blankForm();
+  }
+
+  private blankForm() {
+    return {
+      id_medicamento_hs:    null,
+      codigo_interno:       '',
+      tipo_producto:        '',
+      nombre_comercial:     '',
+      principio_activo:     '',
+      concentracion:        '',
+      atc:                  '',
+      id_forma:             null,
+      clasificacion:        '',
+      unidad_medida:        '',
+      presentacion:         '',
+      registro_invima:      '',
+      cum:                  null,
+      consecutivo_cum:      null,
+      id_laboratorio:       null,
+      iva:                  0,
+      precio_venta:         0,
+      costo_referencia:     0,
+      requiere_receta:      false,
+      es_controlado:        false,
+      requiere_cadena_frio: false
     };
   }
 
