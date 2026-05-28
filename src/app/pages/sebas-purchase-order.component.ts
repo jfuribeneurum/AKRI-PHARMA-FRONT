@@ -218,25 +218,57 @@ interface OrderItem {
           <div class="po-section">
             <div class="po-section-title">Datos del proveedor</div>
             <div class="form-grid">
-              <label>
-                Nombre
-                <input [(ngModel)]="order.proveedor_nombre" placeholder="Nombre del proveedor">
+              <label style="grid-column: span 2">
+                Seleccionar proveedor registrado
+                <select (change)="onProviderChange($any($event.target).value)">
+                  <option value="">— Seleccionar o ingresar manualmente —</option>
+                  @for (p of allProviders(); track p.id_proveedor) {
+                    <option [value]="p.id_proveedor">
+                      {{ p.razon_social || p.nombre }} · {{ p.tipo_identificacion }} {{ p.numero_identificacion }}{{ p.digito_verificacion ? '-' + p.digito_verificacion : '' }}
+                    </option>
+                  }
+                </select>
               </label>
               <label>
-                NIT
-                <input [(ngModel)]="order.proveedor_nit">
+                Tipo identificación
+                <select [(ngModel)]="order.proveedor_tipo_id">
+                  <option value="NIT">NIT</option>
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="Pasaporte">Pasaporte</option>
+                </select>
               </label>
               <label>
-                Contacto
-                <input [(ngModel)]="order.proveedor_contacto">
+                Número de identificación
+                <input [(ngModel)]="order.proveedor_numero_id" placeholder="900000000">
               </label>
               <label>
-                Telefono
-                <input [(ngModel)]="order.proveedor_telefono">
+                Dígito de verificación
+                <input [(ngModel)]="order.proveedor_digito_verificacion" placeholder="1" maxlength="2">
               </label>
-              <label class="full">
-                Direccion proveedor
-                <input [(ngModel)]="order.proveedor_direccion">
+              <label style="grid-column: span 1">
+                Razón social
+                <input [(ngModel)]="order.proveedor_razon_social" placeholder="Razón social del proveedor">
+              </label>
+              <label>
+                Nombres
+                <input [(ngModel)]="order.proveedor_nombres" placeholder="Nombres del contacto">
+              </label>
+              <label>
+                Apellidos
+                <input [(ngModel)]="order.proveedor_apellidos" placeholder="Apellidos del contacto">
+              </label>
+              <label>
+                Teléfono
+                <input [(ngModel)]="order.proveedor_telefono" placeholder="Teléfono">
+              </label>
+              <label>
+                Ciudad
+                <input [(ngModel)]="order.proveedor_ciudad" placeholder="Ciudad">
+              </label>
+              <label style="grid-column: span 2">
+                Dirección proveedor
+                <input [(ngModel)]="order.proveedor_direccion" placeholder="Dirección comercial">
               </label>
             </div>
           </div>
@@ -315,6 +347,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   readonly showForm = signal(false);
   readonly allOrders = signal<any[]>([]);
   readonly filtered = signal<any[]>([]);
+  readonly allProviders = signal<any[]>([]);
 
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
@@ -332,10 +365,15 @@ export class SebasPurchaseOrderComponent implements OnInit {
     bodega: '',
     direccion_sede: '',
     ciudad_sede: '',
-    proveedor_nombre: '',
-    proveedor_nit: '',
-    proveedor_contacto: '',
+    id_proveedor: null,
+    proveedor_razon_social: '',
+    proveedor_tipo_id: 'NIT',
+    proveedor_numero_id: '',
+    proveedor_digito_verificacion: '',
+    proveedor_nombres: '',
+    proveedor_apellidos: '',
     proveedor_telefono: '',
+    proveedor_ciudad: '',
     proveedor_direccion: '',
     observaciones: ''
   };
@@ -348,6 +386,31 @@ export class SebasPurchaseOrderComponent implements OnInit {
 
   ngOnInit() {
     this.loadOrders();
+    this.loadProviders();
+  }
+
+  async loadProviders() {
+    try {
+      const resp: any = await this.api.get('/providers');
+      this.allProviders.set(Array.isArray(resp) ? resp : (resp?.data ?? []));
+    } catch {
+      // providers list is optional, order can still be created manually
+    }
+  }
+
+  onProviderChange(id: string) {
+    const prov = this.allProviders().find((p) => String(p.id_proveedor) === String(id));
+    if (!prov) return;
+    this.order.id_proveedor = prov.id_proveedor;
+    this.order.proveedor_razon_social = prov.razon_social ?? prov.nombre ?? '';
+    this.order.proveedor_tipo_id = prov.tipo_identificacion ?? 'NIT';
+    this.order.proveedor_numero_id = prov.numero_identificacion ?? prov.nit ?? '';
+    this.order.proveedor_digito_verificacion = prov.digito_verificacion ?? '';
+    this.order.proveedor_nombres = prov.nombres ?? '';
+    this.order.proveedor_apellidos = prov.apellidos ?? '';
+    this.order.proveedor_telefono = prov.telefono ?? '';
+    this.order.proveedor_ciudad = prov.ciudad ?? '';
+    this.order.proveedor_direccion = prov.direccion ?? '';
   }
 
   async loadOrders() {
@@ -430,13 +493,14 @@ export class SebasPurchaseOrderComponent implements OnInit {
       `Bodega: ${this.order.bodega}`,
       `Direccion sede: ${this.order.direccion_sede}`,
       `Ciudad: ${this.order.ciudad_sede}`,
-      `Proveedor: ${this.order.proveedor_nombre}`,
-      `NIT: ${this.order.proveedor_nit}`,
-      `Contacto: ${this.order.proveedor_contacto}`,
+      `Proveedor: ${this.order.proveedor_razon_social}`,
+      `${this.order.proveedor_tipo_id}: ${this.order.proveedor_numero_id}${this.order.proveedor_digito_verificacion ? '-' + this.order.proveedor_digito_verificacion : ''}`,
+      `Contacto: ${this.order.proveedor_nombres} ${this.order.proveedor_apellidos}`.trim(),
       `Telefono: ${this.order.proveedor_telefono}`,
+      `Ciudad proveedor: ${this.order.proveedor_ciudad}`,
       `Direccion proveedor: ${this.order.proveedor_direccion}`,
       `Total OC: ${this.grandTotal()}`
-    ].filter(line => !line.endsWith(': ')).join('\n');
+    ].filter(line => !line.endsWith(': ') && !line.endsWith(': -')).join('\n');
 
     const notes = [this.order.observaciones?.trim(), itemLines, meta]
       .filter(Boolean)
@@ -444,7 +508,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
 
     return {
       numero_oc: this.order.consecutivo,
-      id_proveedor: 1,
+      id_proveedor: Number(this.order.id_proveedor) || 1,
       estado: 'borrador',
       observaciones: notes,
       items: this.items

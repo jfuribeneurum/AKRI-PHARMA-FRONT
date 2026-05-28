@@ -1,15 +1,20 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ApiService } from '../core/api.service';
 
 type ProviderForm = {
   id_proveedor: number | null;
   codigo: string;
-  nombre: string;
-  nit: string;
-  contacto: string;
+  tipo_identificacion: string;
+  numero_identificacion: string;
+  digito_verificacion: string;
+  razon_social: string;
+  nombres: string;
+  apellidos: string;
   telefono: string;
   email: string;
+  ciudad: string;
   direccion: string;
   activo: boolean;
 };
@@ -17,7 +22,7 @@ type ProviderForm = {
 @Component({
   selector: 'akri-providers',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [NgClass, FormsModule],
   template: `
     <section class="page grid">
       <div class="page-header">
@@ -28,34 +33,55 @@ type ProviderForm = {
         <button class="btn secondary" (click)="resetForm()">Nuevo proveedor</button>
       </div>
 
-      <div *ngIf="message()" class="success-box">{{ message() }}</div>
+      @if (message()) {
+        <div class="success-box">{{ message() }}</div>
+      }
+      @if (error()) {
+        <div class="error-box">{{ error() }}</div>
+      }
 
       <div class="grid grid-2">
         <div class="card">
           <div class="card-header">
             <div>
               <h3>{{ form.id_proveedor ? 'Editar proveedor' : 'Crear proveedor' }}</h3>
-              <div class="helper">Los datos quedan disponibles en esta estación mientras se conecta la API.</div>
             </div>
             <span class="chip" [ngClass]="form.activo ? 'success' : 'warn'">{{ form.activo ? 'Activo' : 'Inactivo' }}</span>
           </div>
 
           <div class="form-grid">
             <label>
-              Código
+              Tipo identificación
+              <select [(ngModel)]="form.tipo_identificacion">
+                <option value="NIT">NIT</option>
+                <option value="CC">Cédula de ciudadanía</option>
+                <option value="CE">Cédula de extranjería</option>
+                <option value="Pasaporte">Pasaporte</option>
+              </select>
+            </label>
+            <label>
+              Número de identificación
+              <input [(ngModel)]="form.numero_identificacion" placeholder="900000000">
+            </label>
+            <label>
+              Dígito de verificación
+              <input [(ngModel)]="form.digito_verificacion" placeholder="1" maxlength="2">
+            </label>
+            <label>
+              Código interno
               <input [(ngModel)]="form.codigo" placeholder="PROV-001">
             </label>
-            <label>
-              Nombre
-              <input [(ngModel)]="form.nombre" placeholder="Nombre del proveedor">
+            <label style="grid-column: span 2">
+              Razón social
+              <input [(ngModel)]="form.razon_social" placeholder="Nombre o razón social del proveedor">
             </label>
             <label>
-              NIT
-              <input [(ngModel)]="form.nit" placeholder="900000000-1">
+              Nombres
+              <input [(ngModel)]="form.nombres" placeholder="Nombres del contacto">
             </label>
             <label>
-              Contacto
-              <input [(ngModel)]="form.contacto" placeholder="Persona de contacto">
+              Apellidos
+              <input [(ngModel)]="form.apellidos" placeholder="Apellidos del contacto">
             </label>
             <label>
               Teléfono
@@ -64,6 +90,10 @@ type ProviderForm = {
             <label>
               Email
               <input type="email" [(ngModel)]="form.email" placeholder="compras@proveedor.com">
+            </label>
+            <label>
+              Ciudad
+              <input [(ngModel)]="form.ciudad" placeholder="Ciudad">
             </label>
           </div>
 
@@ -81,7 +111,9 @@ type ProviderForm = {
 
           <div class="form-actions">
             <button class="btn secondary" (click)="resetForm()">Limpiar</button>
-            <button class="btn" (click)="saveProvider()">{{ form.id_proveedor ? 'Actualizar proveedor' : 'Guardar proveedor' }}</button>
+            <button class="btn" (click)="saveProvider()" [disabled]="saving()">
+              {{ saving() ? 'Guardando...' : (form.id_proveedor ? 'Actualizar proveedor' : 'Guardar proveedor') }}
+            </button>
           </div>
         </div>
 
@@ -94,7 +126,7 @@ type ProviderForm = {
           </div>
 
           <div class="toolbar">
-            <input [(ngModel)]="search" placeholder="Buscar por nombre, NIT, código o contacto">
+            <input [(ngModel)]="search" placeholder="Buscar por razón social, NIT, código o contacto">
           </div>
 
           <div class="table-wrap">
@@ -103,30 +135,37 @@ type ProviderForm = {
                 <tr>
                   <th>Proveedor</th>
                   <th>Contacto</th>
+                  <th>Ciudad</th>
                   <th>Estado</th>
                   <th>Acción</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let provider of filteredProviders()">
-                  <td>
-                    <strong>{{ provider.nombre }}</strong><br>
-                    <span class="muted">{{ provider.codigo }} · NIT {{ provider.nit || 'pendiente' }}</span>
-                  </td>
-                  <td>
-                    <div>{{ provider.contacto || 'Sin contacto' }}</div>
-                    <span class="muted">{{ provider.telefono || provider.email || 'Sin canal registrado' }}</span>
-                  </td>
-                  <td>
-                    <span class="chip" [ngClass]="provider.activo ? 'success' : 'warn'">{{ provider.activo ? 'Activo' : 'Inactivo' }}</span>
-                  </td>
-                  <td>
-                    <button class="btn secondary btn-small" (click)="editProvider(provider)">Editar</button>
-                  </td>
-                </tr>
-                <tr *ngIf="!filteredProviders().length">
-                  <td colspan="4" class="muted">No hay proveedores para el filtro actual.</td>
-                </tr>
+                @for (provider of filteredProviders(); track provider.id_proveedor) {
+                  <tr>
+                    <td>
+                      <strong>{{ provider.razon_social }}</strong><br>
+                      <span class="muted">
+                        {{ provider.tipo_identificacion }} {{ provider.numero_identificacion }}{{ provider.digito_verificacion ? '-' + provider.digito_verificacion : '' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div>{{ (provider.nombres + ' ' + provider.apellidos).trim() || 'Sin contacto' }}</div>
+                      <span class="muted">{{ provider.telefono || provider.email || 'Sin canal registrado' }}</span>
+                    </td>
+                    <td>{{ provider.ciudad || '—' }}</td>
+                    <td>
+                      <span class="chip" [ngClass]="provider.activo ? 'success' : 'warn'">{{ provider.activo ? 'Activo' : 'Inactivo' }}</span>
+                    </td>
+                    <td>
+                      <button class="btn secondary btn-small" (click)="editProvider(provider)">Editar</button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="muted">No hay proveedores para el filtro actual.</td>
+                  </tr>
+                }
               </tbody>
             </table>
           </div>
@@ -138,8 +177,12 @@ type ProviderForm = {
 export class ProvidersComponent implements OnInit {
   readonly providers = signal<ProviderForm[]>([]);
   readonly message = signal('');
+  readonly error = signal('');
+  readonly saving = signal(false);
   search = '';
   form = this.blankProvider();
+
+  constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
     this.loadProviders();
@@ -148,32 +191,37 @@ export class ProvidersComponent implements OnInit {
   filteredProviders() {
     const term = this.search.trim().toLowerCase();
     if (!term) return this.providers();
-    return this.providers().filter((provider) =>
-      [provider.codigo, provider.nombre, provider.nit, provider.contacto, provider.telefono, provider.email]
-        .some((value) => String(value ?? '').toLowerCase().includes(term))
+    return this.providers().filter((p) =>
+      [p.codigo, p.razon_social, p.numero_identificacion, p.nombres, p.apellidos, p.telefono, p.email, p.ciudad]
+        .some((v) => String(v ?? '').toLowerCase().includes(term))
     );
   }
 
-  saveProvider() {
-    if (!this.form.codigo.trim() || !this.form.nombre.trim()) {
-      this.message.set('Código y nombre son obligatorios.');
+  async saveProvider() {
+    if (!this.form.numero_identificacion.trim() || !this.form.razon_social.trim()) {
+      this.error.set('Número de identificación y razón social son obligatorios.');
       return;
     }
 
-    const providers = this.providers();
-    const normalized = { ...this.form, codigo: this.form.codigo.trim(), nombre: this.form.nombre.trim() };
+    this.saving.set(true);
+    this.error.set('');
+    this.message.set('');
 
-    if (normalized.id_proveedor) {
-      this.providers.set(providers.map((item) => item.id_proveedor === normalized.id_proveedor ? normalized : item));
-      this.message.set('Proveedor actualizado.');
-    } else {
-      const nextId = Math.max(0, ...providers.map((item) => Number(item.id_proveedor ?? 0))) + 1;
-      this.providers.set([{ ...normalized, id_proveedor: nextId }, ...providers]);
-      this.message.set('Proveedor creado.');
+    try {
+      if (this.form.id_proveedor) {
+        await this.api.put(`/providers/${this.form.id_proveedor}`, this.form);
+        this.message.set('Proveedor actualizado.');
+      } else {
+        await this.api.post('/providers', this.form);
+        this.message.set('Proveedor creado.');
+      }
+      await this.loadProviders();
+      this.resetForm();
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'Error al guardar el proveedor.');
+    } finally {
+      this.saving.set(false);
     }
-
-    this.persistProviders();
-    this.resetForm();
   }
 
   editProvider(provider: ProviderForm) {
@@ -182,48 +230,47 @@ export class ProvidersComponent implements OnInit {
 
   resetForm() {
     this.form = this.blankProvider();
+    this.message.set('');
+    this.error.set('');
   }
 
-  private loadProviders() {
-    const stored = localStorage.getItem('akri_providers');
-    if (!stored) {
-      this.providers.set([
-        {
-          id_proveedor: 1,
-          codigo: 'PROV-001',
-          nombre: 'Proveedor principal',
-          nit: '',
-          contacto: '',
-          telefono: '',
-          email: '',
-          direccion: '',
-          activo: true
-        }
-      ]);
-      this.persistProviders();
-      return;
-    }
-
+  private async loadProviders() {
     try {
-      this.providers.set(JSON.parse(stored));
-    } catch (_error) {
-      this.providers.set([]);
+      const resp: any = await this.api.get('/providers');
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.providers.set(lista.map((p) => ({
+        id_proveedor: p.id_proveedor,
+        codigo: p.codigo ?? '',
+        tipo_identificacion: p.tipo_identificacion ?? 'NIT',
+        numero_identificacion: p.numero_identificacion ?? '',
+        digito_verificacion: p.digito_verificacion ?? '',
+        razon_social: p.razon_social ?? p.nombre ?? '',
+        nombres: p.nombres ?? '',
+        apellidos: p.apellidos ?? '',
+        telefono: p.telefono ?? '',
+        email: p.email ?? '',
+        ciudad: p.ciudad ?? '',
+        direccion: p.direccion ?? '',
+        activo: !!p.activo
+      })));
+    } catch {
+      this.error.set('No se pudieron cargar los proveedores.');
     }
-  }
-
-  private persistProviders() {
-    localStorage.setItem('akri_providers', JSON.stringify(this.providers()));
   }
 
   private blankProvider(): ProviderForm {
     return {
       id_proveedor: null,
       codigo: '',
-      nombre: '',
-      nit: '',
-      contacto: '',
+      tipo_identificacion: 'NIT',
+      numero_identificacion: '',
+      digito_verificacion: '',
+      razon_social: '',
+      nombres: '',
+      apellidos: '',
       telefono: '',
       email: '',
+      ciudad: '',
       direccion: '',
       activo: true
     };
