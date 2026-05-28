@@ -1,0 +1,127 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Solicitud de compra</title><link rel="stylesheet" href="./ops.css"></head><body><script src="./ops-runtime.js?v=26"></script><div class="wrap"><div class="hero"><div><span class="chip accent">Compras</span><h1>Solicitud de compra entre sedes</h1><p>La sede periférica usa una interfaz tipo carrito; la sede central recibe una alerta y gestiona la solicitud en una vista dividida con stock central disponible y decisiones de aprobación, modificación o rechazo.</p></div><div class="toolbar"><a class="btn secondary" href="./index.html?tab=requests&v=26">Centro de control</a><a class="btn secondary" href="/dashboard#control-center:requests">Ir al dashboard</a></div></div><div id="app"></div><script>
+requireSession();
+const { api, html, escapeHtml, debounce, toast, notifyParentHeight, switchSite } = window.akriOps;
+const app = document.getElementById('app');
+let ctx = null;
+let requests = [];
+let suggestions = [];
+let cart = [];
+let selectedRequest = null;
+let productSearchTerm = '';
+let requestSearch = '';
+let requestStatus = '';
+async function load(){
+  [ctx, requests] = await Promise.all([
+    api('/api/multisite/context'),
+    api(`/api/multisite/purchase-requests?status=${encodeURIComponent(requestStatus)}&search=${encodeURIComponent(requestSearch)}`)
+  ]);
+  render();
+}
+const searchProducts = debounce(async (value) => {
+  productSearchTerm = value;
+  if (!value || value.length < 2) { suggestions = []; render(); return; }
+  const catalog = await api(`/api/products?search=${encodeURIComponent(value)}`);
+  suggestions = catalog.slice(0, 8);
+  render();
+}, 250);
+function peripheralSites(){ return (ctx?.authorized_sites || []).filter((site) => !site.es_principal); }
+function addItem(product){
+  const existing = cart.find((item) => Number(item.id_producto) === Number(product.id_producto));
+  if (existing) existing.cantidad_solicitada = Number(existing.cantidad_solicitada || 0) + 1;
+  else cart.push({ id_producto:product.id_producto, descripcion_item:product.nombre_comercial, sku:product.sku, cantidad_solicitada:1, observaciones:'' });
+  suggestions = [];
+  productSearchTerm = '';
+  render();
+}
+function updateCart(index, key, value){ cart[index][key] = key === 'cantidad_solicitada' ? Number(value || 0) : value; render(); }
+async function saveRequest(){
+  try {
+    if (!cart.length) throw new Error('Agrega al menos un ítem a la solicitud.');
+    const payload = {
+      prioridad: document.getElementById('req-priority').value,
+      observaciones: document.getElementById('req-notes').value || null,
+      items: cart.map((item) => ({
+        id_producto:item.id_producto,
+        descripcion_item:item.descripcion_item,
+        cantidad_solicitada:Number(item.cantidad_solicitada || 0),
+        observaciones:item.observaciones || null
+      })).filter((item) => item.descripcion_item && item.cantidad_solicitada > 0),
+      metadata:{ source:'cart-ui-v26' }
+    };
+    await api('/api/multisite/purchase-requests', { method:'POST', body: payload });
+    cart = [];
+    toast('Solicitud enviada a sede central.', 'success');
+    await load();
+  } catch (error) {
+    toast(error.message || 'No fue posible enviar la solicitud.', 'error', 4600);
+  }
+}
+async function openRequest(id){ selectedRequest = await api(`/api/multisite/purchase-requests/${id}`); render(); }
+async function actOnRequest(estado, actionLabel){
+  try {
+    const items = [...document.querySelectorAll('[data-detail-row]')].map((row) => ({
+      id_solicitud_compra_detalle:Number(row.dataset.detailRow),
+      cantidad_solicitada:Number(row.querySelector('[data-detail-qty]').value || 0),
+      observaciones:row.querySelector('[data-detail-note]').value || null
+    }));
+    const payload = {
+      estado,
+      accion: actionLabel,
+      observaciones: document.getElementById('centralNotes')?.value || null,
+      items: estado === 'revisada' || actionLabel === 'Modificar cantidades' ? items : undefined
+    };
+    await api(`/api/multisite/purchase-requests/${selectedRequest.id_solicitud_compra_sede}`, { method:'PATCH', body: payload });
+    toast(`Solicitud actualizada a ${estado}.`, 'success');
+    await load();
+    await openRequest(selectedRequest.id_solicitud_compra_sede);
+  } catch (error) {
+    toast(error.message || 'No fue posible procesar la solicitud.', 'error');
+  }
+}
+async function switchToPeripheralSite(){
+  const target = Number(document.getElementById('requestSiteSwitch')?.value || 0);
+  if (!target) return toast('Selecciona una sede periférica autorizada.', 'error');
+  try {
+    await switchSite(target);
+    toast('Sede activa cambiada. Ahora puedes crear la solicitud.', 'success');
+    window.location.href = `./purchase-requests.html?v=26&ts=${Date.now()}`;
+  } catch (error) {
+    toast(error.message || 'No fue posible cambiar la sede activa.', 'error');
+  }
+}
+function requestCreateHelper(){
+  const branches = peripheralSites();
+  if (!ctx.current_site?.es_principal) return '';
+  if (!branches.length) {
+    return `<div class="surface-card" style="margin-bottom:16px;background:#FFF7ED;box-shadow:none"><h3 style="margin-top:0">Crear solicitud desde sede periférica</h3><p class="muted">No tienes sedes periféricas autorizadas en esta sesión. Desde Gestión de usuarios asigna al perfil logueado una sede alterna y vuelve aquí para crear solicitudes.</p></div>`;
+  }
+  return `<div class="surface-card" style="margin-bottom:16px;background:#F8FAFC;box-shadow:none"><h3 style="margin-top:0">Crear solicitud desde sede periférica</h3><p class="muted">Para generar la solicitud cambia temporalmente la sede activa a una sede periférica autorizada. El formulario de carrito se habilita inmediatamente.</p><div class="form-grid" style="margin-top:12px"><div><label>Sede periférica autorizada</label><select id="requestSiteSwitch">${branches.map((site)=> `<option value="${site.id_sede}">${escapeHtml(site.nombre)}</option>`).join('')}</select></div></div><div class="toolbar" style="margin-top:14px"><button class="btn accent" id="switchToRequestSite">Cambiar sede y crear solicitud</button></div></div>`;
+}
+function requestStatusChip(row){ const map = { rechazada:'danger', aprobada:'success', atendida:'success', revisada:'info', pendiente:'accent' }; return `<span class="chip ${map[row.estado] || 'info'}">${escapeHtml(row.estado)}</span>`; }
+function branchView(){
+  return html`<div class="split-screen"><div class="split-panel"><div class="kicker">Sede periférica</div><h2 class="section-title">Carrito de solicitud</h2><div class="search-stack"><label>Buscador predictivo de ítems</label><input id="productSearch" value="${escapeHtml(productSearchTerm)}" placeholder="Busca por nombre, SKU o código de barras"></div>${suggestions.length ? `<div class="predictive-list" style="margin-top:12px">${suggestions.map((product) => `<button class="predictive-item" data-add-product="${product.id_producto}"><strong>${escapeHtml(product.nombre_comercial)}</strong><div class="muted">${escapeHtml(product.sku || '')} · ${escapeHtml(product.codigo_barras || '')}</div></button>`).join('')}</div>` : ''}<div class="surface-card" style="margin-top:16px;background:#F8FAFC;box-shadow:none"><div class="form-grid"><div><label>Prioridad</label><select id="req-priority"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option><option value="critica">Crítica</option></select></div><div class="full"><label>Observaciones</label><textarea id="req-notes" placeholder="Justificación de la solicitud"></textarea></div></div></div><div class="table-wrap" style="margin-top:14px"><table class="table"><thead><tr><th>Ítem</th><th>Cantidad</th><th>Observaciones</th><th></th></tr></thead><tbody>${cart.map((item, index) => `<tr><td><strong>${escapeHtml(item.descripcion_item)}</strong><div class="muted">${escapeHtml(item.sku || '')}</div></td><td><input type="number" step="1" min="1" value="${item.cantidad_solicitada}" data-cart-qty="${index}"></td><td><input value="${escapeHtml(item.observaciones || '')}" data-cart-note="${index}"></td><td><button class="btn danger small" data-cart-remove="${index}">Quitar</button></td></tr>`).join('') || '<tr><td colspan="4" class="muted">No hay ítems en el carrito.</td></tr>'}</tbody></table></div><div class="toolbar" style="margin-top:16px"><button class="btn" id="sendRequest">Enviar solicitud</button></div></div><div class="split-panel"><div class="notification-bell"><span>🔔</span><div><strong>Estado de central</strong><div class="muted">Solicitudes pendientes visibles en el banner superior</div></div><span class="count">${Number(ctx.purchase_request_alert?.pending_count || 0)}</span></div><div class="surface-card" style="margin-top:16px;background:#F8FAFC;box-shadow:none"><h3 style="margin-top:0">Solicitudes enviadas</h3><div class="table-wrap"><table class="table"><thead><tr><th>Consecutivo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${requests.map((row) => `<tr><td>${escapeHtml(row.consecutivo)}</td><td>${requestStatusChip(row)}</td><td>${escapeHtml(new Date(row.fecha_solicitud).toLocaleString())}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Sin solicitudes.</td></tr>'}</tbody></table></div></div></div></div>`;
+}
+function centralView(){
+  return html`<div>${requestCreateHelper()}<div class="split-screen"><div class="split-panel"><div class="kicker">Sede central</div><h2 class="section-title">Bandeja de solicitudes</h2><div class="form-grid" style="margin-bottom:12px"><div><label>Buscar solicitud</label><input id="requestSearch" value="${escapeHtml(requestSearch)}" placeholder="Consecutivo, sede o usuario"></div><div><label>Estado</label><select id="requestStatus"><option value="">Todos</option><option value="pendiente" ${requestStatus==='pendiente'?'selected':''}>Pendiente</option><option value="revisada" ${requestStatus==='revisada'?'selected':''}>Revisada</option><option value="aprobada" ${requestStatus==='aprobada'?'selected':''}>Aprobada</option><option value="rechazada" ${requestStatus==='rechazada'?'selected':''}>Rechazada</option><option value="atendida" ${requestStatus==='atendida'?'selected':''}>Atendida</option></select></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Consecutivo</th><th>Sede origen</th><th>Prioridad</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${requests.map((row) => `<tr><td><button class="btn secondary small" data-open-request="${row.id_solicitud_compra_sede}">${escapeHtml(row.consecutivo)}</button></td><td>${escapeHtml(row.sede_origen)}</td><td>${escapeHtml(row.prioridad)}</td><td>${requestStatusChip(row)}</td><td>${escapeHtml(new Date(row.fecha_solicitud).toLocaleString())}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Sin solicitudes para la central.</td></tr>'}</tbody></table></div></div><div class="split-panel">${selectedRequest ? `<div><div class="kicker">Pantalla dividida</div><h2 class="section-title">${escapeHtml(selectedRequest.consecutivo)}</h2><div class="muted">${escapeHtml(selectedRequest.sede_origen)} · ${escapeHtml(selectedRequest.solicitado_por)} · ${escapeHtml(new Date(selectedRequest.fecha_solicitud).toLocaleString())}</div><div class="notice info" style="margin-top:12px">Revisa el pedido y el stock disponible consolidado por ítem. Puedes aprobar, modificar cantidades o rechazar.</div><div class="table-wrap" style="margin-top:12px"><table class="table"><thead><tr><th>Pedido</th><th>Cantidad solicitada</th><th>Stock local</th><th>Stock general</th><th>Modificar</th></tr></thead><tbody>${selectedRequest.items.map((item) => `<tr data-detail-row="${item.id_solicitud_compra_detalle}"><td><strong>${escapeHtml(item.descripcion_item || item.nombre_comercial || '')}</strong><div class="muted">${escapeHtml(item.sku || '')}</div></td><td>${Number(item.cantidad_solicitada || 0)}</td><td>${Number(item.stock_local || 0)}</td><td>${Number(item.stock_general || 0)}</td><td><input data-detail-qty type="number" min="1" value="${Number(item.cantidad_solicitada || 0)}"><input data-detail-note style="margin-top:8px" value="${escapeHtml(item.observaciones || '')}" placeholder="Observación"></td></tr>`).join('')}</tbody></table></div><label style="margin-top:14px">Observaciones de central</label><textarea id="centralNotes" placeholder="Decisión o comentario para la sede solicitante">${escapeHtml(selectedRequest.observaciones || '')}</textarea><div class="toolbar" style="margin-top:16px"><button class="btn success" id="approveRequest">Aprobar</button><button class="btn accent" id="modifyRequest">Modificar</button><button class="btn danger" id="rejectRequest">Rechazar</button><button class="btn secondary" id="reviewRequest">Marcar revisada</button></div></div>` : `<div class="surface-card" style="background:#F8FAFC;box-shadow:none"><h3 style="margin-top:0">Selecciona una solicitud</h3><p class="muted">Al abrirla verás el detalle del pedido y el stock central disponible para tomar una decisión.</p></div>`}</div></div></div>`;
+}
+function render(){
+  const isCentral = Boolean(ctx.current_site?.es_principal) && Boolean(ctx.permissions?.can_review_requests);
+  app.innerHTML = html`<div class="banner"><div><div class="kicker" style="color:rgba(255,255,255,.72)">Solicitud de compra</div><h2 style="margin:4px 0 8px;font-size:24px">${isCentral ? 'Gestión centralizada de solicitudes' : 'Solicitud desde sede periférica'}</h2><p class="subtle">${isCentral ? 'La campana superior concentra las solicitudes pendientes de sedes alternas. También puedes cambiar a una sede periférica autorizada para crear una nueva solicitud.' : 'El carrito de solicitud envía productos requeridos a la sede central.'}</p></div><div class="notification-bell"><span>🔔</span><div><strong>Solicitud de compra</strong><div class="subtle" style="color:rgba(255,255,255,.82)">${ctx.current_site?.es_principal ? 'Central' : 'Periférica'}</div></div><span class="count">${Number(ctx.purchase_request_alert?.pending_count || 0)}</span></div></div><div style="margin-top:18px">${isCentral ? centralView() : branchView()}</div>`;
+  document.getElementById('productSearch')?.addEventListener('input', (ev) => searchProducts(ev.target.value));
+  document.querySelectorAll('[data-add-product]').forEach((button) => button.addEventListener('click', () => { const product = suggestions.find((item) => Number(item.id_producto) === Number(button.dataset.addProduct)); if (product) addItem(product); }));
+  document.querySelectorAll('[data-cart-qty]').forEach((input) => input.addEventListener('input', (ev) => updateCart(Number(ev.target.dataset.cartQty), 'cantidad_solicitada', ev.target.value)));
+  document.querySelectorAll('[data-cart-note]').forEach((input) => input.addEventListener('input', (ev) => updateCart(Number(ev.target.dataset.cartNote), 'observaciones', ev.target.value)));
+  document.querySelectorAll('[data-cart-remove]').forEach((button) => button.addEventListener('click', () => { cart.splice(Number(button.dataset.cartRemove), 1); render(); }));
+  document.getElementById('sendRequest')?.addEventListener('click', saveRequest);
+  document.getElementById('switchToRequestSite')?.addEventListener('click', switchToPeripheralSite);
+  document.getElementById('requestSearch')?.addEventListener('input', debounce((ev) => { requestSearch = ev.target.value; load(); }, 220));
+  document.getElementById('requestStatus')?.addEventListener('change', (ev) => { requestStatus = ev.target.value; load(); });
+  document.querySelectorAll('[data-open-request]').forEach((button) => button.addEventListener('click', () => openRequest(button.dataset.openRequest)));
+  document.getElementById('approveRequest')?.addEventListener('click', () => actOnRequest('aprobada', 'Aprobar'));
+  document.getElementById('modifyRequest')?.addEventListener('click', () => actOnRequest('revisada', 'Modificar cantidades'));
+  document.getElementById('rejectRequest')?.addEventListener('click', () => actOnRequest('rechazada', 'Rechazar'));
+  document.getElementById('reviewRequest')?.addEventListener('click', () => actOnRequest('revisada', 'Marcar revisada'));
+  notifyParentHeight();
+}
+load().catch((error) => { app.innerHTML = `<div class="surface-card"><strong>Error:</strong> ${escapeHtml(error.message)}</div>`; notifyParentHeight(); });
+</script></body></html>
