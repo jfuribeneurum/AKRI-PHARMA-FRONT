@@ -23,6 +23,7 @@ import { DevolucionPedidoComponent } from './pages/devolucion-pedido.component';
 import { MovimientoEntradaComponent } from './pages/movimiento-entrada.component';
 import { MovimientoSalidaComponent } from './pages/movimiento-salida.component';
 import { PacientesComponent } from './pages/pacientes.component';
+import { DispensacionSebasComponent } from './pages/dispensacion-sebas.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -43,7 +44,7 @@ export const routes: Routes = [
       { path: 'ingresos', component: IngresosComponent },
       { path: 'sebas-ingresos', component: SebasIngresosComponent },
       { path: 'dispensing', component: DispensingComponent },
-      { path: 'dispensing-sebas', component: DispensingComponent },
+      { path: 'dispensing-sebas', component: DispensacionSebasComponent },
       { path: 'cold-chain', component: ColdChainComponent },
       { path: 'billing', component: BillingComponent },
       { path: 'reports', component: ReportsComponent },
