@@ -67,7 +67,22 @@
         </label>
         <label>
           Ciudad
-          <input [(ngModel)]="form.ciudad" placeholder="Ciudad">
+          <input
+            [(ngModel)]="form.ciudad"
+            (input)="onCiudadInput()"
+            list="ciudad-list"
+            placeholder="Escribe para buscar…"
+            autocomplete="off">
+          <datalist id="ciudad-list">
+            @for (n of ciudadNames; track n) {
+              <option [value]="n"></option>
+            }
+          </datalist>
+        </label>
+        <label>
+          Departamento
+          <input [(ngModel)]="form.departamento" placeholder="Se llena solo al elegir ciudad" readonly
+                 style="background:#f8fafc; color:#64748b; cursor:default">
         </label>
       </div>
 
@@ -127,7 +142,12 @@
                   <div>{{ (provider.nombres + ' ' + provider.apellidos).trim() || 'Sin contacto' }}</div>
                   <span class="muted">{{ provider.telefono || provider.email || 'Sin canal registrado' }}</span>
                 </td>
-                <td>{{ provider.ciudad || '—' }}</td>
+                <td>
+                  {{ provider.ciudad || '—' }}
+                  @if (provider.departamento) {
+                    <br><span class="muted" style="font-size:.8rem">{{ provider.departamento }}</span>
+                  }
+                </td>
                 <td>
                   <span class="chip" [ngClass]="provider.activo ? 'success' : 'warn'">{{ provider.activo ? 'Activo' : 'Inactivo' }}</span>
                 </td>

@@ -15,9 +15,12 @@ type ProviderForm = {
   telefono: string;
   email: string;
   ciudad: string;
+  departamento: string;
   direccion: string;
   activo: boolean;
 };
+
+type CiudadItem = { nombre: string; departamento: string };
 
 @Component({
   selector: 'akri-providers',
@@ -32,13 +35,19 @@ export class ProvidersComponent implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly saving = signal(false);
+  readonly ciudadesList = signal<CiudadItem[]>([]);
   search = '';
   form = this.blankProvider();
+
+  get ciudadNames(): string[] {
+    return this.ciudadesList().map(c => c.nombre);
+  }
 
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
     this.loadProviders();
+    this.loadCiudades();
   }
 
   filteredProviders() {
@@ -103,6 +112,7 @@ export class ProvidersComponent implements OnInit {
         telefono: p.telefono ?? '',
         email: p.email ?? '',
         ciudad: p.ciudad ?? '',
+        departamento: p.departamento ?? '',
         direccion: p.direccion ?? '',
         activo: !!p.activo
       })));
@@ -124,8 +134,23 @@ export class ProvidersComponent implements OnInit {
       telefono: '',
       email: '',
       ciudad: '',
+      departamento: '',
       direccion: '',
       activo: true
     };
+  }
+
+  onCiudadInput() {
+    const typed = this.form.ciudad.trim().toLowerCase();
+    const match = this.ciudadesList().find(c => c.nombre.toLowerCase() === typed);
+    if (match) this.form.departamento = match.departamento;
+  }
+
+  private async loadCiudades() {
+    try {
+      const resp: any = await this.api.get('/ciudades?limit=1200&soloActivas=true');
+      const lista: any[] = resp?.data ?? [];
+      this.ciudadesList.set(lista.map((c: any) => ({ nombre: c.nombre, departamento: c.departamento })));
+    } catch { /* no bloquea el formulario */ }
   }
 }

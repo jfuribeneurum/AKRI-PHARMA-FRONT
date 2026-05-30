@@ -1,0 +1,23 @@
+.row-inactive td { opacity: .55; }
+
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: #fff; border-radius: 12px;
+  padding: 1.5rem; width: 100%; max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.modal-header h3 { margin: 0; font-size: 1.1rem; color: #111827; }
+.modal-close {
+  background: none; border: none; font-size: 1.1rem;
+  cursor: pointer; color: #64748b; padding: .25rem .5rem;
+}
+.modal-close:hover { color: #ef4444; }

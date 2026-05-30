@@ -1,0 +1,145 @@
+<!-- Modal crear / editar -->
+@if (showModal()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editMode() ? 'Editar ciudad' : 'Nueva ciudad' }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+
+      @if (modalError()) {
+        <div class="error-box" style="margin-bottom:.75rem">{{ modalError() }}</div>
+      }
+
+      <div class="form-grid">
+        <label>
+          Nombre <span style="color:#ef4444">*</span>
+          <input [(ngModel)]="form.nombre" placeholder="Ej: Medellín" maxlength="120">
+        </label>
+        <label>
+          Departamento <span style="color:#ef4444">*</span>
+          <input [(ngModel)]="form.departamento" placeholder="Ej: Antioquia"
+                 list="depto-list" maxlength="80">
+          <datalist id="depto-list">
+            @for (d of departamentos(); track d) {
+              <option [value]="d"></option>
+            }
+          </datalist>
+        </label>
+        <label>
+          Código DANE
+          <input [(ngModel)]="form.codigo_dane" placeholder="Ej: 05001" maxlength="5">
+        </label>
+        <label style="display:flex; align-items:center; gap:.5rem; cursor:pointer;">
+          <input type="checkbox" [(ngModel)]="form.activo" style="width:auto; accent-color:#6D28D9">
+          Activa
+        </label>
+      </div>
+
+      <div class="form-actions" style="margin-top:1rem">
+        <button class="btn secondary" (click)="closeModal()" [disabled]="saving()">Cancelar</button>
+        <button class="btn" (click)="save()" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : (editMode() ? 'Guardar cambios' : 'Crear ciudad') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ciudades de Colombia</h1>
+      <p class="page-subtitle">Maestro de municipios. Úsalos al registrar proveedores, pacientes y otros módulos.</p>
+    </div>
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="btn" (click)="openCreate()">+ Nueva ciudad</button>
+    </div>
+  </div>
+
+  @if (success()) { <div class="success-box" style="margin-bottom:1rem">{{ success() }}</div> }
+  @if (error())   { <div class="error-box"   style="margin-bottom:1rem">{{ error() }}</div> }
+
+  <!-- Filtros -->
+  <div class="toolbar" style="flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:1rem">
+    <input
+      [(ngModel)]="search"
+      (ngModelChange)="onSearchChange()"
+      placeholder="Buscar ciudad, depto o código DANE…"
+      style="flex:1; min-width:200px; max-width:320px">
+
+    <select [(ngModel)]="filterDepto" (ngModelChange)="resetAndLoad()" style="min-width:160px">
+      <option value="">Todos los departamentos</option>
+      @for (d of departamentos(); track d) {
+        <option [value]="d">{{ d }}</option>
+      }
+    </select>
+
+    <label style="display:flex; align-items:center; gap:.35rem; font-size:.85rem; color:#475569; margin:0; cursor:pointer">
+      <input type="checkbox" [(ngModel)]="soloActivas" (ngModelChange)="resetAndLoad()" style="accent-color:#6D28D9">
+      Solo activas
+    </label>
+
+    @if (search || filterDepto || soloActivas) {
+      <button class="btn secondary btn-small" (click)="clearFilters()">✕ Limpiar</button>
+    }
+
+    <span class="muted" style="font-size:.85rem; margin-left:auto">
+      {{ total() }} municipios
+    </span>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">Cargando ciudades…</div>
+  } @else if (ciudades().length === 0) {
+    <div class="empty-state">No se encontraron ciudades con los filtros actuales.</div>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ciudad / Municipio</th>
+            <th>Departamento</th>
+            <th style="text-align:center">Código DANE</th>
+            <th style="text-align:center">Estado</th>
+            <th style="text-align:center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of ciudades(); track c.id) {
+            <tr [class.row-inactive]="!c.activo">
+              <td><strong>{{ c.nombre }}</strong></td>
+              <td class="muted">{{ c.departamento }}</td>
+              <td style="text-align:center">
+                @if (c.codigo_dane) {
+                  <span class="chip info" style="font-size:.75rem">{{ c.codigo_dane }}</span>
+                } @else {
+                  <span class="muted">—</span>
+                }
+              </td>
+              <td style="text-align:center">
+                <span class="chip" [class]="c.activo ? 'success' : ''">
+                  {{ c.activo ? 'Activa' : 'Inactiva' }}
+                </span>
+              </td>
+              <td style="text-align:center; display:flex; gap:.5rem; justify-content:center">
+                <button class="btn btn-small secondary" (click)="openEdit(c)">Editar</button>
+                <button class="btn btn-small" [class]="c.activo ? 'secondary' : ''" (click)="toggle(c)">
+                  {{ c.activo ? 'Desactivar' : 'Activar' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (totalPages > 1) {
+      <div style="margin-top:1rem; display:flex; gap:.5rem; align-items:center; justify-content:flex-end">
+        <button class="btn secondary btn-small" [disabled]="page() === 1" (click)="goPage(page() - 1)">← Anterior</button>
+        <span class="muted" style="font-size:.85rem">Pág. {{ page() }} / {{ totalPages }}</span>
+        <button class="btn secondary btn-small" [disabled]="page() === totalPages" (click)="goPage(page() + 1)">Siguiente →</button>
+      </div>
+    }
+  }
+</section>

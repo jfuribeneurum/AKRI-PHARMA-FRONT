@@ -19,6 +19,10 @@ export class ApiService {
     return firstValueFrom(this.http.put<T>(this.buildUrl(path), body));
   }
 
+  patch<T>(path: string, body: unknown) {
+    return firstValueFrom(this.http.patch<T>(this.buildUrl(path), body));
+  }
+
   delete<T>(path: string) {
     return firstValueFrom(this.http.delete<T>(this.buildUrl(path)));
   }
