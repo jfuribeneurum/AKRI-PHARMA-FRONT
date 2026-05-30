@@ -1,0 +1,265 @@
+<section class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Ordenes de Compra</h1>
+        </div>
+        <div class="toolbar" style="margin-bottom:0">
+          <button class="btn secondary" (click)="loadOrders()">Actualizar</button>
+        </div>
+      </div>
+
+      @if (message()) { <div class="success-box">{{ message() }}</div> }
+      @if (error()) { <div class="error-box">{{ error() }}</div> }
+
+      <!-- ══ BUSCADOR ════════════════════════════════════════════════ -->
+      <div class="card">
+        <div class="po-section-title">Buscar ordenes</div>
+
+        <!-- selector de tipo de filtro -->
+        <div class="filter-type-row">
+          <button class="filter-pill" [class.active]="filterType() === 'numero'"
+            (click)="setFilterType('numero')">Numero de orden</button>
+          <button class="filter-pill" [class.active]="filterType() === 'fecha'"
+            (click)="setFilterType('fecha')">Fecha</button>
+          <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
+            (click)="setFilterType('laboratorio')">Laboratorio</button>
+        </div>
+
+        <!-- input segun el tipo activo -->
+        <div class="filter-input-row">
+          @if (filterType() === 'numero') {
+            <label>
+              Numero de orden
+              <input [(ngModel)]="filter.numero_oc" placeholder="OC-..." (ngModelChange)="applyFilter()">
+            </label>
+          }
+          @if (filterType() === 'fecha') {
+            <label>
+              Desde
+              <input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="applyFilter()">
+            </label>
+            <label>
+              Hasta
+              <input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="applyFilter()">
+            </label>
+          }
+          @if (filterType() === 'laboratorio') {
+            <label>
+              Laboratorio
+              <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="applyFilter()">
+            </label>
+          }
+          <button class="btn secondary filter-btn" style="align-self:flex-end" (click)="clearFilter()">Limpiar</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>Consecutivo</th>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Sede</th>
+                <th>Estado</th>
+                <th style="text-align:right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (loading()) {
+                <tr class="empty-row"><td colspan="6">Cargando...</td></tr>
+              } @else if (filtered().length === 0) {
+                <tr class="empty-row"><td colspan="6">No se encontraron ordenes.</td></tr>
+              } @else {
+                @for (row of filtered(); track row.id_oc) {
+                  <tr>
+                    <td>{{ row.numero_oc }}</td>
+                    <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
+                    <td>{{ row.proveedor }}</td>
+                    <td>{{ row.sede }}</td>
+                    <td>
+                      <span class="badge" [class.badge-borrador]="row.estado === 'borrador'" [class.badge-aprobada]="row.estado === 'aprobada'">
+                        {{ row.estado }}
+                      </span>
+                    </td>
+                    <td style="text-align:right">{{ row.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:0.5rem; font-size:0.8rem; color:#9ca3af">
+          {{ filtered().length }} de {{ allOrders().length }} ordenes
+        </div>
+      </div>
+
+      <!-- ══ FORMULARIO NUEVA ORDEN ══════════════════════════════════ -->
+      <div class="card">
+        <div class="new-order-toggle" (click)="showForm.set(!showForm())">
+          <span class="toggle-arrow" [class.open]="showForm()">&#9654;</span>
+          <h3>Nueva orden de compra</h3>
+        </div>
+
+        @if (showForm()) {
+
+          <!-- 1. ENCABEZADO -->
+          <div class="po-section">
+            <div class="po-section-title">Encabezado</div>
+            <div class="form-grid">
+              <label>
+                Consecutivo
+                <input [(ngModel)]="order.consecutivo">
+              </label>
+              <label>
+                Fecha
+                <input type="date" [(ngModel)]="order.fecha">
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. DATOS DE LA SEDE -->
+          <div class="po-section">
+            <div class="po-section-title">Datos de la sede</div>
+            <div class="form-grid">
+              <label>
+                Sede
+                <input [(ngModel)]="order.sede" placeholder="Nombre de la sede">
+              </label>
+              <label>
+                Bodega
+                <input [(ngModel)]="order.bodega" placeholder="Bodega de destino">
+              </label>
+              <label>
+                Direccion
+                <input [(ngModel)]="order.direccion_sede" placeholder="Direccion de la sede">
+              </label>
+              <label>
+                Ciudad
+                <input [(ngModel)]="order.ciudad_sede" placeholder="Ciudad">
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. DATOS DEL PROVEEDOR -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del proveedor</div>
+            <div class="form-grid">
+              <label style="grid-column: span 2">
+                Seleccionar proveedor registrado
+                <select (change)="onProviderChange($any($event.target).value)">
+                  <option value="">— Seleccionar o ingresar manualmente —</option>
+                  @for (p of allProviders(); track p.id_proveedor) {
+                    <option [value]="p.id_proveedor">
+                      {{ p.razon_social || p.nombre }} · {{ p.tipo_identificacion }} {{ p.numero_identificacion }}{{ p.digito_verificacion ? '-' + p.digito_verificacion : '' }}
+                    </option>
+                  }
+                </select>
+              </label>
+              <label>
+                Tipo identificación
+                <select [(ngModel)]="order.proveedor_tipo_id">
+                  <option value="NIT">NIT</option>
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="Pasaporte">Pasaporte</option>
+                </select>
+              </label>
+              <label>
+                Número de identificación
+                <input [(ngModel)]="order.proveedor_numero_id" placeholder="900000000">
+              </label>
+              <label>
+                Dígito de verificación
+                <input [(ngModel)]="order.proveedor_digito_verificacion" placeholder="1" maxlength="2">
+              </label>
+              <label style="grid-column: span 1">
+                Razón social
+                <input [(ngModel)]="order.proveedor_razon_social" placeholder="Razón social del proveedor">
+              </label>
+              <label>
+                Nombres
+                <input [(ngModel)]="order.proveedor_nombres" placeholder="Nombres del contacto">
+              </label>
+              <label>
+                Apellidos
+                <input [(ngModel)]="order.proveedor_apellidos" placeholder="Apellidos del contacto">
+              </label>
+              <label>
+                Teléfono
+                <input [(ngModel)]="order.proveedor_telefono" placeholder="Teléfono">
+              </label>
+              <label>
+                Ciudad
+                <input [(ngModel)]="order.proveedor_ciudad" placeholder="Ciudad">
+              </label>
+              <label style="grid-column: span 2">
+                Dirección proveedor
+                <input [(ngModel)]="order.proveedor_direccion" placeholder="Dirección comercial">
+              </label>
+            </div>
+          </div>
+
+          <!-- 4. DETALLE -->
+          <div class="po-section">
+            <div class="po-section-title">Detalle</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Codigo</th>
+                    <th>Nombre</th>
+                    <th>Laboratorio</th>
+                    <th style="text-align:right">Cantidad</th>
+                    <th style="text-align:right">Valor unitario</th>
+                    <th style="text-align:right">Valor total</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of items; track $index) {
+                    <tr>
+                      <td style="color:#9ca3af; font-size:0.8rem;">{{ $index + 1 }}</td>
+                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
+                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      <td>
+                        @if (items.length > 1) {
+                          <button class="btn-remove" (click)="removeItem($index)" title="Eliminar fila">&times;</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="6" style="text-align:right">Total</td>
+                    <td class="valor-total-cell">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <button class="btn btn-outline" style="margin-top:0.6rem" (click)="addItem()">+ Agregar item</button>
+          </div>
+
+          <!-- OBSERVACIONES -->
+          <div class="po-section">
+            <div class="form-grid">
+              <label class="full">
+                Observaciones
+                <textarea [(ngModel)]="order.observaciones" placeholder="Condiciones, notas o instrucciones especiales"></textarea>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn" (click)="createPurchase()" [disabled]="saving()">
+            {{ saving() ? 'Guardando...' : 'Crear orden de compra' }}
+          </button>
+
+        }
+      </div>
+    </section>

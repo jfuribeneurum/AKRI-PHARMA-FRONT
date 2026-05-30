@@ -1,0 +1,41 @@
+.search-bar { display:flex; gap:0.65rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+    .search-bar input {
+      flex:1; min-width:220px; padding:0.48rem 0.75rem;
+      border:1px solid var(--color-border,#d1d5db); border-radius:8px;
+      font-size:0.9rem; background:var(--color-surface,#fff); color:inherit;
+    }
+    .search-bar input:focus { outline:2px solid var(--color-primary,#2563eb); outline-offset:-1px; }
+    .table-wrap { overflow-x:auto; }
+    .data-table { width:100%; border-collapse:collapse; font-size:0.86rem; min-width:900px; }
+    .data-table th {
+      background:var(--color-surface-2,#f3f4f6); padding:0.55rem 0.8rem;
+      text-align:left; font-weight:700; font-size:0.75rem; white-space:nowrap;
+      border-bottom:2px solid var(--color-border,#e5e7eb); letter-spacing:0.02em;
+    }
+    .data-table td { padding:0.42rem 0.8rem; border-bottom:1px solid var(--color-border,#f3f4f6); vertical-align:middle; }
+    .data-table tr:hover td { background:var(--color-surface-2,#f9fafb); }
+    .nombre { font-weight:600; }
+    .doc { color:#6b7280; font-size:0.82rem; }
+    .empty-msg { text-align:center; color:#9ca3af; padding:3rem; font-size:0.95rem; }
+    .badge { padding:0.12rem 0.55rem; border-radius:99px; font-size:0.71rem; font-weight:700; white-space:nowrap; }
+    .badge-activo   { background:#d1fae5; color:#065f46; }
+    .badge-inactivo { background:#fee2e2; color:#991b1b; }
+    .badge-m { background:#dbeafe; color:#1e40af; }
+    .badge-f { background:#fce7f3; color:#9d174d; }
+    .pagination {
+      display:flex; align-items:center; gap:0.4rem; margin-top:1rem;
+      flex-wrap:wrap; font-size:0.83rem;
+    }
+    .pagination button {
+      padding:0.28rem 0.65rem; border:1px solid var(--color-border,#d1d5db);
+      border-radius:6px; background:var(--color-surface,#fff); color:inherit;
+      cursor:pointer; font-size:0.82rem; transition:background 0.12s;
+    }
+    .pagination button:hover:not(:disabled) { background:var(--color-primary,#2563eb); color:#fff; border-color:var(--color-primary,#2563eb); }
+    .pagination button:disabled { opacity:0.35; cursor:not-allowed; }
+    .pagination button.pag-active { background:var(--color-primary,#2563eb); color:#fff; border-color:var(--color-primary,#2563eb); font-weight:700; }
+    .pag-info { color:#6b7280; margin-left:0.25rem; }
+    .total-badge {
+      display:inline-block; background:var(--color-primary,#2563eb); color:#fff;
+      border-radius:99px; padding:0.15rem 0.7rem; font-size:0.78rem; font-weight:700; margin-left:0.5rem;
+    }

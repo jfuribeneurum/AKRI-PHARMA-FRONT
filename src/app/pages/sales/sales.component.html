@@ -1,0 +1,114 @@
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ventas y dispensación</h1>
+      <p class="page-subtitle">Opera ventas por lote, escaneo FEFO y exporta reportes en Excel, JSON y PDF.</p>
+    </div>
+    <div class="toolbar" style="margin-bottom: 0; justify-content: flex-end;">
+      <button class="btn secondary" (click)="exportSales('json')">JSON</button>
+      <button class="btn secondary" (click)="exportSales('excel')">Excel</button>
+      <button class="btn secondary" (click)="exportSales('pdf')">PDF</button>
+      <button class="btn secondary" (click)="load()">Actualizar</button>
+    </div>
+  </div>
+
+  <div *ngIf="message()" class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
+  <div *ngIf="error()" class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="section-head">
+        <div>
+          <h3>Ventas recientes</h3>
+          <p class="muted">Consulta rápida de dispensaciones y facturación asociada.</p>
+        </div>
+      </div>
+      <div class="toolbar compact-toolbar">
+        <input [(ngModel)]="reportSearch" placeholder="Filtrar por folio, cliente, paciente o estado" class="toolbar-input">
+        <button class="btn secondary" (click)="exportSales('excel')">Exportar con filtro</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Folio</th>
+              <th>Cliente</th>
+              <th>Paciente</th>
+              <th>Estado</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of sales()">
+              <td>{{ row.folio_venta }}</td>
+              <td>{{ row.cliente }}</td>
+              <td>{{ row.paciente }}</td>
+              <td>{{ row.estado }}</td>
+              <td>{{ row.total | number }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h3>Resolución por código de barras</h3>
+            <p class="muted">Carga el lote FEFO sugerido para la venta y reduce errores de digitación.</p>
+          </div>
+        </div>
+
+        <akri-barcode-scanner (detected)="handleScan($event)" />
+
+        <div *ngIf="scannedLookup() as vm" class="lookup-card" style="margin-top: 1rem;">
+          <strong>{{ vm.product.nombre_comercial }}</strong><br>
+          <span class="muted">{{ vm.product.sku }} · {{ vm.product.codigo_barras }}</span><br>
+          <span class="muted" *ngIf="vm.suggestedLot">Lote sugerido: {{ vm.suggestedLot.numero_lote }} · stock {{ vm.suggestedLot.cantidad_disponible }}</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nueva venta</h3>
+
+        <div class="form-grid">
+          <label>
+            Folio
+            <input [(ngModel)]="sale.folio_venta">
+          </label>
+          <label>
+            Cliente (id)
+            <input type="number" [(ngModel)]="sale.id_cliente">
+          </label>
+          <label>
+            Paciente (id)
+            <input type="number" [(ngModel)]="sale.id_paciente">
+          </label>
+          <label>
+            Receta (id)
+            <input type="number" [(ngModel)]="sale.id_receta">
+          </label>
+          <label>
+            Lote (id)
+            <input type="number" [(ngModel)]="sale.items[0].id_lote">
+          </label>
+          <label>
+            Cantidad
+            <input type="number" [(ngModel)]="sale.items[0].cantidad">
+          </label>
+          <label>
+            Precio
+            <input type="number" [(ngModel)]="sale.items[0].precio_unitario">
+          </label>
+        </div>
+
+        <div class="toolbar" style="margin-top: 1rem;">
+          <label><input type="checkbox" [(ngModel)]="sale.requiere_factura"> Requiere factura</label>
+        </div>
+
+        <button class="btn accent" (click)="createSale()">Registrar venta</button>
+      </div>
+    </div>
+  </div>
+</section>

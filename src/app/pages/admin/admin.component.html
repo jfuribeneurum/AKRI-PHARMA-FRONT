@@ -1,0 +1,287 @@
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Administración multisede y perfiles</h1>
+      <p class="page-subtitle">Gestiona sedes, usuarios, accesos por sede y perfiles operativos del ERP multiusuario.</p>
+    </div>
+    <div class="toolbar" style="margin-bottom: 0;">
+      <button class="btn secondary" (click)="load()">Actualizar</button>
+    </div>
+  </div>
+
+  <div *ngIf="message()" class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
+  <div *ngIf="error()" class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>Sedes</h3>
+          <div class="helper">Cada sede concentra sus almacenes, usuarios y equipos térmicos.</div>
+        </div>
+        <span class="chip primary">{{ sites().length }} sedes</span>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Código
+          <input [(ngModel)]="siteForm.codigo" placeholder="BOG-CENTRAL">
+        </label>
+        <label>
+          Nombre
+          <input [(ngModel)]="siteForm.nombre" placeholder="Sede Central">
+        </label>
+        <label>
+          Ciudad
+          <input [(ngModel)]="siteForm.ciudad">
+        </label>
+        <label>
+          Teléfono
+          <input [(ngModel)]="siteForm.telefono">
+        </label>
+        <label>
+          Email
+          <input [(ngModel)]="siteForm.email">
+        </label>
+        <label>
+          Responsable
+          <input [(ngModel)]="siteForm.responsable">
+        </label>
+      </div>
+
+      <label style="display:block; margin-top: 0.9rem; font-weight: 600;">
+        Dirección
+        <textarea [(ngModel)]="siteForm.direccion"></textarea>
+      </label>
+
+      <div class="switch-row">
+        <label><input type="checkbox" [(ngModel)]="siteForm.es_principal"> Sede principal</label>
+        <label><input type="checkbox" [(ngModel)]="siteForm.activo"> Activa</label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" (click)="saveSite()">{{ siteForm.id_sede ? 'Actualizar sede' : 'Crear sede' }}</button>
+        <button class="btn secondary" (click)="resetSiteForm()">Limpiar</button>
+      </div>
+
+      <div class="table-wrap compact" style="margin-top: 1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Sede</th>
+              <th>Usuarios</th>
+              <th>Almacenes</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of sites()">
+              <td>{{ row.codigo }}</td>
+              <td>{{ row.nombre }}</td>
+              <td>{{ row.usuarios }}</td>
+              <td>{{ row.almacenes }}</td>
+              <td><button class="btn secondary btn-small" (click)="editSite(row)">Editar</button></td>
+            </tr>
+            <tr *ngIf="!sites().length">
+              <td colspan="5" class="muted">No hay sedes registradas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>Perfiles</h3>
+          <div class="helper">Perfiles con permisos granulares para inventario, frío, controlados y administración.</div>
+        </div>
+        <span class="chip accent">{{ profiles().length }} perfiles</span>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Nombre del perfil
+          <input [(ngModel)]="profileForm.nombre" placeholder="SUPERVISOR_SEDE">
+        </label>
+        <label>
+          Nivel jerárquico
+          <input type="number" min="1" max="9" [(ngModel)]="profileForm.nivel_jerarquia">
+        </label>
+      </div>
+
+      <label style="display:block; margin-top: 0.9rem; font-weight: 600;">
+        Descripción
+        <textarea [(ngModel)]="profileForm.descripcion"></textarea>
+      </label>
+
+      <div class="permissions-grid">
+        <label *ngFor="let option of permissionOptions">
+          <input type="checkbox" [(ngModel)]="profileForm[option.key]">
+          {{ option.label }}
+        </label>
+      </div>
+
+      <div class="switch-row">
+        <label><input type="checkbox" [(ngModel)]="profileForm.es_activo"> Perfil activo</label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" (click)="saveProfile()">{{ profileForm.id_rol ? 'Actualizar perfil' : 'Crear perfil' }}</button>
+        <button class="btn secondary" (click)="resetProfileForm()">Limpiar</button>
+      </div>
+
+      <div class="table-wrap compact" style="margin-top: 1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Perfil</th>
+              <th>Nivel</th>
+              <th>Activo</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of profiles()">
+              <td>{{ row.nombre }}</td>
+              <td>{{ row.nivel_jerarquia }}</td>
+              <td>{{ row.es_activo ? 'Sí' : 'No' }}</td>
+              <td><button class="btn secondary btn-small" (click)="editProfile(row)">Editar</button></td>
+            </tr>
+            <tr *ngIf="!profiles().length">
+              <td colspan="4" class="muted">No hay perfiles disponibles.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <div class="card-header">
+      <div>
+        <h3>Usuarios y acceso por sede</h3>
+        <div class="helper">Cada usuario puede tener un perfil, una sede predeterminada y acceso a varias sedes.</div>
+      </div>
+      <span class="chip info">{{ users().length }} usuarios</span>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Usuario
+        <input [(ngModel)]="userForm.username">
+      </label>
+      <label>
+        Contraseña
+        <input [(ngModel)]="userForm.password" type="password" placeholder="Solo diligencia para crear o cambiar">
+      </label>
+      <label>
+        Nombre
+        <input [(ngModel)]="userForm.nombre">
+      </label>
+      <label>
+        Apellido paterno
+        <input [(ngModel)]="userForm.apellido_paterno">
+      </label>
+      <label>
+        Apellido materno
+        <input [(ngModel)]="userForm.apellido_materno">
+      </label>
+      <label>
+        Email
+        <input [(ngModel)]="userForm.email">
+      </label>
+      <label>
+        Teléfono móvil
+        <input [(ngModel)]="userForm.telefono_movil">
+      </label>
+      <label>
+        Perfil
+        <select [(ngModel)]="userForm.id_rol">
+          <option [ngValue]="null">Selecciona un perfil</option>
+          <option *ngFor="let row of profiles()" [ngValue]="row.id_rol">{{ row.nombre }}</option>
+        </select>
+      </label>
+      <label>
+        Sede predeterminada
+        <select [(ngModel)]="userForm.id_sede">
+          <option [ngValue]="null">Selecciona una sede</option>
+          <option *ngFor="let row of sites()" [ngValue]="row.id_sede">{{ row.nombre }}</option>
+        </select>
+      </label>
+      <label>
+        Almacén principal
+        <select [(ngModel)]="userForm.id_almacen_principal">
+          <option [ngValue]="null">Sin almacén principal</option>
+          <option *ngFor="let row of warehousesBySelectedSite()" [ngValue]="row.id_almacen">{{ row.nombre }}</option>
+        </select>
+      </label>
+      <label>
+        Número de empleado
+        <input [(ngModel)]="userForm.numero_empleado">
+      </label>
+      <label>
+        Cédula profesional
+        <input [(ngModel)]="userForm.cedula_profesional">
+      </label>
+    </div>
+
+    <div class="card" style="margin-top: 1rem; background: var(--surface-muted); box-shadow: none;">
+      <h4 style="margin-bottom: 0.75rem;">Acceso a múltiples sedes</h4>
+      <div class="permissions-grid">
+        <label *ngFor="let row of sites()">
+          <input type="checkbox" [checked]="userHasSite(row.id_sede)" (change)="toggleUserSite(row.id_sede, $any($event.target).checked)">
+          {{ row.nombre }}
+        </label>
+      </div>
+
+      <div class="switch-row" style="margin-top: 0.75rem;">
+        <label><input type="checkbox" [(ngModel)]="userForm.es_activo"> Usuario activo</label>
+        <label><input type="checkbox" [(ngModel)]="userForm.requiere_cambio_password"> Requiere cambio de contraseña</label>
+        <label><input type="checkbox" [(ngModel)]="userForm.puede_admin_sede"> Puede administrar sus sedes</label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" (click)="saveUser()">{{ userForm.id_usuario ? 'Actualizar usuario' : 'Crear usuario' }}</button>
+      <button class="btn secondary" (click)="resetUserForm()">Limpiar</button>
+    </div>
+
+    <div class="toolbar" style="margin-top: 1rem;">
+      <input [(ngModel)]="userSearch" placeholder="Buscar usuario, email, perfil o sede">
+      <button class="btn secondary" (click)="loadUsers()">Buscar</button>
+    </div>
+
+    <div class="table-wrap compact">
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Perfil</th>
+            <th>Sede</th>
+            <th>Sedes</th>
+            <th>Activo</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of users()">
+            <td>
+              <strong>{{ row.nombre_completo }}</strong>
+              <div class="muted">{{ row.username }} · {{ row.email }}</div>
+            </td>
+            <td>{{ row.perfil }}</td>
+            <td>{{ row.sede }}</td>
+            <td>{{ row.sedes_asignadas }}</td>
+            <td>{{ row.es_activo ? 'Sí' : 'No' }}</td>
+            <td><button class="btn secondary btn-small" (click)="editUser(row)">Editar</button></td>
+          </tr>
+          <tr *ngIf="!users().length">
+            <td colspan="6" class="muted">No hay usuarios para los filtros actuales.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,156 @@
+<section class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Movimiento de Salida</h1>
+          <p class="page-subtitle">Registra egresos de stock: ventas, mermas, destrucciones o devoluciones a proveedor.</p>
+        </div>
+        <div class="toolbar" style="margin-bottom:0">
+          <button class="btn secondary" (click)="cargarStock()">Actualizar</button>
+        </div>
+      </div>
+
+      @if (message()) { <div class="success-box">{{ message() }}</div> }
+      @if (error()) { <div class="error-box">{{ error() }}</div> }
+
+      <!-- Buscar lote -->
+      <div class="card">
+        <div class="po-section-title">Buscar lote con stock disponible</div>
+        <div class="search-row">
+          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
+        </div>
+        <div style="overflow-x:auto">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Lote</th>
+                <th>Vencimiento</th>
+                <th>Almacén</th>
+                <th>Ubicación</th>
+                <th>Disponible</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (loading()) {
+                <tr><td colspan="8" class="empty-msg">Cargando...</td></tr>
+              } @else if (filteredStock().length === 0) {
+                <tr><td colspan="8" class="empty-msg">No se encontraron lotes con stock disponible.</td></tr>
+              } @else {
+                @for (item of filteredStock(); track item.id_lote) {
+                  <tr class="row-selectable" [class.row-selected]="loteSeleccionado()?.id_lote === item.id_lote" (click)="seleccionar(item)">
+                    <td><strong>{{ item.nombre_comercial }}</strong></td>
+                    <td style="color:#6b7280;font-size:0.82rem">{{ item.sku }}</td>
+                    <td>{{ item.numero_lote }}</td>
+                    <td>
+                      <span [class]="vencClass(item.dias_para_vencer)">
+                        {{ item.fecha_vencimiento | date:'dd/MM/yyyy' }}
+                      </span>
+                    </td>
+                    <td>{{ item.almacen }}</td>
+                    <td>{{ item.ubicacion }}</td>
+                    <td>
+                      <span [class.cant-warn]="item.cantidad_disponible <= 10">
+                        {{ item.cantidad_disponible }}
+                      </span>
+                    </td>
+                    <td>
+                      <button class="btn" style="padding:0.2rem 0.55rem;font-size:0.78rem;background:#f97316;border-color:#f97316"
+                        (click)="$event.stopPropagation(); seleccionar(item)">
+                        Seleccionar
+                      </button>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Formulario de salida -->
+      @if (loteSeleccionado()) {
+        <div class="selected-banner">
+          <span>
+            <strong>{{ loteSeleccionado().nombre_comercial }}</strong>
+            &nbsp;—&nbsp;Lote: {{ loteSeleccionado().numero_lote }}
+            &nbsp;|&nbsp;Disponible: <strong>{{ loteSeleccionado().cantidad_disponible }}</strong>
+            &nbsp;|&nbsp;{{ loteSeleccionado().almacen }} › {{ loteSeleccionado().ubicacion }}
+          </span>
+          <button class="btn-deselect" (click)="deseleccionar()">✕</button>
+        </div>
+
+        <div class="card">
+          <div class="po-section-title">Detalle del movimiento de salida</div>
+
+          <!-- Origen (readonly info) -->
+          <div style="overflow-x:auto; margin-bottom:1rem">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Lote</th>
+                  <th>Vencimiento</th>
+                  <th>Almacén origen</th>
+                  <th>Ubicación origen</th>
+                  <th>Stock disponible</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{ loteSeleccionado().nombre_comercial }}</td>
+                  <td>{{ loteSeleccionado().numero_lote }}</td>
+                  <td>{{ loteSeleccionado().fecha_vencimiento | date:'dd/MM/yyyy' }}</td>
+                  <td><input [value]="loteSeleccionado().almacen" readonly></td>
+                  <td><input [value]="loteSeleccionado().ubicacion" readonly></td>
+                  <td><strong>{{ loteSeleccionado().cantidad_disponible }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Configuración de salida -->
+          <div style="overflow-x:auto">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Tipo de movimiento</th>
+                  <th>Cantidad a retirar</th>
+                  <th>Motivo / Referencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="min-width:200px">
+                    <select [(ngModel)]="form.tipo">
+                      <option value="salida_venta">Salida por venta</option>
+                      <option value="merma">Merma</option>
+                      <option value="destruccion">Destrucción</option>
+                      <option value="cuarentena">Pasar a cuarentena</option>
+                      <option value="devolucion_compra">Devolución a proveedor</option>
+                    </select>
+                  </td>
+                  <td style="min-width:150px">
+                    <input type="number" [(ngModel)]="form.cantidad" min="0.001" step="1"
+                      [max]="loteSeleccionado().cantidad_disponible"
+                      (ngModelChange)="clampCantidad()">
+                    <span style="font-size:0.72rem;color:#6b7280">Máx: {{ loteSeleccionado().cantidad_disponible }}</span>
+                  </td>
+                  <td style="min-width:250px">
+                    <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Venta al mostrador, merma por deterioro...">
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="toolbar" style="margin-top:1rem">
+            <button class="btn" style="background:#f97316;border-color:#f97316" [disabled]="saving()" (click)="registrar()">
+              {{ saving() ? 'Registrando...' : 'Registrar salida' }}
+            </button>
+            <button class="btn secondary" (click)="deseleccionar()">Cancelar</button>
+          </div>
+        </div>
+      }
+    </section>

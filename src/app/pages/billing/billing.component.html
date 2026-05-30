@@ -1,0 +1,41 @@
+<section class="page grid">
+  <div class="card">
+    <div class="toolbar">
+      <label>
+        ID venta
+        <input type="number" [(ngModel)]="saleId">
+      </label>
+      <button class="btn" (click)="createInvoice()">Crear factura</button>
+      <button class="btn secondary" (click)="load()">Actualizar</button>
+    </div>
+
+    <div *ngIf="message()" class="success-box" style="margin-bottom: 1rem;">
+      {{ message() }}
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Factura</th>
+            <th>Venta</th>
+            <th>Estado</th>
+            <th>Total</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of invoices()">
+            <td>{{ row.numero_completo }}</td>
+            <td>{{ row.folio_venta }}</td>
+            <td>{{ row.estado }}</td>
+            <td>{{ row.total | number }}</td>
+            <td>
+              <button class="btn success" (click)="submitToSiesa(row.id_factura)">Enviar a SIESA</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,34 @@
+<div class="login-wrap">
+  <div class="card login-card">
+    <h1>AkriPharmacy</h1>
+    <p class="muted">ERP de inventario y dispensación farmacéutica</p>
+
+    <div class="notice" style="margin-bottom: 1rem;">
+      Demo: admin / Akri123*
+    </div>
+
+    @if (error()) {
+      <div class="error" style="margin-bottom: 1rem;">
+        {{ error() }}
+      </div>
+    }
+
+    <div class="form-grid" style="grid-template-columns: 1fr;">
+      <label>
+        Usuario
+        <input [(ngModel)]="username" name="username" placeholder="admin">
+      </label>
+
+      <label>
+        Contraseña
+        <input [(ngModel)]="password" name="password" type="password" placeholder="••••••••">
+      </label>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <button class="btn" [disabled]="loading()" (click)="submit()">
+        {{ loading() ? 'Ingresando...' : 'Ingresar' }}
+      </button>
+    </div>
+  </div>
+</div>

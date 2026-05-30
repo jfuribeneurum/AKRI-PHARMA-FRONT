@@ -1,0 +1,216 @@
+/* ── Tabla principal ── */
+    .row-expanded td { background: #f0f9ff; }
+    .detail-row td { border-top: none; }
+    .inner-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+    .inner-table th { background:#e2e8f0; padding:0.4rem 0.75rem; text-align:left; font-weight:600; color:#475569; }
+    .inner-table td { padding:0.5rem 0.75rem; border-bottom:1px solid #e2e8f0; vertical-align:middle; }
+    .inner-table tr:last-child td { border-bottom:none; }
+    .btn-icon { background:none; border:none; cursor:pointer; font-size:0.9rem; color:#64748b; padding:2px 6px; border-radius:4px; }
+    .btn-icon:hover { background:#e2e8f0; }
+    .btn-small { padding:0.25rem 0.65rem; font-size:0.8rem; }
+    .loading-state, .empty-state { padding:3rem; text-align:center; color:#94a3b8; }
+
+    /* ── Modal dispensación ── */
+    :host .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .disp-modal {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.22);
+      width: 100%;
+      max-width: 780px;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      margin: auto;
+    }
+
+    /* Header */
+    .disp-modal__header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 1.75rem;
+      background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .disp-modal__header-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      width: 54px; height: 54px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .disp-modal__header-text { flex: 1; min-width: 0; }
+    .disp-modal__header-sup { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .08em; opacity: .75; margin-bottom: 2px; }
+    .disp-modal__header-med { display: block; font-size: 1.1rem; font-weight: 700; line-height: 1.3; }
+    .disp-modal__close {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.15);
+      border: none; color: #fff; cursor: pointer;
+      border-radius: 10px; width: 38px; height: 38px;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .disp-modal__close:hover { background: rgba(255,255,255,0.3); }
+
+    /* Body */
+    .disp-modal__body {
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Paciente */
+    .disp-modal__patient {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 10px; padding: 0.65rem 1rem;
+      flex-shrink: 0;
+    }
+    .disp-modal__patient-icon { font-size: 1.1rem; }
+    .disp-modal__patient-name { font-weight: 600; font-size: 0.92rem; color: #1e293b; flex: 1; }
+    .disp-modal__patient-doc { font-size: 0.8rem; color: #94a3b8; }
+
+    /* Lista de medicamentos */
+    .disp-med-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    /* Tarjeta de medicamento */
+    .disp-med-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: #fff;
+      transition: border-color .15s;
+    }
+    .disp-med-card:not(.disp-med-card--done):hover { border-color: #c4b5fd; }
+    .disp-med-card--done {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      opacity: 0.85;
+    }
+
+    /* Info izquierda */
+    .disp-med-card__info { flex: 1; min-width: 0; }
+    .disp-med-card__name {
+      font-weight: 700; font-size: 0.88rem; color: #1e293b;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .disp-med-card__meta {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.75rem; color: #94a3b8; margin-top: 2px;
+    }
+    .disp-med-card__sep { color: #cbd5e1; }
+
+    /* Controles derecha */
+    .disp-med-card__right {
+      display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;
+    }
+
+    /* Stats compactos (dsm = dispensation stat mini) */
+    .disp-med-card__stats { display: flex; gap: 0.4rem; }
+    .dsm {
+      border-radius: 8px; padding: 0.35rem 0.5rem;
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      min-width: 46px;
+    }
+    .dsm--neutral { background: #f1f5f9; border: 1px solid #e2e8f0; }
+    .dsm--blue    { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .dsm--red     { background: #fff1f2; border: 1px solid #fecdd3; }
+    .dsm--green   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .dsm__v {
+      font-size: 1.1rem; font-weight: 800; line-height: 1;
+    }
+    .dsm--neutral .dsm__v { color: #475569; }
+    .dsm--blue    .dsm__v { color: #2563eb; }
+    .dsm--red     .dsm__v { color: #dc2626; }
+    .dsm--green   .dsm__v { color: #16a34a; }
+    .dsm__l { font-size: 0.6rem; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; font-weight: 600; }
+
+    /* Completado badge */
+    .disp-med-card__done-badge {
+      font-size: 0.75rem; font-weight: 600; color: #16a34a;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 0.35rem 0.75rem;
+      white-space: nowrap;
+    }
+
+    /* Stepper por medicamento */
+    .disp-med-card__stepper {
+      display: flex; align-items: center;
+      border: 2px solid #7c3aed; border-radius: 10px; overflow: hidden;
+      background: #fff;
+    }
+    .stp-btn {
+      background: #f5f3ff; border: none; cursor: pointer;
+      width: 36px; height: 36px; font-size: 1.1rem; font-weight: 700;
+      color: #6d28d9; flex-shrink: 0; transition: background .15s;
+    }
+    .stp-btn:hover:not(:disabled) { background: #ede9fe; }
+    .stp-btn:disabled { color: #d1d5db; cursor: not-allowed; }
+    .stp-input {
+      width: 52px; border: none; outline: none;
+      text-align: center; font-size: 1.1rem; font-weight: 800;
+      color: #4c1d95; padding: 0.2rem 0;
+      -moz-appearance: textfield;
+    }
+    .stp-input::-webkit-inner-spin-button,
+    .stp-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* Observaciones */
+    .disp-modal__obs-label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #374151; }
+    .disp-modal__obs-input {
+      width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 0.6rem 0.75rem; font-size: 0.85rem; color: #374151;
+      resize: vertical; font-family: inherit;
+      transition: border-color .15s; box-sizing: border-box;
+    }
+    .disp-modal__obs-input:focus { outline: none; border-color: #7c3aed; }
+
+    /* Footer */
+    .disp-modal__footer {
+      display: flex; gap: 0.75rem; padding: 1rem 1.75rem;
+      border-top: 1px solid #f1f5f9; background: #fafafa;
+      justify-content: flex-end; flex-shrink: 0;
+    }
+    .disp-modal__btn-cancel {
+      background: #fff; border: 1px solid #e2e8f0; color: #475569;
+      padding: 0.6rem 1.25rem; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; transition: background .15s;
+    }
+    .disp-modal__btn-cancel:hover:not(:disabled) { background: #f1f5f9; }
+    .disp-modal__btn-confirm {
+      background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+      border: none; color: #fff;
+      padding: 0.6rem 1.4rem; border-radius: 8px; font-size: 0.88rem;
+      font-weight: 700; cursor: pointer; transition: opacity .15s;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .disp-modal__btn-confirm:hover:not(:disabled) { opacity: .88; }
+    .disp-modal__btn-confirm:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Spinner */
+    .disp-modal__spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .6s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }

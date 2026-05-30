@@ -1,0 +1,385 @@
+<section class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Ingresos Sebas</h1>
+          <p class="page-subtitle">Registro de ingreso con datos de factura, proveedor, producto, lote y valores.</p>
+        </div>
+      </div>
+
+      @if (message()) { <div class="success-box">{{ message() }}</div> }
+      @if (error()) { <div class="error-box">{{ error() }}</div> }
+
+      <!-- ══ BUSCADOR DE INGRESOS ══════════════════════════════════ -->
+      <div class="card">
+        <div class="po-section-title">Buscar ingresos</div>
+
+        <div class="filter-type-row">
+          <button class="filter-pill" [class.active]="filterType() === 'numero'"
+            (click)="setFilterType('numero')">Numero de orden</button>
+          <button class="filter-pill" [class.active]="filterType() === 'fecha'"
+            (click)="setFilterType('fecha')">Fecha</button>
+          <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
+            (click)="setFilterType('laboratorio')">Laboratorio</button>
+        </div>
+
+        <div class="filter-input-row">
+          @if (filterType() === 'numero') {
+            <label>Numero de orden<input [(ngModel)]="filter.numero_oc" placeholder="OC-..."></label>
+          }
+          @if (filterType() === 'fecha') {
+            <label>Desde<input type="date" [(ngModel)]="filter.fecha_desde"></label>
+            <label>Hasta<input type="date" [(ngModel)]="filter.fecha_hasta"></label>
+          }
+          @if (filterType() === 'laboratorio') {
+            <label>Laboratorio<input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio"></label>
+          }
+          <button class="btn secondary" style="align-self:flex-end;padding:0.45rem 1rem;font-size:0.85rem" (click)="clearFilter()">Limpiar</button>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;">
+          <button class="modo-btn" [class.active]="modo() === 'con_orden'" (click)="activarConOrden()">Con orden</button>
+          <button class="modo-btn" [class.active]="modo() === 'sin_orden'" (click)="activarSinOrden()">Sin orden</button>
+        </div>
+      </div>
+
+      <!-- ══ SELECCIONAR ORDEN DE COMPRA ═══════════════════════════ -->
+      @if (modo() === 'con_orden') {
+        <div class="card">
+          <div class="po-section-title">Seleccionar orden de compra</div>
+
+          @if (ordenSeleccionada()) {
+            <div class="selected-banner">
+              <span>
+                Orden seleccionada: <strong>{{ ordenSeleccionada()!.numero_oc }}</strong>
+                &nbsp;&mdash;&nbsp;{{ ordenSeleccionada()!.proveedor }}
+                &nbsp;&mdash;&nbsp;{{ ordenSeleccionada()!.fecha | date:'dd/MM/yyyy' }}
+              </span>
+              <button class="btn-deselect" (click)="deseleccionarOrden()" title="Quitar selección">&times; Cambiar</button>
+            </div>
+          } @else {
+            <input
+              class="oc-search-input"
+              [(ngModel)]="ocSearch"
+              placeholder="Buscar por número de orden o nombre del proveedor..."
+              (ngModelChange)="filtrarOrdenes()"
+            >
+            @if (cargandoOrdenes()) {
+              <p style="color:#9ca3af;font-size:0.88rem">Cargando órdenes...</p>
+            } @else if (ordenesFiltradas().length === 0 && ocSearch.length > 0) {
+              <p style="color:#9ca3af;font-size:0.88rem">No se encontraron órdenes.</p>
+            } @else {
+              <div class="oc-list">
+                @for (oc of ordenesFiltradas(); track oc.id_oc) {
+                  <div class="oc-item" (click)="seleccionarOrden(oc)">
+                    <div class="oc-item-main">
+                      <span class="oc-numero">{{ oc.numero_oc }}</span>
+                      <span class="oc-meta">{{ oc.proveedor }} &nbsp;|&nbsp; {{ oc.fecha | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <span class="oc-badge" [class.badge-borrador]="oc.estado==='borrador'" [class.badge-aprobada]="oc.estado==='aprobada'">
+                      {{ oc.estado }}
+                    </span>
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <!-- ══ FORMULARIO CON ORDEN ══════════════════════════════════ -->
+      @if (modo() === 'con_orden' && ordenSeleccionada()) {
+        <div class="card">
+
+          <!-- 1. ENCABEZADO -->
+          <div class="po-section">
+            <div class="po-section-title">Encabezado</div>
+            <div class="form-grid">
+              <label>
+                Orden de compra
+                <input [(ngModel)]="ocMeta.consecutivo" readonly style="background:var(--color-surface-2,#f3f4f6);color:#6b7280">
+              </label>
+              <label>
+                Fecha OC
+                <input type="date" [(ngModel)]="ocMeta.fecha" readonly style="background:var(--color-surface-2,#f3f4f6);color:#6b7280">
+              </label>
+              <label>
+                Fecha recepcion
+                <input type="date" [(ngModel)]="ingresoExtra.fecha_recepcion">
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. DATOS DE LA SEDE -->
+          <div class="po-section">
+            <div class="po-section-title">Datos de la sede</div>
+            <div class="form-grid">
+              <label>Sede<input [(ngModel)]="ocMeta.sede" placeholder="Nombre de la sede"></label>
+              <label>Bodega<input [(ngModel)]="ocMeta.bodega" placeholder="Bodega de destino"></label>
+              <label>Direccion<input [(ngModel)]="ocMeta.direccion_sede" placeholder="Direccion de la sede"></label>
+              <label>Ciudad<input [(ngModel)]="ocMeta.ciudad_sede" placeholder="Ciudad"></label>
+            </div>
+          </div>
+
+          <!-- 3. DATOS DEL PROVEEDOR -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del proveedor</div>
+            <div class="form-grid">
+              <label>Nombre<input [(ngModel)]="ocMeta.proveedor_nombre" placeholder="Nombre del proveedor"></label>
+              <label>NIT<input [(ngModel)]="ocMeta.proveedor_nit"></label>
+              <label>Contacto<input [(ngModel)]="ocMeta.proveedor_contacto"></label>
+              <label>Telefono<input [(ngModel)]="ocMeta.proveedor_telefono"></label>
+              <label class="full">Direccion proveedor<input [(ngModel)]="ocMeta.proveedor_direccion"></label>
+            </div>
+          </div>
+
+          <!-- 4. DETALLE -->
+          <div class="po-section">
+            <div class="po-section-title">Detalle</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Codigo</th>
+                    <th>Nombre</th>
+                    <th>Laboratorio</th>
+                    <th style="text-align:right">Cantidad</th>
+                    <th style="text-align:right">Valor unitario</th>
+                    <th>Lote</th>
+                    <th>Vencimiento</th>
+                    <th style="text-align:right">Valor total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of ocItems; track $index) {
+                    <tr>
+                      <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
+                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
+                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                      <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
+                      <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
+                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="8" style="text-align:right">Total</td>
+                    <td class="valor-total-cell">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- 5. DATOS DEL MEDICAMENTO -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del medicamento</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Registro Invima MX</th>
+                    <th>CUM</th>
+                    <th>Consecutivo CUM</th>
+                    <th>Presentacion</th>
+                    <th>IVA (%)</th>
+                    <th>Temperatura</th>
+                    <th>Criterio de empleo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.registro_invima" placeholder="INVIMA-..."></td>
+                    <td><input [(ngModel)]="ingresoExtra.cum" placeholder="Codigo unico"></td>
+                    <td><input [(ngModel)]="ingresoExtra.consecutivo_cum"></td>
+                    <td><input [(ngModel)]="ingresoExtra.presentacion" placeholder="Ej: Tabletas x 20"></td>
+                    <td><input type="number" min="0" [(ngModel)]="ingresoExtra.iva" style="width:70px"></td>
+                    <td><input [(ngModel)]="ingresoExtra.temperatura" placeholder="Ej: 2-8°C"></td>
+                    <td><input [(ngModel)]="ingresoExtra.criterio_empleo" placeholder="Condicion de uso"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 6. DATOS DEL INGRESO -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del ingreso</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Numero factura</th>
+                    <th>CUFE / CUDE</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.numero_factura"></td>
+                    <td><input [(ngModel)]="ingresoExtra.cufe"></td>
+                    <td><input [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="toolbar" style="margin-top:1rem">
+            <button class="btn" (click)="crearIngreso()">Crear ingreso</button>
+            <button class="btn secondary" (click)="limpiar()">Limpiar</button>
+          </div>
+        </div>
+      }
+
+      <!-- ══ FORMULARIO SIN ORDEN ══════════════════════════════════ -->
+      @if (modo() === 'sin_orden') {
+        <div class="card">
+
+          <!-- 1. ENCABEZADO -->
+          <div class="po-section">
+            <div class="po-section-title">Encabezado</div>
+            <div class="form-grid">
+              <label>
+                Consecutivo
+                <input [(ngModel)]="ocMeta.consecutivo" placeholder="ING-SEBAS-...">
+              </label>
+              <label>
+                Fecha recepcion
+                <input type="date" [(ngModel)]="ingresoExtra.fecha_recepcion">
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. DATOS DE LA SEDE -->
+          <div class="po-section">
+            <div class="po-section-title">Datos de la sede</div>
+            <div class="form-grid">
+              <label>Sede<input [(ngModel)]="ocMeta.sede" placeholder="Nombre de la sede"></label>
+              <label>Bodega<input [(ngModel)]="ocMeta.bodega" placeholder="Bodega de destino"></label>
+              <label>Direccion<input [(ngModel)]="ocMeta.direccion_sede" placeholder="Direccion de la sede"></label>
+              <label>Ciudad<input [(ngModel)]="ocMeta.ciudad_sede" placeholder="Ciudad"></label>
+            </div>
+          </div>
+
+          <!-- 3. DATOS DEL PROVEEDOR -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del proveedor</div>
+            <div class="form-grid">
+              <label>Nombre<input [(ngModel)]="ocMeta.proveedor_nombre" placeholder="Nombre del proveedor"></label>
+              <label>NIT<input [(ngModel)]="ocMeta.proveedor_nit"></label>
+              <label>Contacto<input [(ngModel)]="ocMeta.proveedor_contacto"></label>
+              <label>Telefono<input [(ngModel)]="ocMeta.proveedor_telefono"></label>
+              <label class="full">Direccion proveedor<input [(ngModel)]="ocMeta.proveedor_direccion"></label>
+            </div>
+          </div>
+
+          <!-- 4. DETALLE -->
+          <div class="po-section">
+            <div class="po-section-title">Detalle</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Codigo</th>
+                    <th>Nombre</th>
+                    <th>Laboratorio</th>
+                    <th style="text-align:right">Cantidad</th>
+                    <th style="text-align:right">Valor unitario</th>
+                    <th>Lote</th>
+                    <th>Vencimiento</th>
+                    <th style="text-align:right">Valor total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of ocItems; track $index) {
+                    <tr>
+                      <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
+                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
+                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                      <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
+                      <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
+                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="8" style="text-align:right">Total</td>
+                    <td class="valor-total-cell">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <button class="btn btn-outline" style="margin-top:0.6rem" (click)="agregarItem()">+ Agregar item</button>
+          </div>
+
+          <!-- 5. DATOS DEL MEDICAMENTO -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del medicamento</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Registro Invima MX</th>
+                    <th>CUM</th>
+                    <th>Consecutivo CUM</th>
+                    <th>Presentacion</th>
+                    <th>IVA (%)</th>
+                    <th>Temperatura</th>
+                    <th>Criterio de empleo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.registro_invima" placeholder="INVIMA-..."></td>
+                    <td><input [(ngModel)]="ingresoExtra.cum" placeholder="Codigo unico"></td>
+                    <td><input [(ngModel)]="ingresoExtra.consecutivo_cum"></td>
+                    <td><input [(ngModel)]="ingresoExtra.presentacion" placeholder="Ej: Tabletas x 20"></td>
+                    <td><input type="number" min="0" [(ngModel)]="ingresoExtra.iva" style="width:70px"></td>
+                    <td><input [(ngModel)]="ingresoExtra.temperatura" placeholder="Ej: 2-8°C"></td>
+                    <td><input [(ngModel)]="ingresoExtra.criterio_empleo" placeholder="Condicion de uso"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 6. DATOS DEL INGRESO -->
+          <div class="po-section">
+            <div class="po-section-title">Datos del ingreso</div>
+            <div style="overflow-x:auto;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Numero factura</th>
+                    <th>CUFE / CUDE</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input [(ngModel)]="ingresoExtra.numero_factura"></td>
+                    <td><input [(ngModel)]="ingresoExtra.cufe"></td>
+                    <td><input [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="toolbar" style="margin-top:1rem">
+            <button class="btn" (click)="crearIngreso()">Crear ingreso Sebas</button>
+            <button class="btn secondary" (click)="limpiar()">Limpiar</button>
+          </div>
+        </div>
+      }
+    </section>

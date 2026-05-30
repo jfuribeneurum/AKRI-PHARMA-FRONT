@@ -1,0 +1,53 @@
+/* ── filtros ─────────────────────────────────────────────── */
+    .filter-type-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .filter-pill {
+      padding: 0.35rem 1rem; border-radius: 99px; font-size: 0.82rem; font-weight: 600;
+      border: 1.5px solid var(--color-border, #d1d5db); background: var(--color-surface, #fff);
+      cursor: pointer; color: inherit; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .filter-pill:hover { border-color: var(--color-primary, #2563eb); color: var(--color-primary, #2563eb); }
+    .filter-pill.active { background: var(--color-primary, #2563eb); color: #fff; border-color: var(--color-primary, #2563eb); }
+    .filter-input-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+    .filter-input-row label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; flex: 1; min-width: 160px; }
+    .filter-input-row input { padding: 0.45rem 0.65rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 6px; font-size: 0.88rem; background: var(--color-surface, #fff); color: inherit; width: 100%; }
+    .filter-input-row input:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
+    .filter-btn { padding: 0.45rem 1rem; font-size: 0.85rem; }
+
+    /* ── tabla órdenes ───────────────────────────────────────── */
+    .orders-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .orders-table th { background: var(--color-surface-2, #f3f4f6); padding: 0.55rem 0.75rem; text-align: left; font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
+    .orders-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--color-border, #e5e7eb); }
+    .orders-table tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+    .badge-borrador { background: #fef3c7; color: #92400e; }
+    .badge-aprobada { background: #d1fae5; color: #065f46; }
+    .empty-row td { text-align: center; color: #9ca3af; padding: 1.5rem; }
+
+    /* ── secciones del formulario ────────────────────────────── */
+    .po-section { margin-bottom: 1.5rem; }
+    .po-section-title {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--color-primary, #2563eb);
+      border-bottom: 2px solid var(--color-primary, #2563eb);
+      padding-bottom: 0.35rem; margin-bottom: 1rem;
+    }
+
+    /* ── tabla de items ──────────────────────────────────────── */
+    .items-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .items-table th { background: var(--color-surface-2, #f3f4f6); padding: 0.5rem 0.6rem; text-align: left; font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
+    .items-table td { padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--color-border, #e5e7eb); vertical-align: middle; }
+    .items-table input { width: 100%; min-width: 0; padding: 0.3rem 0.45rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 4px; font-size: 0.85rem; background: var(--color-surface, #fff); color: inherit; }
+    .items-table input:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
+    .total-row td { font-weight: 700; background: var(--color-surface-2, #f9fafb); padding: 0.5rem 0.6rem; }
+    .valor-total-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; padding: 0 0.3rem; line-height: 1; }
+    .btn-remove:hover { color: #b91c1c; }
+
+    /* ── separador nueva orden ───────────────────────────────── */
+    .new-order-toggle {
+      display: flex; align-items: center; gap: 0.75rem; cursor: pointer;
+      user-select: none; padding: 0.6rem 0; margin-bottom: 1rem;
+    }
+    .new-order-toggle h3 { margin: 0; font-size: 1rem; }
+    .toggle-arrow { font-size: 0.8rem; color: #6b7280; transition: transform 0.2s; }
+    .toggle-arrow.open { transform: rotate(90deg); }

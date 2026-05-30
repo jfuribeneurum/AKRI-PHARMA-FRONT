@@ -1,0 +1,298 @@
+<section class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Inventario con escaneo de código de barras</h1>
+          <p class="page-subtitle">Opera ingresos, egresos y consultas usando lector físico, captura manual o cámara cuando el navegador lo soporte.</p>
+        </div>
+        <div class="toolbar" style="margin-bottom: 0; justify-content: flex-end;">
+          <button class="btn secondary" (click)="exportInventory('json')">JSON</button>
+          <button class="btn secondary" (click)="exportInventory('excel')">Excel</button>
+          <button class="btn secondary" (click)="exportInventory('pdf')">PDF</button>
+        </div>
+      </div>
+
+      <div *ngIf="message()" class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
+      <div *ngIf="error()" class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+
+      <div class="scan-layout">
+        <div class="scan-shell">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>Resolver código de barras</h3>
+                <div class="helper">Compatible con lectores tipo keyboard wedge, ingreso manual y cámara.</div>
+              </div>
+              <span class="chip" [ngClass]="cameraSupported ? 'success' : 'warn'">
+                {{ cameraSupported ? 'Cámara disponible' : 'Usar lector / manual' }}
+              </span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Modo
+                <select [(ngModel)]="scan.mode">
+                  <option value="consulta">Consulta</option>
+                  <option value="ingreso">Ingreso</option>
+                  <option value="egreso">Egreso</option>
+                </select>
+              </label>
+              <label>
+                Fuente
+                <select [(ngModel)]="scan.source">
+                  <option value="lector">Lector</option>
+                  <option value="manual">Manual</option>
+                  <option value="camara">Cámara</option>
+                </select>
+              </label>
+              <label style="grid-column: span 2;">
+                Código de barras
+                <input [(ngModel)]="scan.barcode" placeholder="Escanea o digita el código" (keyup.enter)="resolveBarcode()">
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn secondary" *ngIf="cameraActive()" (click)="stopCamera()">Detener cámara</button>
+              <button class="btn accent" *ngIf="!cameraActive()" [disabled]="!cameraSupported" (click)="startCamera()">Escanear con cámara</button>
+              <button class="btn" (click)="resolveBarcode()">Resolver código</button>
+            </div>
+          </div>
+
+          <div class="card resolved-card" *ngIf="resolved() as vm">
+            <div class="card-header">
+              <div>
+                <h3>{{ vm.found ? 'Producto resuelto' : 'Código no encontrado' }}</h3>
+                <div class="helper">Resultado del último escaneo procesado.</div>
+              </div>
+              <span class="chip" [ngClass]="vm.found ? 'success' : 'danger'">{{ vm.found ? 'Resuelto' : 'No encontrado' }}</span>
+            </div>
+
+            <ng-container *ngIf="vm.found; else notFound">
+              <div class="resolved-product">
+                <img *ngIf="vm.product?.imagen_principal_url" [src]="vm.product.imagen_principal_url" [alt]="vm.product.nombre_comercial">
+                <div *ngIf="!vm.product?.imagen_principal_url" class="image-hero empty-state" style="min-height: 120px;">Sin imagen</div>
+                <div>
+                  <h4 style="margin-bottom: 0.4rem;">{{ vm.product.nombre_comercial }}</h4>
+                  <div class="muted">{{ vm.product.sku }} · {{ vm.product.codigo_barras }}</div>
+                  <div class="inline-list" style="margin-top: 0.75rem;">
+                    <span class="chip primary">Stock total {{ vm.stock_total }}</span>
+                    <span class="chip info" *ngIf="vm.product.requiere_cadena_frio">Cadena de frío</span>
+                    <span class="chip accent" *ngIf="vm.product.es_controlado">Controlado</span>
+                    <span class="chip warn" *ngIf="vm.product.requiere_receta">Receta</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-wrap compact" style="margin-top: 1rem;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Lote</th>
+                      <th>Vence</th>
+                      <th>Almacén</th>
+                      <th>Ubicación</th>
+                      <th>Disponible</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of vm.lots">
+                      <td>{{ row.numero_lote }}</td>
+                      <td>{{ row.fecha_vencimiento | date:'yyyy-MM-dd' }}</td>
+                      <td>{{ row.almacen }}</td>
+                      <td>{{ row.ubicacion }}</td>
+                      <td>{{ row.cantidad_disponible }}</td>
+                    </tr>
+                    <tr *ngIf="!vm.lots?.length">
+                      <td colspan="5" class="muted">No hay lotes disponibles para este producto.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </ng-container>
+
+            <ng-template #notFound>
+              <div class="notice">No existe un producto activo asociado al código {{ vm.barcode }}.</div>
+            </ng-template>
+          </div>
+
+          <div class="card" *ngIf="resolved()?.found && scan.mode === 'ingreso'">
+            <div class="card-header">
+              <div>
+                <h3>Registrar ingreso con escaneo</h3>
+                <div class="helper">Crea o reutiliza un lote y suma existencias en la ubicación destino.</div>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Cantidad
+                <input type="number" [(ngModel)]="ingress.quantity">
+              </label>
+              <label>
+                Ubicación destino
+                <select [(ngModel)]="ingress.id_ubicacion_destino">
+                  <option *ngFor="let u of lookups().ubicaciones" [ngValue]="u.id_ubicacion">{{ u.almacen }} · {{ u.nombre }} ({{ u.codigo }})</option>
+                </select>
+              </label>
+              <label>
+                Número de lote
+                <input [(ngModel)]="ingress.numero_lote">
+              </label>
+              <label>
+                Vencimiento
+                <input type="date" [(ngModel)]="ingress.fecha_vencimiento">
+              </label>
+              <label>
+                Costo unitario
+                <input type="number" [(ngModel)]="ingress.costo_unitario">
+              </label>
+              <label>
+                Precio venta
+                <input type="number" [(ngModel)]="ingress.precio_venta">
+              </label>
+              <label style="grid-column: span 2;">
+                Motivo
+                <input [(ngModel)]="ingress.motivo" placeholder="Ingreso por recepción, conteo o ajuste positivo">
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn success" (click)="registerIngress()">Registrar ingreso</button>
+            </div>
+          </div>
+
+          <div class="card" *ngIf="resolved()?.found && scan.mode === 'egreso'">
+            <div class="card-header">
+              <div>
+                <h3>Registrar egreso con escaneo</h3>
+                <div class="helper">Selecciona el lote FEFO o un lote específico y descuenta disponibilidad.</div>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Tipo de egreso
+                <select [(ngModel)]="egress.tipo_egreso">
+                  <option *ngFor="let tipo of lookups().tipos_egreso" [ngValue]="tipo">{{ tipo }}</option>
+                </select>
+              </label>
+              <label>
+                Cantidad
+                <input type="number" [(ngModel)]="egress.quantity">
+              </label>
+              <label>
+                Lote a egresar
+                <select [(ngModel)]="egress.id_lote" (ngModelChange)="applySelectedLot()">
+                  <option *ngFor="let lot of resolved()?.lots || []" [ngValue]="lot.id_lote">
+                    {{ lot.numero_lote }} · {{ lot.cantidad_disponible }} uds · vence {{ lot.fecha_vencimiento | date:'yyyy-MM-dd' }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                Ubicación origen
+                <select [(ngModel)]="egress.id_ubicacion_origen">
+                  <option *ngFor="let lot of resolved()?.lots || []" [ngValue]="lot.id_ubicacion">
+                    {{ lot.almacen }} · {{ lot.ubicacion }}
+                  </option>
+                </select>
+              </label>
+              <label style="grid-column: span 2;">
+                Motivo
+                <input [(ngModel)]="egress.motivo" placeholder="Salida por venta, merma, devolución o destrucción">
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn accent" (click)="registerEgress()">Registrar egreso</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>Captura por cámara</h3>
+                <div class="helper">Usa la cámara trasera en móviles para leer EAN, UPC o Code 128 cuando el navegador soporte BarcodeDetector.</div>
+              </div>
+            </div>
+
+            <div class="camera-box">
+              <video #cameraVideo autoplay playsinline [style.display]="cameraActive() ? 'block' : 'none'"></video>
+              <div class="camera-hint" *ngIf="!cameraActive()">
+                <strong>La cámara está inactiva.</strong>
+                <div class="muted">Actívala para detectar códigos automáticamente o usa el lector físico con el cursor en el campo de captura.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>Escaneos recientes</h3>
+                <div class="helper">Últimos eventos para auditoría operativa.</div>
+              </div>
+            </div>
+            <div class="table-wrap compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Modo</th>
+                    <th>Fuente</th>
+                    <th>Código</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of recentScans()">
+                    <td>{{ row.fecha_hora | date:'MM-dd HH:mm' }}</td>
+                    <td>{{ row.modo }}</td>
+                    <td>{{ row.fuente }}</td>
+                    <td>{{ row.codigo_barras }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1rem;">
+        <div class="card-header">
+          <div>
+            <h3>Stock por lote y ubicación</h3>
+            <div class="helper">Consulta rápida del inventario físico disponible.</div>
+          </div>
+          <div class="toolbar" style="margin-bottom: 0;">
+            <input [(ngModel)]="stockSearch" placeholder="Buscar por producto, SKU, código o lote" (keyup.enter)="loadStock()">
+            <button class="btn secondary" (click)="loadStock()">Actualizar stock</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Código</th>
+                <th>Lote</th>
+                <th>Vence</th>
+                <th>Almacén</th>
+                <th>Ubicación</th>
+                <th>Disponible</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of stock()">
+                <td>{{ row.nombre_comercial }}</td>
+                <td>{{ row.codigo_barras || '—' }}</td>
+                <td>{{ row.numero_lote }}</td>
+                <td>{{ row.fecha_vencimiento | date:'yyyy-MM-dd' }}</td>
+                <td>{{ row.almacen }}</td>
+                <td>{{ row.ubicacion }}</td>
+                <td>{{ row.cantidad_disponible }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>

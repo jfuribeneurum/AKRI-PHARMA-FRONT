@@ -1,0 +1,136 @@
+<!-- Modal: nueva / editar bodega -->
+    @if (showModal()) {
+      <div class="modal-backdrop" (click)="closeModal()">
+        <div class="modal-panel" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3>{{ form.id_sede ? 'Editar bodega' : 'Nueva bodega' }}</h3>
+              <div class="helper">Completa la información para aprovisionar los almacenes.</div>
+            </div>
+            <button class="btn secondary" (click)="closeModal()">✕ Cerrar</button>
+          </div>
+
+          @if (formMessage()) {
+            <div class="success-box" style="margin-bottom: 1rem;">{{ formMessage() }}</div>
+          }
+          @if (formError()) {
+            <div class="error-box" style="margin-bottom: 1rem;">{{ formError() }}</div>
+          }
+
+          <div class="form-grid">
+            <label>
+              Código de la bodega
+              <input [(ngModel)]="form.codigo" placeholder="BOG-01">
+            </label>
+            <label>
+              Nombre de la bodega
+              <input [(ngModel)]="form.nombre" placeholder="Sede Norte">
+            </label>
+            <label>
+              Ciudad
+              <input [(ngModel)]="form.ciudad" placeholder="Ej: Bogotá">
+            </label>
+            <label>
+              Teléfono
+              <input [(ngModel)]="form.telefono" placeholder="Opcional">
+            </label>
+            <label>
+              Correo electrónico
+              <input [(ngModel)]="form.email" placeholder="Opcional">
+            </label>
+            <label>
+              Responsable
+              <input [(ngModel)]="form.responsable" placeholder="Nombre del encargado">
+            </label>
+          </div>
+
+          <label style="display:block; margin-top: 0.9rem; font-weight: 600;">
+            Dirección completa
+            <textarea [(ngModel)]="form.direccion" placeholder="Dirección física de la bodega"></textarea>
+          </label>
+
+          <div class="switch-row" style="margin-top: 1rem;">
+            <label><input type="checkbox" [(ngModel)]="form.es_principal"> Bodega principal (Sede matriz)</label>
+            <label><input type="checkbox" [(ngModel)]="form.activo"> Bodega activa (Habilitada)</label>
+          </div>
+
+          <div class="form-actions" style="margin-top: 1.5rem;">
+            <button class="btn secondary" (click)="closeModal()">Cancelar</button>
+            <button class="btn" (click)="saveBodega()">{{ form.id_sede ? 'Actualizar bodega' : 'Crear bodega' }}</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Vista principal -->
+    <section class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Gestión de Bodegas</h1>
+          <p class="page-subtitle">Administra las bodegas y sucursales donde se almacena el inventario de la farmacia.</p>
+        </div>
+        <button class="btn" (click)="openModal()">+ Agregar bodega</button>
+      </div>
+
+      @if (message()) {
+        <div class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
+      }
+      @if (error()) {
+        <div class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+      }
+
+      <div class="card">
+        <div class="toolbar">
+          <span class="chip primary">{{ bodegas().length }} bodegas</span>
+          <button class="btn secondary" (click)="load()">Actualizar</button>
+        </div>
+
+        <div class="table-wrap compact">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Bodega</th>
+                <th>Ciudad</th>
+                <th>Responsable</th>
+                <th>Usuarios</th>
+                <th>Almacenes</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of bodegas(); track row.id_sede) {
+                <tr [class.inactive]="!row.activo">
+                  <td><strong>{{ row.codigo }}</strong></td>
+                  <td>
+                    <div>{{ row.nombre }}</div>
+                    @if (row.es_principal) {
+                      <span class="chip info">Sede principal</span>
+                    }
+                  </td>
+                  <td>{{ row.ciudad || '—' }}</td>
+                  <td>{{ row.responsable || '—' }}</td>
+                  <td>{{ row.usuarios }}</td>
+                  <td>{{ row.almacenes }}</td>
+                  <td>
+                    <span class="chip" [ngClass]="row.activo ? 'success' : 'warn'">
+                      {{ row.activo ? 'Activa' : 'Inactiva' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn secondary btn-small" (click)="editBodega(row)">Editar</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="muted" style="text-align:center; padding: 2rem;">
+                    No hay bodegas registradas. Usa "+ Agregar bodega" para comenzar.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>

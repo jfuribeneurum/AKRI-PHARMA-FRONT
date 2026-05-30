@@ -1,0 +1,316 @@
+import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ApiService } from '../../core/api.service';
+
+@Component({
+  selector: 'akri-sebas-ingresos',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './sebas-ingresos.component.html',
+  styleUrls: ['./sebas-ingresos.component.css'],
+  imports: [CommonModule, FormsModule]
+})
+export class SebasIngresosComponent implements OnInit {
+  readonly message = signal('');
+  readonly error = signal('');
+  readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
+  readonly modo = signal<'con_orden' | 'sin_orden' | null>(null);
+  readonly cargandoOrdenes = signal(false);
+  readonly todasLasOrdenes = signal<any[]>([]);
+  readonly ordenesFiltradas = signal<any[]>([]);
+  readonly ordenSeleccionada = signal<any>(null);
+
+  filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+  ocSearch = '';
+
+  ocMeta: any = this.emptyOcMeta();
+  ocItems: any[] = [this.emptyOcItem()];
+  ingresoExtra: any = this.emptyIngresoExtra();
+
+  ingreso: any = this.emptyIngreso();
+  factura: any = this.emptyFactura();
+
+  constructor(private readonly api: ApiService) {}
+
+  ngOnInit() {
+    this.cargarOrdenes();
+  }
+
+  async cargarOrdenes() {
+    this.cargandoOrdenes.set(true);
+    try {
+      const resp: any = await this.api.get<any>('/purchases');
+      const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.todasLasOrdenes.set(lista);
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudieron cargar las órdenes de compra.');
+    } finally {
+      this.cargandoOrdenes.set(false);
+    }
+  }
+
+  filtrarOrdenes() {
+    const term = this.ocSearch.toLowerCase().trim();
+    if (!term) { this.ordenesFiltradas.set([]); return; }
+    this.ordenesFiltradas.set(
+      this.todasLasOrdenes().filter(o =>
+        String(o.numero_oc ?? '').toLowerCase().includes(term) ||
+        String(o.proveedor ?? '').toLowerCase().includes(term)
+      ).slice(0, 10)
+    );
+  }
+
+  seleccionarOrden(oc: any) {
+    this.ordenSeleccionada.set(oc);
+    this.ocSearch = '';
+    this.ordenesFiltradas.set([]);
+    this.precargarDesdeOrden(oc);
+  }
+
+  deseleccionarOrden() {
+    this.ordenSeleccionada.set(null);
+    this.ocSearch = '';
+    this.ordenesFiltradas.set([]);
+    this.limpiar();
+  }
+
+  activarConOrden() {
+    this.modo.set('con_orden');
+    this.ordenSeleccionada.set(null);
+    this.ocSearch = '';
+    this.ordenesFiltradas.set([]);
+    this.limpiar();
+    this.cargarOrdenes();
+  }
+
+  activarSinOrden() {
+    this.modo.set('sin_orden');
+    this.ordenSeleccionada.set(null);
+    this.limpiar();
+    this.ocMeta.consecutivo = `ING-SEBAS-${Date.now()}`;
+  }
+
+  agregarItem() {
+    this.ocItems.push(this.emptyOcItem());
+  }
+
+  private precargarDesdeOrden(oc: any) {
+    this.limpiar();
+    const obs = String(oc.observaciones ?? '');
+    const meta = this.parseObservaciones(obs);
+
+    this.ocMeta = {
+      consecutivo: oc.numero_oc ?? '',
+      fecha: oc.fecha ? String(oc.fecha).slice(0, 10) : '',
+      sede: meta['sede'] || '',
+      bodega: meta['bodega'] || '',
+      direccion_sede: meta['direccion_sede'] || '',
+      ciudad_sede: meta['ciudad'] || '',
+      proveedor_nombre: meta['proveedor'] || oc.proveedor || '',
+      proveedor_nit: meta['nit'] || '',
+      proveedor_contacto: meta['contacto'] || '',
+      proveedor_telefono: meta['telefono'] || '',
+      proveedor_direccion: meta['direccion_proveedor'] || '',
+    };
+
+    const parsedItems: any[] = [];
+    let i = 1;
+    while (true) {
+      const item = this.parseItem(obs, i);
+      if (!item) break;
+      parsedItems.push({
+        codigo: item['codigo'] ?? '',
+        nombre: item['nombre'] ?? '',
+        laboratorio: item['laboratorio'] ?? '',
+        cantidad: Number(item['cantidad']) || 0,
+        valor_unitario: Number(item['valor_unitario']) || 0,
+        lote: '',
+        fecha_vencimiento: '',
+      });
+      i++;
+    }
+    this.ocItems = parsedItems.length > 0 ? parsedItems : [this.emptyOcItem()];
+  }
+
+  private parseObservaciones(obs: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const line of obs.split('\n')) {
+      const idx = line.indexOf(':');
+      if (idx < 1) continue;
+      const key = line.slice(0, idx).trim().toLowerCase()
+        .replace(/\s+/g, '_').replace(/\//g, '_');
+      const value = line.slice(idx + 1).trim();
+      if (value) result[key] = value;
+    }
+    return result;
+  }
+
+  private parseItem(obs: string, num: number): Record<string, string> | null {
+    const prefix = `Item ${num}:`;
+    const line = obs.split('\n').find(l => l.startsWith(prefix));
+    if (!line) return null;
+    const result: Record<string, string> = {};
+    const parts = line.slice(prefix.length).split('|');
+    for (const part of parts) {
+      const eq = part.indexOf('=');
+      if (eq < 1) continue;
+      const key = part.slice(0, eq).trim().toLowerCase();
+      const val = part.slice(eq + 1).trim();
+      result[key] = val;
+    }
+    return result;
+  }
+
+  itemTotal(item: any): number {
+    return (Number(item.cantidad) || 0) * (Number(item.valor_unitario) || 0);
+  }
+
+  grandTotalOc(): number {
+    return this.ocItems.reduce((sum, item) => sum + this.itemTotal(item), 0);
+  }
+
+  setFilterType(type: 'numero' | 'fecha' | 'laboratorio') {
+    this.filterType.set(type);
+    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+  }
+
+  clearFilter() {
+    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+  }
+
+  async crearIngreso() {
+    try {
+      this.error.set('');
+      this.message.set('');
+      if (!this.ocMeta.consecutivo) {
+        this.error.set('El consecutivo es obligatorio.');
+        return;
+      }
+      if (!this.ocItems.some(i => Number(i.cantidad) > 0)) {
+        this.error.set('Agrega al menos un item con cantidad.');
+        return;
+      }
+      await this.api.post('/ingresos', this.ingresoConOrdenPayload());
+      this.message.set('Ingreso Sebas creado exitosamente.');
+      this.limpiar();
+      this.ordenSeleccionada.set(null);
+    } catch (error: any) {
+      this.error.set(error?.error?.message || 'No fue posible crear el ingreso Sebas.');
+    }
+  }
+
+  limpiar() {
+    this.ingreso = this.emptyIngreso();
+    this.factura = this.emptyFactura();
+    this.ocMeta = this.emptyOcMeta();
+    this.ocItems = [this.emptyOcItem()];
+    this.ingresoExtra = this.emptyIngresoExtra();
+  }
+
+  private ingresoConOrdenPayload() {
+    const items = this.ocItems.filter(i => Number(i.cantidad) > 0);
+    const itemLines = items.map((i, idx) =>
+      `Item ${idx + 1}: codigo=${i.codigo} | nombre=${i.nombre} | laboratorio=${i.laboratorio} | cantidad=${i.cantidad} | valor_unitario=${i.valor_unitario} | lote=${i.lote} | vencimiento=${i.fecha_vencimiento}`
+    ).join('\n');
+    const metaLines = [
+      `Orden: ${this.ocMeta.consecutivo}`,
+      `Sede: ${this.ocMeta.sede}`,
+      `Bodega: ${this.ocMeta.bodega}`,
+      `Proveedor: ${this.ocMeta.proveedor_nombre}`,
+      `NIT: ${this.ocMeta.proveedor_nit}`,
+      `Factura: ${this.ingresoExtra.numero_factura}`,
+      `CUFE: ${this.ingresoExtra.cufe}`,
+      `Invima: ${this.ingresoExtra.registro_invima}`,
+      `CUM: ${this.ingresoExtra.cum}`,
+      `Consecutivo CUM: ${this.ingresoExtra.consecutivo_cum}`,
+      `Presentacion: ${this.ingresoExtra.presentacion}`,
+      `IVA: ${this.ingresoExtra.iva}`,
+      `Temperatura: ${this.ingresoExtra.temperatura}`,
+      `Criterio de empleo: ${this.ingresoExtra.criterio_empleo}`,
+    ].filter(l => !l.endsWith(': ') && !l.endsWith(': 0')).join('\n');
+    return {
+      referencia: [this.ocMeta.consecutivo, this.ingresoExtra.numero_factura ? `Factura ${this.ingresoExtra.numero_factura}` : ''].filter(Boolean).join(' - '),
+      producto: [items[0]?.nombre ?? 'Ingreso', metaLines, itemLines].filter(Boolean).join('\n'),
+      cantidad: items.reduce((sum, i) => sum + Number(i.cantidad), 0),
+      lote: items[0]?.lote || null,
+      fecha_vencimiento: items[0]?.fecha_vencimiento || null,
+      estado: 'recibido'
+    };
+  }
+
+
+  private emptyOcMeta() {
+    return {
+      consecutivo: '',
+      fecha: '',
+      sede: '',
+      bodega: '',
+      direccion_sede: '',
+      ciudad_sede: '',
+      proveedor_nombre: '',
+      proveedor_nit: '',
+      proveedor_contacto: '',
+      proveedor_telefono: '',
+      proveedor_direccion: '',
+    };
+  }
+
+  private emptyOcItem() {
+    return { codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, lote: '', fecha_vencimiento: '' };
+  }
+
+  private emptyIngresoExtra() {
+    return {
+      numero_factura: '',
+      cufe: '',
+      fecha_recepcion: new Date().toISOString().slice(0, 10),
+      observaciones: '',
+      registro_invima: '',
+      cum: '',
+      consecutivo_cum: '',
+      presentacion: '',
+      iva: 0,
+      temperatura: '',
+      criterio_empleo: '',
+    };
+  }
+
+  private emptyIngreso() {
+    return {
+      referencia: `ING-SEBAS-${Date.now()}`,
+      producto: '',
+      cantidad: 1,
+      lote: '',
+      fecha_vencimiento: '',
+      estado: 'pendiente'
+    };
+  }
+
+  private emptyFactura() {
+    return {
+      numero_factura: '',
+      cufe: '',
+      fecha_emision: new Date().toISOString().slice(0, 10),
+      fecha_recepcion: new Date().toISOString().slice(0, 10),
+      remision: '',
+      proveedor_nombre: '',
+      proveedor_nit: '',
+      proveedor_telefono: '',
+      proveedor_direccion: '',
+      codigo_producto: '',
+      laboratorio: '',
+      presentacion: '',
+      registro_sanitario: '',
+      unidad_medida: 'UN',
+      valor_unitario: 0,
+      descuento: 0,
+      impuesto: 0,
+      subtotal: 0,
+      total: 0,
+      forma_pago: '',
+      medio_pago: '',
+      observaciones: ''
+    };
+  }
+}
