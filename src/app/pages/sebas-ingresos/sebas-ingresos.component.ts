@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 
@@ -9,7 +9,7 @@ import { ApiService } from '../../core/api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sebas-ingresos.component.html',
   styleUrls: ['./sebas-ingresos.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, DatePipe]
 })
 export class SebasIngresosComponent implements OnInit {
   readonly message = signal('');
@@ -20,6 +20,12 @@ export class SebasIngresosComponent implements OnInit {
   readonly todasLasOrdenes = signal<any[]>([]);
   readonly ordenesFiltradas = signal<any[]>([]);
   readonly ordenSeleccionada = signal<any>(null);
+
+  // ── Lista de ingresos existentes ──────────────────────────────
+  readonly cargandoIngresos = signal(false);
+  readonly todosLosIngresos = signal<any[]>([]);
+  readonly ingresosFiltrados = signal<any[]>([]);
+  readonly expandedIngreso = signal<number | null>(null);
 
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
   ocSearch = '';
@@ -34,7 +40,94 @@ export class SebasIngresosComponent implements OnInit {
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
+    this.cargarIngresos();
     this.cargarOrdenes();
+  }
+
+  // ── Carga y filtrado de ingresos existentes ───────────────────
+  async cargarIngresos() {
+    this.cargandoIngresos.set(true);
+    try {
+      const resp: any = await this.api.get<any>('/ingresos');
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      const enriquecidos = lista.map(ing => this.enriquecerIngreso(ing));
+      this.todosLosIngresos.set(enriquecidos);
+      this.aplicarFiltro();
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudieron cargar los ingresos.');
+    } finally {
+      this.cargandoIngresos.set(false);
+    }
+  }
+
+  private enriquecerIngreso(ing: any): any {
+    const texto: string = ing.producto || '';
+    const meta = this.parseMetaTexto(texto);
+    const items = this.parseItemsTexto(texto);
+    return {
+      ...ing,
+      _proveedor: meta['Proveedor'] || '',
+      _sede: meta['Sede'] || '',
+      _orden: meta['Orden'] || '',
+      _laboratorio: meta['Laboratorio'] || (items[0]?.laboratorio || ''),
+      _items_count: items.length,
+      _primer_producto: items[0]?.nombre || '',
+      _items: items,
+    };
+  }
+
+  private parseMetaTexto(texto: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const line of texto.split('\n')) {
+      if (line.startsWith('Item ')) continue;
+      const idx = line.indexOf(':');
+      if (idx > 0) result[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    }
+    return result;
+  }
+
+  private parseItemsTexto(texto: string): any[] {
+    const items: any[] = [];
+    let i = 1;
+    while (true) {
+      const prefix = `Item ${i}:`;
+      const lineIdx = texto.indexOf(prefix);
+      if (lineIdx === -1) break;
+      const lineEnd = texto.indexOf('\n', lineIdx);
+      const linea = lineEnd === -1 ? texto.slice(lineIdx + prefix.length) : texto.slice(lineIdx + prefix.length, lineEnd);
+      const item: any = {};
+      linea.split('|').forEach(part => {
+        const eq = part.indexOf('=');
+        if (eq > 0) item[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+      });
+      items.push(item);
+      i++;
+    }
+    return items;
+  }
+
+  aplicarFiltro() {
+    let lista = this.todosLosIngresos();
+    const f = this.filter;
+    if (this.filterType() === 'numero' && f.numero_oc.trim()) {
+      const term = f.numero_oc.trim().toLowerCase();
+      lista = lista.filter(ing =>
+        (ing.referencia || '').toLowerCase().includes(term) ||
+        (ing._orden || '').toLowerCase().includes(term)
+      );
+    } else if (this.filterType() === 'laboratorio' && f.laboratorio.trim()) {
+      const term = f.laboratorio.trim().toLowerCase();
+      lista = lista.filter(ing => (ing._laboratorio || '').toLowerCase().includes(term));
+    } else if (this.filterType() === 'fecha') {
+      if (f.fecha_desde) lista = lista.filter(ing => ing.fecha_ingreso >= f.fecha_desde);
+      if (f.fecha_hasta) lista = lista.filter(ing => ing.fecha_ingreso <= f.fecha_hasta);
+    }
+    this.ingresosFiltrados.set(lista);
+  }
+
+  toggleExpandIngreso(id: number, event: Event) {
+    event.stopPropagation();
+    this.expandedIngreso.set(this.expandedIngreso() === id ? null : id);
   }
 
   async cargarOrdenes() {
@@ -173,10 +266,12 @@ export class SebasIngresosComponent implements OnInit {
   setFilterType(type: 'numero' | 'fecha' | 'laboratorio') {
     this.filterType.set(type);
     this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+    this.aplicarFiltro();
   }
 
   clearFilter() {
     this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+    this.aplicarFiltro();
   }
 
   async crearIngreso() {

@@ -9,13 +9,16 @@
       @if (message()) { <div class="success-box">{{ message() }}</div> }
       @if (error()) { <div class="error-box">{{ error() }}</div> }
 
-      <!-- ══ BUSCADOR DE INGRESOS ══════════════════════════════════ -->
+      <!-- ══ LISTADO DE INGRESOS EXISTENTES ════════════════════════ -->
       <div class="card">
-        <div class="po-section-title">Buscar ingresos</div>
+        <div class="section-header-row">
+          <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Ingresos registrados</div>
+          <button class="btn secondary" style="font-size:0.82rem;padding:0.35rem 0.9rem" (click)="cargarIngresos()">Actualizar</button>
+        </div>
 
-        <div class="filter-type-row">
+        <div class="filter-type-row" style="margin-top:0.75rem">
           <button class="filter-pill" [class.active]="filterType() === 'numero'"
-            (click)="setFilterType('numero')">Numero de orden</button>
+            (click)="setFilterType('numero')">N° / Referencia</button>
           <button class="filter-pill" [class.active]="filterType() === 'fecha'"
             (click)="setFilterType('fecha')">Fecha</button>
           <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
@@ -24,20 +27,93 @@
 
         <div class="filter-input-row">
           @if (filterType() === 'numero') {
-            <label>Numero de orden<input [(ngModel)]="filter.numero_oc" placeholder="OC-..."></label>
+            <label>Número / Referencia / Orden
+              <input [(ngModel)]="filter.numero_oc" placeholder="ING-SEBAS-... o OC-..." (ngModelChange)="aplicarFiltro()">
+            </label>
           }
           @if (filterType() === 'fecha') {
-            <label>Desde<input type="date" [(ngModel)]="filter.fecha_desde"></label>
-            <label>Hasta<input type="date" [(ngModel)]="filter.fecha_hasta"></label>
+            <label>Desde<input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="aplicarFiltro()"></label>
+            <label>Hasta<input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="aplicarFiltro()"></label>
           }
           @if (filterType() === 'laboratorio') {
-            <label>Laboratorio<input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio"></label>
+            <label>Laboratorio
+              <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="aplicarFiltro()">
+            </label>
           }
           <button class="btn secondary" style="align-self:flex-end;padding:0.45rem 1rem;font-size:0.85rem" (click)="clearFilter()">Limpiar</button>
         </div>
 
-        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;">
-          <button class="modo-btn" [class.active]="modo() === 'con_orden'" (click)="activarConOrden()">Con orden</button>
+        @if (cargandoIngresos()) {
+          <p class="empty-msg">Cargando ingresos...</p>
+        } @else if (ingresosFiltrados().length === 0) {
+          <p class="empty-msg">No hay ingresos registrados con los criterios actuales.</p>
+        } @else {
+          <div class="ing-list" style="margin-top:0.75rem">
+            @for (ing of ingresosFiltrados(); track ing.id_ingreso) {
+              <div class="ing-card" [class.expanded]="expandedIngreso() === ing.id_ingreso">
+                <div class="ing-card-main" (click)="toggleExpandIngreso(ing.id_ingreso, $event)" style="cursor:pointer">
+                  <div class="ing-card-left">
+                    <span class="ing-ref">{{ ing.referencia }}</span>
+                    <span class="ing-meta">
+                      {{ ing.fecha_ingreso | date:'dd/MM/yyyy' }}
+                      @if (ing._proveedor) { &nbsp;·&nbsp; <span class="tag-proveedor">{{ ing._proveedor }}</span> }
+                      @if (ing._orden) { &nbsp;·&nbsp; {{ ing._orden }} }
+                    </span>
+                    @if (ing._primer_producto) {
+                      <span class="ing-preview-prod">
+                        {{ ing._items_count > 1 ? ing._items_count + ' items: ' : '' }}{{ ing._primer_producto }}
+                        @if (ing._items_count > 1) { <span style="color:#9ca3af">…</span> }
+                      </span>
+                    }
+                    @if (ing.creado_por_nombre) {
+                      <span class="ing-creador">Registrado por: {{ ing.creado_por_nombre }}</span>
+                    }
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0">
+                    <span class="ing-badge"
+                      [class.badge-recibido]="ing.estado==='recibido'"
+                      [class.badge-pendiente]="ing.estado==='pendiente'"
+                      [class.badge-almacenado]="ing.estado==='almacenado'"
+                      [class.badge-cancelado]="ing.estado==='cancelado'">
+                      {{ ing.estado }}
+                    </span>
+                    <span style="font-size:0.8rem;font-weight:600">{{ ing.cantidad }} uds.</span>
+                  </div>
+                </div>
+                @if (expandedIngreso() === ing.id_ingreso && ing._items?.length > 0) {
+                  <div class="ing-expand-panel" (click)="$event.stopPropagation()">
+                    <table class="preview-table">
+                      <thead>
+                        <tr><th>Código</th><th>Nombre</th><th>Laboratorio</th><th>Lote</th><th style="text-align:right">Cantidad</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (it of ing._items; track $index) {
+                          <tr>
+                            <td>{{ it['codigo'] || '—' }}</td>
+                            <td>{{ it['nombre'] || '—' }}</td>
+                            <td>{{ it['laboratorio'] || '—' }}</td>
+                            <td>{{ it['lote'] || '—' }}</td>
+                            <td style="text-align:right">{{ it['cantidad'] || '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div style="font-size:0.8rem;color:#9ca3af;margin-top:0.5rem">
+            {{ ingresosFiltrados().length }} de {{ todosLosIngresos().length }} ingresos
+          </div>
+        }
+      </div>
+
+      <!-- ══ NUEVO INGRESO ══════════════════════════════════════════ -->
+      <div class="card">
+        <div class="po-section-title">Registrar nuevo ingreso</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <button class="modo-btn" [class.active]="modo() === 'con_orden'" (click)="activarConOrden()">Con orden de compra</button>
           <button class="modo-btn" [class.active]="modo() === 'sin_orden'" (click)="activarSinOrden()">Sin orden</button>
         </div>
       </div>
