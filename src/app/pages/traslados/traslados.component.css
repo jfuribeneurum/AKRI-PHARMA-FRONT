@@ -1,0 +1,108 @@
+/* ── búsqueda ──────────────────────────────────────────────── */
+.search-row { display:flex; gap:0.75rem; align-items:flex-end; margin-bottom:0.75rem; }
+.search-row input {
+  flex:1; padding:0.45rem 0.65rem; border:1px solid var(--color-border,#d1d5db);
+  border-radius:6px; font-size:0.88rem; background:var(--color-surface,#fff); color:inherit;
+}
+.search-row input:focus { outline:2px solid var(--color-primary,#2563eb); outline-offset:-1px; }
+
+/* ── paso ─────────────────────────────────────────────────── */
+.step-header { display:flex; align-items:center; gap:0.65rem; margin-bottom:1rem; }
+.step-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.6rem; height:1.6rem; border-radius:50%;
+  background:var(--color-primary,#2563eb); color:#fff;
+  font-size:0.78rem; font-weight:700; flex-shrink:0;
+}
+.po-section-title {
+  font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--color-primary,#2563eb); border-bottom:2px solid var(--color-primary,#2563eb);
+  padding-bottom:0.35rem; margin-bottom:1rem;
+}
+
+/* ── tabla ────────────────────────────────────────────────── */
+.items-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+.items-table th {
+  background:var(--color-surface-2,#f3f4f6); padding:0.5rem 0.6rem;
+  text-align:left; font-weight:600; font-size:0.78rem; white-space:nowrap;
+}
+.items-table td { padding:0.35rem 0.5rem; border-bottom:1px solid var(--color-border,#e5e7eb); vertical-align:middle; }
+.items-table tr:last-child td { border-bottom:none; }
+.items-table select,
+.items-table input[type=number],
+.items-table input[type=text] {
+  width:100%; padding:0.3rem 0.45rem; border:1px solid var(--color-border,#d1d5db);
+  border-radius:4px; font-size:0.85rem; background:var(--color-surface,#fff); color:inherit;
+}
+.items-table select:focus,
+.items-table input:focus { outline:2px solid var(--color-primary,#2563eb); outline-offset:-1px; }
+.field-readonly { background:var(--color-surface-2,#f3f4f6) !important; color:#6b7280 !important; border-color:transparent !important; }
+
+.text-muted { color:#6b7280; font-size:0.82rem; }
+.text-hint  { font-size:0.72rem; color:#6b7280; display:block; margin-top:2px; }
+.optional   { font-size:0.72rem; font-weight:400; text-transform:none; letter-spacing:0; }
+.cant-warn  { color:#c2410c; font-weight:700; }
+.stock-count { font-size:0.8rem; color:#9ca3af; margin-top:0.5rem; }
+
+/* ── fila seleccionable ───────────────────────────────────── */
+.row-selectable { cursor:pointer; transition:background 0.12s; }
+.row-selectable:hover { background:var(--row-hover,#eff6ff); }
+
+/* ── seleccionado banner ──────────────────────────────────── */
+.selected-banner {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;
+  padding:0.75rem 1rem; background:var(--banner-bg,#eff6ff);
+  border:1.5px solid var(--color-primary,#2563eb);
+  border-radius:8px; margin-top:0.75rem;
+}
+.selected-banner-left { display:flex; flex-direction:column; gap:0.25rem; }
+.selected-nombre { font-weight:700; font-size:0.95rem; }
+.selected-meta { font-size:0.82rem; color:#6b7280; }
+.btn-deselect { background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.85rem; font-weight:700; padding:0.15rem 0.25rem; white-space:nowrap; }
+
+/* ── badges vencimiento ───────────────────────────────────── */
+.badge-vence-ok   { color:#065f46; background:#d1fae5; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
+.badge-vence-warn { color:#92400e; background:#fef3c7; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
+.badge-vence-bad  { color:#991b1b; background:#fee2e2; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
+
+/* ── resumen ──────────────────────────────────────────────── */
+.resumen-traslado {
+  display:flex; align-items:baseline; gap:0.6rem; flex-wrap:wrap;
+  margin-top:1rem; padding:0.65rem 1rem;
+  background:var(--color-surface-2,#f3f4f6); border-radius:8px;
+  font-size:0.88rem; border-left:3px solid var(--color-primary,#2563eb);
+}
+.resumen-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--color-primary,#2563eb); }
+
+/* ── botón traslado ───────────────────────────────────────── */
+.btn-traslado { background:var(--color-primary,#2563eb) !important; border-color:var(--color-primary,#2563eb) !important; color:#fff !important; }
+.btn-traslado:hover:not(:disabled) { opacity:0.88; }
+.btn-traslado:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ── vacío ────────────────────────────────────────────────── */
+.empty-msg { text-align:center; color:#9ca3af; padding:2.5rem; font-size:0.9rem; }
+
+/* ── sección ──────────────────────────────────────────────── */
+.po-section { margin-bottom:1.5rem; }
+
+/* ══ DARK MODE ══════════════════════════════════════════════ */
+:host-context([data-theme="dark"]) {
+  --row-hover: rgba(96,165,250,0.07);
+  --banner-bg: rgba(96,165,250,0.08);
+}
+:host-context([data-theme="dark"]) .step-badge { background:var(--info,#2563eb); }
+:host-context([data-theme="dark"]) .text-muted  { color:var(--muted); }
+:host-context([data-theme="dark"]) .text-hint   { color:var(--muted); }
+:host-context([data-theme="dark"]) .stock-count { color:var(--muted); }
+:host-context([data-theme="dark"]) .empty-msg   { color:var(--muted); }
+:host-context([data-theme="dark"]) .cant-warn   { color:var(--accent); }
+:host-context([data-theme="dark"]) .selected-meta  { color:var(--muted); }
+:host-context([data-theme="dark"]) .btn-deselect   { color:var(--danger); }
+:host-context([data-theme="dark"]) .selected-banner { border-color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .field-readonly  { color:var(--muted) !important; background:rgba(255,255,255,0.05) !important; }
+:host-context([data-theme="dark"]) .badge-vence-ok   { color:#6EE7B7; background:rgba(52,211,153,0.12); }
+:host-context([data-theme="dark"]) .badge-vence-warn { color:#FCD34D; background:rgba(251,191,36,0.12); }
+:host-context([data-theme="dark"]) .badge-vence-bad  { color:#FCA5A5; background:rgba(248,113,113,0.12); }
+:host-context([data-theme="dark"]) .resumen-traslado { background:rgba(255,255,255,0.04); border-color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .resumen-label    { color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .btn-traslado { background:var(--info,#2563eb) !important; border-color:var(--info,#2563eb) !important; }

@@ -26,6 +26,10 @@
       padding-bottom:0.35rem; margin-bottom:1rem;
     }
     .empty-msg { text-align:center; color:#9ca3af; padding:2rem; font-size:0.9rem; }
+    .text-muted { color:#6b7280; font-size:0.82rem; }
+    .text-hint  { font-size:0.72rem; color:#6b7280; display:block; margin-top:2px; }
+    .btn-accent { background:#f97316 !important; border-color:#f97316 !important; color:#fff !important; }
+    .btn-accent:hover:not(:disabled) { background:#ea6c0a !important; border-color:#ea6c0a !important; }
     .badge-vence-ok { color:#065f46; background:#d1fae5; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
     .badge-vence-warn { color:#92400e; background:#fef3c7; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
     .badge-vence-bad { color:#991b1b; background:#fee2e2; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
@@ -42,3 +46,7 @@
     :host-context([data-theme="dark"]) .badge-vence-warn { color: #FCD34D; background: rgba(251,191,36,0.12); }
     :host-context([data-theme="dark"]) .badge-vence-bad { color: #FCA5A5; background: rgba(248,113,113,0.12); }
     :host-context([data-theme="dark"]) .cant-warn { color: var(--accent); }
+    :host-context([data-theme="dark"]) .text-muted { color: var(--muted); }
+    :host-context([data-theme="dark"]) .text-hint  { color: var(--muted); }
+    :host-context([data-theme="dark"]) .items-table input[readonly] { color: var(--muted); background: var(--color-surface-2, rgba(255,255,255,0.05)); }
+    :host-context([data-theme="dark"]) .selected-banner strong { color: var(--accent); }

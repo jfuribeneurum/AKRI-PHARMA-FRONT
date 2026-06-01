@@ -31,6 +31,7 @@ export const routes: Routes = [
       { path: 'devolucion-pedido',   loadComponent: () => import('./pages/devolucion-pedido/devolucion-pedido.component').then(m => m.DevolucionPedidoComponent) },
       { path: 'entrada',             loadComponent: () => import('./pages/movimiento-entrada/movimiento-entrada.component').then(m => m.MovimientoEntradaComponent) },
       { path: 'salida',              loadComponent: () => import('./pages/movimiento-salida/movimiento-salida.component').then(m => m.MovimientoSalidaComponent) },
+      { path: 'traslados',           loadComponent: () => import('./pages/traslados/traslados.component').then(m => m.TrasladosComponent) },
       { path: 'pacientes',           loadComponent: () => import('./pages/pacientes/pacientes.component').then(m => m.PacientesComponent) },
       { path: 'ciudades',            loadComponent: () => import('./pages/ciudades/ciudades.component').then(m => m.CiudadesComponent) },
       { path: 'trazabilidad',        loadComponent: () => import('./pages/trazabilidad/trazabilidad.component').then(m => m.TrazabilidadComponent) }

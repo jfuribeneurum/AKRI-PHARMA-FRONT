@@ -41,7 +41,7 @@
                 @for (item of filteredStock(); track item.id_lote) {
                   <tr class="row-selectable" [class.row-selected]="loteSeleccionado()?.id_lote === item.id_lote" (click)="seleccionar(item)">
                     <td><strong>{{ item.nombre_comercial }}</strong></td>
-                    <td style="color:#6b7280;font-size:0.82rem">{{ item.sku }}</td>
+                    <td class="text-muted">{{ item.sku }}</td>
                     <td>{{ item.numero_lote }}</td>
                     <td>
                       <span [class]="vencClass(item.dias_para_vencer)">
@@ -56,7 +56,7 @@
                       </span>
                     </td>
                     <td>
-                      <button class="btn" style="padding:0.2rem 0.55rem;font-size:0.78rem;background:#f97316;border-color:#f97316"
+                      <button class="btn btn-accent" style="padding:0.2rem 0.55rem;font-size:0.78rem"
                         (click)="$event.stopPropagation(); seleccionar(item)">
                         Seleccionar
                       </button>
@@ -135,7 +135,7 @@
                     <input type="number" [(ngModel)]="form.cantidad" min="0.001" step="1"
                       [max]="loteSeleccionado().cantidad_disponible"
                       (ngModelChange)="clampCantidad()">
-                    <span style="font-size:0.72rem;color:#6b7280">Máx: {{ loteSeleccionado().cantidad_disponible }}</span>
+                    <span class="text-hint">Máx: {{ loteSeleccionado().cantidad_disponible }}</span>
                   </td>
                   <td style="min-width:250px">
                     <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Venta al mostrador, merma por deterioro...">
@@ -146,7 +146,7 @@
           </div>
 
           <div class="toolbar" style="margin-top:1rem">
-            <button class="btn" style="background:#f97316;border-color:#f97316" [disabled]="saving()" (click)="registrar()">
+            <button class="btn btn-accent" [disabled]="saving()" (click)="registrar()">
               {{ saving() ? 'Registrando...' : 'Registrar salida' }}
             </button>
             <button class="btn secondary" (click)="deseleccionar()">Cancelar</button>

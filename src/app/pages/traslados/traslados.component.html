@@ -1,0 +1,199 @@
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Traslados de inventario</h1>
+      <p class="page-subtitle">Mueve existencias de una bodega o ubicación a otra dentro del mismo inventario.</p>
+    </div>
+    <div class="toolbar" style="margin-bottom:0">
+      <button class="btn secondary" (click)="cargarStock()">Actualizar</button>
+    </div>
+  </div>
+
+  @if (message()) { <div class="success-box">{{ message() }}</div> }
+  @if (error())   { <div class="error-box">{{ error() }}</div> }
+
+  <!-- ══ PASO 1: SELECCIONAR LOTE ORIGEN ══════════════════════════ -->
+  <div class="card">
+    <div class="step-header">
+      <span class="step-badge">1</span>
+      <span class="po-section-title" style="margin-bottom:0;border-bottom:none">Seleccionar lote de origen</span>
+    </div>
+
+    <div class="search-row">
+      <input
+        [(ngModel)]="searchText"
+        (ngModelChange)="filtrar()"
+        placeholder="Buscar por producto, SKU, lote o bodega..."
+      >
+    </div>
+
+    @if (loteSeleccionado()) {
+      <div class="selected-banner">
+        <div class="selected-banner-left">
+          <span class="selected-nombre">{{ loteSeleccionado().nombre_comercial }}</span>
+          <span class="selected-meta">
+            Lote: <strong>{{ loteSeleccionado().numero_lote }}</strong>
+            &nbsp;·&nbsp;
+            {{ loteSeleccionado().almacen }} › {{ loteSeleccionado().ubicacion }}
+            &nbsp;·&nbsp;
+            Disponible: <strong>{{ loteSeleccionado().cantidad_disponible }}</strong> ud(s)
+          </span>
+        </div>
+        <button class="btn-deselect" (click)="deseleccionar()" title="Cambiar selección">✕ Cambiar</button>
+      </div>
+    } @else {
+      @if (loading()) {
+        <p class="empty-msg">Cargando inventario...</p>
+      } @else if (filteredStock().length === 0) {
+        <p class="empty-msg">No se encontraron lotes con stock disponible.</p>
+      } @else {
+        <div style="overflow-x:auto; margin-top:0.5rem">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Lote</th>
+                <th>Vencimiento</th>
+                <th>Bodega origen</th>
+                <th>Ubicación</th>
+                <th style="text-align:right">Disponible</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of filteredStock(); track item.id_lote + '-' + item.id_ubicacion) {
+                <tr class="row-selectable" (click)="seleccionar(item)">
+                  <td><strong>{{ item.nombre_comercial }}</strong></td>
+                  <td class="text-muted">{{ item.sku }}</td>
+                  <td>{{ item.numero_lote }}</td>
+                  <td>
+                    <span [class]="vencClass(item.dias_para_vencer)">
+                      {{ item.fecha_vencimiento | date:'dd/MM/yyyy' }}
+                    </span>
+                  </td>
+                  <td>{{ item.almacen }}</td>
+                  <td class="text-muted">{{ item.ubicacion }}</td>
+                  <td style="text-align:right">
+                    <span [class.cant-warn]="item.cantidad_disponible <= 10">
+                      {{ item.cantidad_disponible }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-select" style="padding:0.2rem 0.65rem;font-size:0.78rem"
+                      (click)="$event.stopPropagation(); seleccionar(item)">
+                      Seleccionar
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="stock-count">{{ filteredStock().length }} lote(s) con stock disponible</p>
+      }
+    }
+  </div>
+
+  <!-- ══ PASO 2: CONFIGURAR TRASLADO ══════════════════════════════ -->
+  @if (loteSeleccionado()) {
+    <div class="card">
+      <div class="step-header">
+        <span class="step-badge">2</span>
+        <span class="po-section-title" style="margin-bottom:0;border-bottom:none">Configurar traslado</span>
+      </div>
+
+      <!-- Información de origen (readonly) -->
+      <div class="po-section-title" style="margin-top:1rem">Origen</div>
+      <div style="overflow-x:auto; margin-bottom:1.25rem">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Lote</th>
+              <th>Vencimiento</th>
+              <th>Bodega</th>
+              <th>Ubicación</th>
+              <th style="text-align:right">Stock disponible</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>{{ loteSeleccionado().nombre_comercial }}</strong></td>
+              <td>{{ loteSeleccionado().numero_lote }}</td>
+              <td>
+                <span [class]="vencClass(loteSeleccionado().dias_para_vencer)">
+                  {{ loteSeleccionado().fecha_vencimiento | date:'dd/MM/yyyy' }}
+                </span>
+              </td>
+              <td><input [value]="loteSeleccionado().almacen" readonly class="field-readonly"></td>
+              <td><input [value]="loteSeleccionado().ubicacion" readonly class="field-readonly"></td>
+              <td style="text-align:right"><strong>{{ loteSeleccionado().cantidad_disponible }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Configuración del traslado -->
+      <div class="po-section-title">Destino y cantidad</div>
+      <div style="overflow-x:auto">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Bodega / Ubicación destino</th>
+              <th style="text-align:right">Cantidad a trasladar</th>
+              <th>Motivo / Referencia <span class="optional">(opcional)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="min-width:280px">
+                <select [(ngModel)]="form.id_ubicacion_destino">
+                  <option [value]="0">-- Seleccionar destino --</option>
+                  @for (u of ubicacionesDestino(); track u.id_ubicacion) {
+                    <option [value]="u.id_ubicacion">{{ u.almacen }} › {{ u.nombre }}</option>
+                  }
+                </select>
+              </td>
+              <td style="min-width:160px; vertical-align:top">
+                <input
+                  type="number"
+                  [(ngModel)]="form.cantidad"
+                  min="1"
+                  [attr.max]="loteSeleccionado().cantidad_disponible"
+                  step="1"
+                  (ngModelChange)="clampCantidad()"
+                  style="text-align:right"
+                >
+                <span class="text-hint">Máx: {{ loteSeleccionado().cantidad_disponible }}</span>
+              </td>
+              <td style="min-width:260px">
+                <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Reubicación por mantenimiento...">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumen del traslado -->
+      @if (form.id_ubicacion_destino && form.cantidad > 0) {
+        <div class="resumen-traslado">
+          <span class="resumen-label">Resumen:</span>
+          <span>
+            <strong>{{ form.cantidad }}</strong> ud(s) de
+            <strong>{{ loteSeleccionado().nombre_comercial }}</strong>
+            desde <strong>{{ loteSeleccionado().almacen }} › {{ loteSeleccionado().ubicacion }}</strong>
+            → <strong>{{ nombreDestino() }}</strong>
+          </span>
+        </div>
+      }
+
+      <div class="toolbar" style="margin-top:1.25rem">
+        <button class="btn btn-traslado" [disabled]="saving()" (click)="registrar()">
+          {{ saving() ? 'Registrando...' : 'Registrar traslado' }}
+        </button>
+        <button class="btn secondary" (click)="deseleccionar()">Cancelar</button>
+      </div>
+    </div>
+  }
+</section>

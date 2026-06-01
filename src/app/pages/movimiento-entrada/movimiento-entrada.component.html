@@ -41,7 +41,7 @@
                 @for (item of filteredStock(); track item.id_lote) {
                   <tr class="row-selectable" [class.row-selected]="loteSeleccionado()?.id_lote === item.id_lote" (click)="seleccionar(item)">
                     <td><strong>{{ item.nombre_comercial }}</strong></td>
-                    <td style="color:#6b7280;font-size:0.82rem">{{ item.sku }}</td>
+                    <td class="text-muted">{{ item.sku }}</td>
                     <td>{{ item.numero_lote }}</td>
                     <td>
                       <span [class]="vencClass(item.dias_para_vencer)">
