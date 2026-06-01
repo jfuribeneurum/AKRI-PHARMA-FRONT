@@ -28,3 +28,13 @@
     .badge-vence-ok { color:#065f46; background:#d1fae5; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
     .badge-vence-warn { color:#92400e; background:#fef3c7; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
     .badge-vence-bad { color:#991b1b; background:#fee2e2; padding:0.1rem 0.45rem; border-radius:99px; font-size:0.72rem; font-weight:600; }
+
+    /* ── dark mode ───────────────────────────────────────────── */
+    :host-context([data-theme="dark"]) .row-selectable:hover { background: rgba(96,165,250,0.07); }
+    :host-context([data-theme="dark"]) .row-selected { background: rgba(96,165,250,0.14) !important; }
+    :host-context([data-theme="dark"]) .selected-banner { background: rgba(96,165,250,0.08); border-color: var(--info); }
+    :host-context([data-theme="dark"]) .btn-deselect { color: var(--danger); }
+    :host-context([data-theme="dark"]) .empty-msg { color: var(--muted); }
+    :host-context([data-theme="dark"]) .badge-vence-ok { color: #6EE7B7; background: rgba(52,211,153,0.12); }
+    :host-context([data-theme="dark"]) .badge-vence-warn { color: #FCD34D; background: rgba(251,191,36,0.12); }
+    :host-context([data-theme="dark"]) .badge-vence-bad { color: #FCA5A5; background: rgba(248,113,113,0.12); }

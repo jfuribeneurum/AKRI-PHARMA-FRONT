@@ -54,3 +54,15 @@
     .dev-input:focus { outline: 2px solid #f97316 !important; }
     /* empty */
     .empty-msg { text-align: center; color: #9ca3af; padding: 2rem; font-size: 0.9rem; }
+
+    /* ── dark mode ───────────────────────────────────────────── */
+    :host-context([data-theme="dark"]) .ing-item:hover { background: rgba(96,165,250,0.07); }
+    :host-context([data-theme="dark"]) .ing-meta { color: var(--muted); }
+    :host-context([data-theme="dark"]) .badge-recibido { background: rgba(52,211,153,0.12); color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .badge-pendiente { background: rgba(251,191,36,0.12); color: #FCD34D; }
+    :host-context([data-theme="dark"]) .badge-almacenado { background: rgba(96,165,250,0.12); color: #93C5FD; }
+    :host-context([data-theme="dark"]) .badge-cancelado { background: rgba(248,113,113,0.12); color: #FCA5A5; }
+    :host-context([data-theme="dark"]) .selected-banner { background: rgba(96,165,250,0.08); border-color: var(--info); }
+    :host-context([data-theme="dark"]) .btn-deselect { color: var(--danger); }
+    :host-context([data-theme="dark"]) .empty-msg { color: var(--muted); }
+    :host-context([data-theme="dark"]) .dev-input { border-color: var(--accent) !important; background: rgba(249,115,22,0.08) !important; color: var(--accent) !important; }

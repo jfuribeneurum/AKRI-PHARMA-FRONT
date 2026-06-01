@@ -72,3 +72,12 @@
     .fields-table input, .fields-table textarea { width: 100%; padding: 0.3rem 0.45rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 4px; font-size: 0.85rem; background: var(--color-surface, #fff); color: inherit; }
     .fields-table input:focus, .fields-table textarea:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
     .fields-table textarea { min-height: 64px; resize: vertical; }
+
+    /* ── dark mode ───────────────────────────────────────────── */
+    :host-context([data-theme="dark"]) .oc-item:hover { background: rgba(139,92,246,0.07); }
+    :host-context([data-theme="dark"]) .oc-item.selected { background: rgba(139,92,246,0.12); border-color: var(--primary); }
+    :host-context([data-theme="dark"]) .oc-meta { color: var(--muted); }
+    :host-context([data-theme="dark"]) .badge-borrador { background: rgba(251,191,36,0.12); color: #FCD34D; }
+    :host-context([data-theme="dark"]) .badge-aprobada { background: rgba(52,211,153,0.12); color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .selected-banner { background: rgba(139,92,246,0.08); border-color: var(--primary); }
+    :host-context([data-theme="dark"]) .btn-deselect { color: var(--danger); }

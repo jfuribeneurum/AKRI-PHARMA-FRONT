@@ -214,3 +214,41 @@
       animation: spin .6s linear infinite; display: inline-block;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── dark mode ───────────────────────────────────────────── */
+    :host-context([data-theme="dark"]) .row-expanded td { background: rgba(96,165,250,0.06); }
+    :host-context([data-theme="dark"]) .inner-table th { background: var(--surface-muted); color: var(--muted); }
+    :host-context([data-theme="dark"]) .inner-table td { border-bottom-color: var(--line); }
+    :host-context([data-theme="dark"]) .btn-icon { color: var(--muted); }
+    :host-context([data-theme="dark"]) .btn-icon:hover { background: var(--line); }
+    :host-context([data-theme="dark"]) .loading-state,
+    :host-context([data-theme="dark"]) .empty-state { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-modal { background: var(--surface); }
+    :host-context([data-theme="dark"]) .disp-modal__patient { background: var(--surface-muted); border-color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-modal__patient-name { color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-modal__patient-doc { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card { background: var(--surface); border-color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-med-card--done { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); }
+    :host-context([data-theme="dark"]) .disp-med-card__name { color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-med-card__meta { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card__sep { color: var(--line); }
+    :host-context([data-theme="dark"]) .dsm--neutral { background: var(--surface-muted); border-color: var(--line); }
+    :host-context([data-theme="dark"]) .dsm--blue { background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.2); }
+    :host-context([data-theme="dark"]) .dsm--red { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.2); }
+    :host-context([data-theme="dark"]) .dsm--green { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); }
+    :host-context([data-theme="dark"]) .dsm--neutral .dsm__v { color: var(--text); }
+    :host-context([data-theme="dark"]) .dsm--blue .dsm__v { color: var(--info); }
+    :host-context([data-theme="dark"]) .dsm--red .dsm__v { color: var(--danger); }
+    :host-context([data-theme="dark"]) .dsm--green .dsm__v { color: var(--success); }
+    :host-context([data-theme="dark"]) .dsm__l { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card__done-badge { color: var(--success); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.22); }
+    :host-context([data-theme="dark"]) .disp-med-card__stepper { background: var(--surface); border-color: var(--primary); }
+    :host-context([data-theme="dark"]) .stp-btn { background: var(--primary-soft); color: var(--primary); }
+    :host-context([data-theme="dark"]) .stp-btn:hover:not(:disabled) { background: rgba(139,92,246,0.2); }
+    :host-context([data-theme="dark"]) .stp-btn:disabled { color: var(--line); }
+    :host-context([data-theme="dark"]) .stp-input { color: var(--text); background: transparent; }
+    :host-context([data-theme="dark"]) .disp-modal__obs-label { color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-modal__obs-input { border-color: var(--line); color: var(--text); background: var(--surface-muted); }
+    :host-context([data-theme="dark"]) .disp-modal__footer { border-top-color: var(--line); background: var(--surface-muted); }
+    :host-context([data-theme="dark"]) .disp-modal__btn-cancel { background: var(--surface); border-color: var(--line); color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-modal__btn-cancel:hover:not(:disabled) { background: var(--surface-muted); }
