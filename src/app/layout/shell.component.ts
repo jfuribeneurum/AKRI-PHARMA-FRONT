@@ -141,6 +141,7 @@ export class ShellComponent {
     { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },
     { path: '/admin', label: 'Administración', any: ['perm_usuarios_gestionar', 'perm_configuracion'] },
     { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] },
+    { path: '/trazabilidad', label: 'Trazabilidad', any: ['perm_usuarios_gestionar', 'perm_configuracion', 'perm_reportes_operativos'] },
     { path: '/pacientes', label: 'Pacientes HealthSphere', any: [] }
   ];
 

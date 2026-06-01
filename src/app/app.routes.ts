@@ -32,7 +32,8 @@ export const routes: Routes = [
       { path: 'entrada',             loadComponent: () => import('./pages/movimiento-entrada/movimiento-entrada.component').then(m => m.MovimientoEntradaComponent) },
       { path: 'salida',              loadComponent: () => import('./pages/movimiento-salida/movimiento-salida.component').then(m => m.MovimientoSalidaComponent) },
       { path: 'pacientes',           loadComponent: () => import('./pages/pacientes/pacientes.component').then(m => m.PacientesComponent) },
-      { path: 'ciudades',            loadComponent: () => import('./pages/ciudades/ciudades.component').then(m => m.CiudadesComponent) }
+      { path: 'ciudades',            loadComponent: () => import('./pages/ciudades/ciudades.component').then(m => m.CiudadesComponent) },
+      { path: 'trazabilidad',        loadComponent: () => import('./pages/trazabilidad/trazabilidad.component').then(m => m.TrazabilidadComponent) }
     ]
   },
   { path: '**', redirectTo: '' }
