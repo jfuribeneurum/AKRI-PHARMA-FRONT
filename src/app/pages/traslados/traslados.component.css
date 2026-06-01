@@ -1,3 +1,19 @@
+/* ── pestañas ─────────────────────────────────────────────── */
+.tab-bar { display:flex; gap:0; border-bottom:2px solid var(--color-border,#e5e7eb); margin-top:1rem; }
+.tab-btn {
+  padding:0.6rem 1.25rem; background:none; border:none; cursor:pointer;
+  font-size:0.88rem; font-weight:600; color:#6b7280;
+  border-bottom:2px solid transparent; margin-bottom:-2px;
+  display:flex; align-items:center; gap:0.45rem; transition:color 0.15s;
+}
+.tab-btn:hover { color:var(--color-primary,#2563eb); }
+.tab-btn.active { color:var(--color-primary,#2563eb); border-bottom-color:var(--color-primary,#2563eb); }
+.tab-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#ef4444; color:#fff; border-radius:99px;
+  font-size:0.68rem; font-weight:700; min-width:1.1rem; height:1.1rem; padding:0 0.25rem;
+}
+
 /* ── búsqueda ──────────────────────────────────────────────── */
 .search-row { display:flex; gap:0.75rem; align-items:flex-end; margin-bottom:0.75rem; }
 .search-row input {
@@ -14,6 +30,7 @@
   background:var(--color-primary,#2563eb); color:#fff;
   font-size:0.78rem; font-weight:700; flex-shrink:0;
 }
+.section-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
 .po-section-title {
   font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
   color:var(--color-primary,#2563eb); border-bottom:2px solid var(--color-primary,#2563eb);
@@ -48,7 +65,7 @@
 .row-selectable { cursor:pointer; transition:background 0.12s; }
 .row-selectable:hover { background:var(--row-hover,#eff6ff); }
 
-/* ── seleccionado banner ──────────────────────────────────── */
+/* ── banner seleccionado ──────────────────────────────────── */
 .selected-banner {
   display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;
   padding:0.75rem 1rem; background:var(--banner-bg,#eff6ff);
@@ -74,30 +91,105 @@
 }
 .resumen-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--color-primary,#2563eb); }
 
-/* ── botón traslado ───────────────────────────────────────── */
-.btn-traslado { background:var(--color-primary,#2563eb) !important; border-color:var(--color-primary,#2563eb) !important; color:#fff !important; }
-.btn-traslado:hover:not(:disabled) { opacity:0.88; }
+/* ── botones ──────────────────────────────────────────────── */
+.btn-traslado   { background:var(--color-primary,#2563eb) !important; border-color:var(--color-primary,#2563eb) !important; color:#fff !important; }
+.btn-traslado:hover:not(:disabled)   { opacity:0.88; }
 .btn-traslado:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-recibir    { background:#059669 !important; border-color:#059669 !important; color:#fff !important; white-space:nowrap; }
+.btn-recibir:hover:not(:disabled)    { opacity:0.88; }
+.btn-recibir:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-rechazar-toggle  { background:#fee2e2 !important; border-color:#fca5a5 !important; color:#b91c1c !important; }
+.btn-rechazar-confirm { background:#dc2626 !important; border-color:#dc2626 !important; color:#fff !important; }
 
 /* ── vacío ────────────────────────────────────────────────── */
 .empty-msg { text-align:center; color:#9ca3af; padding:2.5rem; font-size:0.9rem; }
+.empty-state { text-align:center; padding:3rem 1rem; color:#9ca3af; }
+.empty-icon { font-size:2rem; display:block; margin-bottom:0.5rem; color:#10b981; }
 
-/* ── sección ──────────────────────────────────────────────── */
-.po-section { margin-bottom:1.5rem; }
+/* ── flujo de trazabilidad ────────────────────────────────── */
+.trace-flow {
+  display:flex; align-items:stretch; gap:0; margin:1rem 0 0.5rem;
+  border:1.5px solid var(--color-border,#e5e7eb); border-radius:10px; overflow:hidden;
+}
+.trace-flow-sm { margin:0.75rem 0 0; }
+.trace-node {
+  flex:1; display:flex; flex-direction:column; gap:0.2rem;
+  padding:0.75rem 1.1rem;
+}
+.trace-origin { background:var(--trace-origin-bg,#f0fdf4); border-right:2px solid var(--color-border,#e5e7eb); }
+.trace-destino { background:var(--trace-destino-bg,#eff6ff); }
+.trace-label {
+  font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em;
+  color:var(--color-primary,#2563eb); margin-bottom:0.15rem;
+}
+.trace-origin .trace-label { color:#059669; }
+.trace-bodega { font-size:0.92rem; font-weight:700; }
+.trace-ubic   { font-size:0.78rem; color:#6b7280; }
+.trace-arrow  {
+  display:flex; align-items:center; padding:0 1rem;
+  font-size:1.4rem; font-weight:300; color:var(--color-primary,#2563eb);
+  background:var(--color-surface,#fff);
+}
+
+/* ── tarjeta de traslado pendiente ───────────────────────── */
+.traslado-card {
+  border:1px solid var(--color-border,#e5e7eb); border-radius:10px;
+  margin-bottom:1rem; overflow:hidden;
+}
+.traslado-card-header {
+  display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
+  padding:0.65rem 1rem; background:var(--color-surface-2,#f3f4f6);
+  border-bottom:1px solid var(--color-border,#e5e7eb);
+}
+.traslado-id { font-size:0.8rem; font-weight:700; color:var(--color-primary,#2563eb); }
+.traslado-fecha { font-size:0.78rem; color:#6b7280; margin-left:auto; }
+.traslado-emisor { font-size:0.78rem; }
+
+/* badges estado */
+.badge-estado { padding:0.1rem 0.55rem; border-radius:99px; font-size:0.72rem; font-weight:700; }
+.badge-pendiente { color:#92400e; background:#fef3c7; }
+.badge-recibido  { color:#065f46; background:#d1fae5; }
+.badge-rechazado { color:#991b1b; background:#fee2e2; }
+
+/* detalle */
+.traslado-detalle {
+  display:flex; flex-wrap:wrap; gap:0.5rem 1.5rem;
+  padding:0.85rem 1rem; border-bottom:1px solid var(--color-border,#e5e7eb);
+}
+.detalle-item { display:flex; flex-direction:column; gap:0.1rem; }
+.detalle-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; }
+.detalle-val   { font-size:0.88rem; }
+.cant-highlight { font-size:1rem; font-weight:700; color:var(--color-primary,#2563eb); }
+
+/* acciones */
+.traslado-actions { padding:0.75rem 1rem; }
+.action-obs-row { display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; }
+.obs-input {
+  flex:1; min-width:200px; padding:0.4rem 0.65rem;
+  border:1px solid var(--color-border,#d1d5db); border-radius:6px;
+  font-size:0.85rem; background:var(--color-surface,#fff); color:inherit;
+}
+.obs-input:focus { outline:2px solid var(--color-primary,#2563eb); outline-offset:-1px; }
 
 /* ══ DARK MODE ══════════════════════════════════════════════ */
 :host-context([data-theme="dark"]) {
-  --row-hover: rgba(96,165,250,0.07);
-  --banner-bg: rgba(96,165,250,0.08);
+  --row-hover:        rgba(96,165,250,0.07);
+  --banner-bg:        rgba(96,165,250,0.08);
+  --trace-origin-bg:  rgba(52,211,153,0.07);
+  --trace-destino-bg: rgba(96,165,250,0.07);
 }
-:host-context([data-theme="dark"]) .step-badge { background:var(--info,#2563eb); }
-:host-context([data-theme="dark"]) .text-muted  { color:var(--muted); }
-:host-context([data-theme="dark"]) .text-hint   { color:var(--muted); }
-:host-context([data-theme="dark"]) .stock-count { color:var(--muted); }
-:host-context([data-theme="dark"]) .empty-msg   { color:var(--muted); }
-:host-context([data-theme="dark"]) .cant-warn   { color:var(--accent); }
-:host-context([data-theme="dark"]) .selected-meta  { color:var(--muted); }
-:host-context([data-theme="dark"]) .btn-deselect   { color:var(--danger); }
+:host-context([data-theme="dark"]) .tab-btn         { color:var(--muted); }
+:host-context([data-theme="dark"]) .tab-btn.active  { color:var(--info,#60a5fa); border-bottom-color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .tab-btn:hover   { color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .step-badge      { background:var(--info,#2563eb); }
+:host-context([data-theme="dark"]) .text-muted      { color:var(--muted); }
+:host-context([data-theme="dark"]) .text-hint       { color:var(--muted); }
+:host-context([data-theme="dark"]) .stock-count     { color:var(--muted); }
+:host-context([data-theme="dark"]) .empty-msg       { color:var(--muted); }
+:host-context([data-theme="dark"]) .empty-state     { color:var(--muted); }
+:host-context([data-theme="dark"]) .cant-warn       { color:var(--accent); }
+:host-context([data-theme="dark"]) .selected-meta   { color:var(--muted); }
+:host-context([data-theme="dark"]) .btn-deselect    { color:var(--danger); }
 :host-context([data-theme="dark"]) .selected-banner { border-color:var(--info,#60a5fa); }
 :host-context([data-theme="dark"]) .field-readonly  { color:var(--muted) !important; background:rgba(255,255,255,0.05) !important; }
 :host-context([data-theme="dark"]) .badge-vence-ok   { color:#6EE7B7; background:rgba(52,211,153,0.12); }
@@ -105,4 +197,20 @@
 :host-context([data-theme="dark"]) .badge-vence-bad  { color:#FCA5A5; background:rgba(248,113,113,0.12); }
 :host-context([data-theme="dark"]) .resumen-traslado { background:rgba(255,255,255,0.04); border-color:var(--info,#60a5fa); }
 :host-context([data-theme="dark"]) .resumen-label    { color:var(--info,#60a5fa); }
-:host-context([data-theme="dark"]) .btn-traslado { background:var(--info,#2563eb) !important; border-color:var(--info,#2563eb) !important; }
+:host-context([data-theme="dark"]) .btn-traslado     { background:var(--info,#2563eb) !important; border-color:var(--info,#2563eb) !important; }
+:host-context([data-theme="dark"]) .trace-flow       { border-color:var(--color-border); }
+:host-context([data-theme="dark"]) .trace-origin     { border-color:var(--color-border); }
+:host-context([data-theme="dark"]) .trace-label      { color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .trace-origin .trace-label { color:#34d399; }
+:host-context([data-theme="dark"]) .trace-ubic       { color:var(--muted); }
+:host-context([data-theme="dark"]) .trace-arrow      { color:var(--info,#60a5fa); background:transparent; }
+:host-context([data-theme="dark"]) .traslado-card    { border-color:var(--color-border); }
+:host-context([data-theme="dark"]) .traslado-card-header { background:rgba(255,255,255,0.04); border-color:var(--color-border); }
+:host-context([data-theme="dark"]) .traslado-fecha   { color:var(--muted); }
+:host-context([data-theme="dark"]) .traslado-id      { color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .detalle-label    { color:var(--muted); }
+:host-context([data-theme="dark"]) .cant-highlight   { color:var(--info,#60a5fa); }
+:host-context([data-theme="dark"]) .badge-pendiente  { color:#FCD34D; background:rgba(251,191,36,0.12); }
+:host-context([data-theme="dark"]) .badge-recibido   { color:#6EE7B7; background:rgba(52,211,153,0.12); }
+:host-context([data-theme="dark"]) .badge-rechazado  { color:#FCA5A5; background:rgba(248,113,113,0.12); }
+:host-context([data-theme="dark"]) .btn-rechazar-toggle  { background:rgba(220,38,38,0.12) !important; border-color:rgba(220,38,38,0.3) !important; color:#FCA5A5 !important; }
