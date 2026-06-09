@@ -35,7 +35,7 @@ export class LoginComponent {
 
       localStorage.setItem('akri_token', response.data.token);
       localStorage.setItem('akri_user', JSON.stringify(response.data.user));
-      await this.router.navigate(['/dashboard']);
+      await this.router.navigate(['/module-select']);
     } catch (error: any) {
       this.error.set(error?.error?.message ?? 'No fue posible iniciar sesión');
     } finally {

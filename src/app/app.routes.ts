@@ -4,6 +4,7 @@ import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
+  { path: 'module-select', canActivate: [authGuard], loadComponent: () => import('./pages/module-select/module-select.component').then(m => m.ModuleSelectComponent) },
   {
     path: '',
     component: ShellComponent,
