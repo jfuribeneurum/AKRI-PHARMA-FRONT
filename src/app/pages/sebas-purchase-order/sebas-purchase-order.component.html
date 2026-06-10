@@ -211,6 +211,8 @@
                     <th>Laboratorio</th>
                     <th style="text-align:right">Cantidad</th>
                     <th style="text-align:right">Valor unitario</th>
+                    <th style="text-align:right">Precio venta</th>
+                    <th style="text-align:right">Costo ref.</th>
                     <th style="text-align:right">Valor total</th>
                     <th></th>
                   </tr>
@@ -224,6 +226,8 @@
                       <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
                       <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
                       <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.precio_venta" style="text-align:right;width:110px"></td>
+                      <td><input type="number" min="0" [(ngModel)]="item.costo_referencia" style="text-align:right;width:110px"></td>
                       <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                       <td>
                         @if (items.length > 1) {
@@ -235,7 +239,7 @@
                 </tbody>
                 <tfoot>
                   <tr class="total-row">
-                    <td colspan="6" style="text-align:right">Total</td>
+                    <td colspan="8" style="text-align:right">Total</td>
                     <td class="valor-total-cell">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                     <td></td>
                   </tr>

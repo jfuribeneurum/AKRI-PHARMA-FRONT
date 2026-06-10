@@ -11,6 +11,8 @@ interface OrderItem {
   laboratorio: string;
   cantidad: number;
   valor_unitario: number;
+  precio_venta: number;
+  costo_referencia: number;
 }
 
 @Component({
@@ -62,7 +64,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   };
 
   items: OrderItem[] = [
-    { id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0 }
+    { id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }
   ];
 
   constructor(private readonly api: ApiService) {}
@@ -149,7 +151,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   }
 
   addItem() {
-    this.items.push({ id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0 });
+    this.items.push({ id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 });
   }
 
   removeItem(index: number) {
@@ -208,6 +210,8 @@ export class SebasPurchaseOrderComponent implements OnInit {
           id_producto: Number(i.id_producto) || 1,
           cantidad: Number(i.cantidad),
           precio_unitario: Number(i.valor_unitario),
+          precio_venta: Number(i.precio_venta ?? 0),
+          costo_referencia: Number(i.costo_referencia ?? 0),
           descuento: 0,
           impuesto: 0,
           fecha_requerida: null
