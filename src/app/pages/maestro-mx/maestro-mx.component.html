@@ -75,8 +75,9 @@
               </div>
               <div class="form-grid form-grid-1">
                 <label>
-                  Nombre comercial
-                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca" [class.hs-filled]="form.id_medicamento_hs">
+                  Nombre comercial <span class="field-own-badge">Tu catálogo</span>
+                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca">
+                  <span class="field-hint">Este nombre es el que quedará guardado en tu base de datos de farmacia. Puedes modificarlo libremente.</span>
                 </label>
                 <label>
                   Principio activo
@@ -101,7 +102,12 @@
                 </label>
                 <label>
                   Clasificación
-                  <input [(ngModel)]="form.clasificacion" placeholder="Ej: Analgésico, Antibiótico">
+                  <select [(ngModel)]="form.clasificacion">
+                    <option value="">Seleccionar clasificación</option>
+                    @for (c of clasificaciones(); track c.valor) {
+                      <option [value]="c.valor">{{ c.etiqueta }}</option>
+                    }
+                  </select>
                 </label>
               </div>
             </div>
@@ -112,20 +118,26 @@
               <div class="form-grid form-grid-2">
                 <label>
                   Código interno
-                  <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único">
+                  <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único"
+                    [readOnly]="!!form.id_medicamento_hs"
+                    [class.hs-filled]="form.id_medicamento_hs">
                 </label>
                 <label>
                   Tipo de producto
                   <select [(ngModel)]="form.tipo_producto">
                     <option value="">Seleccionar tipo</option>
                     @for (t of tiposProducto(); track t.valor) {
-                      <option [value]="t.valor">{{ t.etiqueta }}</option>
+                      @if (['medicamento','insumo','dispositivo'].includes(t.valor)) {
+                        <option [value]="t.valor">{{ t.etiqueta }}</option>
+                      }
                     }
                   </select>
                 </label>
                 <label>
                   Unidad de medida
-                  <input [(ngModel)]="form.unidad_medida" placeholder="UND, TAB, CAP, ML…">
+                  <input [(ngModel)]="form.unidad_medida" placeholder="UND, TAB, CAP, ML…"
+                    [readOnly]="!!form.id_medicamento_hs"
+                    [class.hs-filled]="form.id_medicamento_hs">
                 </label>
                 <label>
                   Presentación
@@ -153,8 +165,17 @@
                   </select>
                 </label>
                 <label>
-                  IVA (%)
-                  <input type="number" [(ngModel)]="form.iva" step="0.1" placeholder="0">
+                  IVA
+                  <div class="iva-options">
+                    <label class="iva-radio">
+                      <input type="radio" name="iva_check" [value]="0" [(ngModel)]="form.iva">
+                      No tiene
+                    </label>
+                    <label class="iva-radio">
+                      <input type="radio" name="iva_check" [value]="19" [(ngModel)]="form.iva">
+                      Tiene (19%)
+                    </label>
+                  </div>
                 </label>
                 <label>
                   Precio de venta
@@ -168,7 +189,7 @@
 
               <div class="switch-row" style="margin-top:1rem;gap:1.5rem;">
                 <label style="display:flex;align-items:center;gap:0.4rem;">
-                  <input type="checkbox" [(ngModel)]="form.requiere_receta"> Requiere receta
+                  <input type="checkbox" [(ngModel)]="form.mx_control"> MX de control especial
                 </label>
                 <label style="display:flex;align-items:center;gap:0.4rem;">
                   <input type="checkbox" [(ngModel)]="form.es_controlado"> Controlado

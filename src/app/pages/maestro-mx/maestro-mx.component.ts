@@ -20,6 +20,7 @@ export class MaestroMxComponent implements OnInit {
   laboratorios = signal<any[]>([]);
   formas = signal<any[]>([]);
   tiposProducto = signal<{ valor: string; etiqueta: string }[]>([]);
+  clasificaciones = signal<{ valor: string; etiqueta: string }[]>([]);
 
   message = signal('');
   formMessage = signal('');
@@ -54,13 +55,15 @@ export class MaestroMxComponent implements OnInit {
 
   private async loadLookups() {
     try {
-      const [lookups, tipos] = await Promise.all([
+      const [lookups, tipos, clasifs] = await Promise.all([
         this.api.get<{ success: boolean; data: { laboratorios: any[]; formas: any[] } }>('/products/lookups'),
-        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_producto/activos')
+        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_producto/activos'),
+        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/clasificacion_producto/activos')
       ]);
       this.laboratorios.set(lookups.data.laboratorios ?? []);
       this.formas.set(lookups.data.formas ?? []);
       this.tiposProducto.set(tipos.data ?? []);
+      this.clasificaciones.set(clasifs.data ?? []);
     } catch {
       // non-fatal — dropdowns fallback to empty
     }
@@ -115,7 +118,7 @@ export class MaestroMxComponent implements OnInit {
       iva:                  full.iva_tasa ?? 0,
       precio_venta:         full.precio_venta ?? 0,
       costo_referencia:     full.costo_referencia ?? 0,
-      requiere_receta:      !!full.requiere_receta,
+      mx_control:      !!full.mx_control,
       es_controlado:        !!full.es_controlado,
       requiere_cadena_frio: !!full.requiere_cadena_frio
     };
@@ -202,7 +205,11 @@ export class MaestroMxComponent implements OnInit {
       const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
       this.hsResults.set(lista);
       this.hsNoResults.set(lista.length === 0);
-    } catch {
+    } catch (err: any) {
+      const status = err?.status ?? err?.error?.status;
+      if (status === 401) {
+        this.formError.set('Sesión expirada. Por favor recarga la página.');
+      }
       this.hsNoResults.set(true);
     } finally {
       this.hsSearching.set(false);
@@ -212,10 +219,11 @@ export class MaestroMxComponent implements OnInit {
   selectHsMed(med: any) {
     this.form.id_medicamento_hs = med.id;
     this.form.codigo_interno    = med.codigo ?? '';
-    this.form.nombre_comercial  = med.nombreComercial || med.nombre || '';
+    // nombre_comercial lo escribe el usuario manualmente
     this.form.principio_activo  = med.principioActivo ?? '';
     this.form.concentracion     = med.concentracion ?? '';
     this.form.atc               = med.atc ?? '';
+    this.form.unidad_medida     = med.unidad_dosificacion ?? '';
     this.form.id_forma          = this.matchForma(med.forma_farmaceutica);
     this.hsResults.set([]);
     this.hsSearch = '';
@@ -224,10 +232,14 @@ export class MaestroMxComponent implements OnInit {
 
   private matchForma(hsText: string | null): number | null {
     if (!hsText) return null;
-    const norm = (s: string) => s.toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const norm = (s: string) =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const hsNorm = norm(hsText);
-    const match = this.formas().find(f => hsNorm.includes(norm(f.nombre)));
+    console.log('[matchForma] HS text:', hsText, '| formas:', this.formas().map(f => f.nombre));
+    const match = this.formas().find(f => {
+      const fNorm = norm(f.nombre);
+      return hsNorm.includes(fNorm) || fNorm.includes(hsNorm);
+    });
     return match?.id_forma ?? null;
   }
 
@@ -262,7 +274,7 @@ export class MaestroMxComponent implements OnInit {
       iva_tasa:             Number(this.form.iva ?? 0),
       precio_venta:         Number(this.form.precio_venta ?? 0),
       costo_referencia:     Number(this.form.costo_referencia ?? 0),
-      requiere_receta:      !!this.form.requiere_receta,
+      mx_control:      !!this.form.mx_control,
       es_controlado:        !!this.form.es_controlado,
       requiere_cadena_frio: !!this.form.requiere_cadena_frio
     };
@@ -325,7 +337,7 @@ export class MaestroMxComponent implements OnInit {
       iva:                  0,
       precio_venta:         0,
       costo_referencia:     0,
-      requiere_receta:      false,
+      mx_control:      false,
       es_controlado:        false,
       requiere_cadena_frio: false
     };
