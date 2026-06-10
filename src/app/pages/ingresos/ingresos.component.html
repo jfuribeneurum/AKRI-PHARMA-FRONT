@@ -88,10 +88,9 @@
         <div>
           <label>Estado</label>
           <select [(ngModel)]="nuevoIngreso.estado" class="form-input">
-            <option value="pendiente">Pendiente</option>
-            <option value="recibido">Recibido</option>
-            <option value="almacenado">Almacenado</option>
-            <option value="cancelado">Cancelado</option>
+            @for (e of estadosIngreso; track e.valor) {
+              <option [value]="e.valor">{{ e.etiqueta }}</option>
+            }
           </select>
         </div>
         <div class="toolbar" style="gap: 0.5rem; margin-top: 1rem;">

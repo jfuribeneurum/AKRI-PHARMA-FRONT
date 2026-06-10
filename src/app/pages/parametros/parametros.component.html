@@ -1,0 +1,134 @@
+<!-- Modal -->
+@if (showModal()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editMode() ? 'Editar opción' : 'Nueva opción' }}</h3>
+        <button class="close-btn" (click)="closeModal()" [disabled]="saving()">✕</button>
+      </div>
+
+      @if (modalError()) {
+        <div class="error-box">{{ modalError() }}</div>
+      }
+
+      <div class="form-grid">
+        @if (!editMode()) {
+          <label>
+            Valor interno <span class="req">*</span>
+            <input [(ngModel)]="form.valor" placeholder="ej: medicamento" maxlength="200" />
+            <small class="hint">Código técnico almacenado en la base de datos. No cambiar después de crear.</small>
+          </label>
+        } @else {
+          <label>
+            Valor interno
+            <input [value]="form.valor" readonly class="readonly-input" />
+          </label>
+        }
+        <label>
+          Etiqueta visible <span class="req">*</span>
+          <input [(ngModel)]="form.etiqueta" placeholder="ej: Medicamento" maxlength="200" />
+        </label>
+        <label class="short-label">
+          Orden
+          <input type="number" [(ngModel)]="form.orden" min="0" max="999" />
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn secondary" (click)="closeModal()" [disabled]="saving()">Cancelar</button>
+        <button class="btn" (click)="save()" [disabled]="saving()">
+          @if (saving()) { <span class="spinner"></span> }
+          {{ saving() ? 'Guardando…' : (editMode() ? 'Actualizar' : 'Crear opción') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Page -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Parámetros del sistema</h2>
+      <p class="page-sub">Gestiona las opciones de los desplegables de la aplicación</p>
+    </div>
+  </div>
+
+  @if (success()) { <div class="success-box">{{ success() }}</div> }
+  @if (error() && !loadingOps()) { <div class="error-box">{{ error() }}</div> }
+
+  <div class="param-layout">
+    <!-- Left panel: groups -->
+    <aside class="grupos-panel">
+      <div class="panel-head">Grupos</div>
+      @if (loading()) {
+        <div class="loading-row"><span class="spinner"></span> Cargando…</div>
+      } @else {
+        <ul class="grupos-list">
+          @for (g of grupos(); track g.grupo) {
+            <li
+              class="grupo-item"
+              [class.active]="grupoActivo?.grupo === g.grupo"
+              (click)="selectGrupo(g)"
+            >
+              <span class="grupo-name">{{ g.grupo_label }}</span>
+              <span class="grupo-badge">{{ g.activos }}/{{ g.total }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <!-- Right panel: options -->
+    <section class="opciones-panel">
+      @if (grupoActivo) {
+        <div class="opciones-header">
+          <div>
+            <span class="opciones-title">{{ grupoActivo.grupo_label }}</span>
+            <code class="grupo-code">{{ grupoActivo.grupo }}</code>
+          </div>
+          <button class="btn" (click)="openCreate()">+ Nueva opción</button>
+        </div>
+      }
+
+      @if (loadingOps()) {
+        <div class="loading-row"><span class="spinner"></span> Cargando opciones…</div>
+      } @else if (!opciones().length && grupoActivo) {
+        <div class="empty-state">
+          No hay opciones en este grupo. <a (click)="openCreate()">Crear la primera</a>
+        </div>
+      } @else {
+        <div class="opciones-grid">
+          @for (p of opciones(); track p.id) {
+            <div class="opcion-card" [class.inactive]="!p.activo">
+              <div class="opcion-main">
+                <span class="opcion-etiqueta">{{ p.etiqueta }}</span>
+                <code class="opcion-valor">{{ p.valor }}</code>
+              </div>
+              <div class="opcion-meta">
+                <span class="orden-badge">orden {{ p.orden }}</span>
+                <span class="status-chip" [class.active]="p.activo" [class.inactive]="!p.activo">
+                  {{ p.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
+              <div class="opcion-actions">
+                <button class="btn secondary sm" (click)="openEdit(p)" title="Editar etiqueta">✏️ Editar</button>
+                <button class="btn secondary sm" (click)="toggle(p)" [title]="p.activo ? 'Desactivar' : 'Activar'">
+                  {{ p.activo ? '⏸ Desactivar' : '▶ Activar' }}
+                </button>
+                <button class="btn danger sm" (click)="remove(p)" [disabled]="deleting() === p.id" title="Eliminar">
+                  @if (deleting() === p.id) { <span class="spinner"></span> }
+                  🗑 Eliminar
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!grupoActivo && !loading()) {
+        <div class="empty-state">Selecciona un grupo a la izquierda para ver sus opciones.</div>
+      }
+    </section>
+  </div>
+</div>

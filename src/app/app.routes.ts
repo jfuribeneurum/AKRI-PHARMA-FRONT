@@ -35,6 +35,7 @@ export const routes: Routes = [
       { path: 'traslados',           loadComponent: () => import('./pages/traslados/traslados.component').then(m => m.TrasladosComponent) },
       { path: 'pacientes',           loadComponent: () => import('./pages/pacientes/pacientes.component').then(m => m.PacientesComponent) },
       { path: 'ciudades',            loadComponent: () => import('./pages/ciudades/ciudades.component').then(m => m.CiudadesComponent) },
+      { path: 'parametros',          loadComponent: () => import('./pages/parametros/parametros.component').then(m => m.ParametrosComponent) },
       { path: 'trazabilidad',        loadComponent: () => import('./pages/trazabilidad/trazabilidad.component').then(m => m.TrazabilidadComponent) }
     ]
   },

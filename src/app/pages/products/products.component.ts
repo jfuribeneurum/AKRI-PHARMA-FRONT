@@ -44,10 +44,20 @@ export class ProductsComponent implements OnInit {
     iva: 0
   };
 
+  tiposProducto: { valor: string; etiqueta: string }[] = [];
+
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
+    void this.loadTiposProducto();
     void this.load();
+  }
+
+  private async loadTiposProducto() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_producto/activos');
+      this.tiposProducto = res.data ?? [];
+    } catch { /* non-fatal */ }
   }
 
   async load(preselectId?: number | null) {

@@ -24,9 +24,17 @@ export class MovimientoSalidaComponent implements OnInit {
 
   searchText = '';
   form = { tipo: 'salida_venta', cantidad: 1, motivo: '' };
+  tiposMovimiento: { valor: string; etiqueta: string }[] = [];
 
   async ngOnInit() {
-    await this.cargarStock();
+    await Promise.all([this.cargarStock(), this.cargarTipos()]);
+  }
+
+  private async cargarTipos() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_salida/activos');
+      this.tiposMovimiento = res.data ?? [];
+    } catch { /* non-fatal */ }
   }
 
   async cargarStock() {

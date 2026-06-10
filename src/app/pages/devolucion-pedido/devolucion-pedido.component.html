@@ -177,12 +177,9 @@
             Motivo <span style="color:#ef4444">*</span>
             <select [(ngModel)]="devMeta.motivo">
               <option value="">-- Seleccionar motivo --</option>
-              <option value="Producto vencido">Producto vencido</option>
-              <option value="Producto dañado / deteriorado">Producto dañado / deteriorado</option>
-              <option value="Error en pedido">Error en pedido</option>
-              <option value="Exceso de inventario">Exceso de inventario</option>
-              <option value="Producto no requerido">Producto no requerido</option>
-              <option value="Otro">Otro</option>
+              @for (m of motivosDevolucion; track m.valor) {
+                <option [value]="m.valor">{{ m.etiqueta }}</option>
+              }
             </select>
           </label>
         </div>

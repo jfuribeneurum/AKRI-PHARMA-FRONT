@@ -36,6 +36,7 @@ export class ProvidersComponent implements OnInit {
   readonly error = signal('');
   readonly saving = signal(false);
   readonly ciudadesList = signal<CiudadItem[]>([]);
+  tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
   search = '';
   form = this.blankProvider();
 
@@ -48,6 +49,14 @@ export class ProvidersComponent implements OnInit {
   ngOnInit() {
     this.loadProviders();
     this.loadCiudades();
+    void this.loadTiposIdentificacion();
+  }
+
+  private async loadTiposIdentificacion() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_identificacion/activos');
+      this.tiposIdentificacion = res.data ?? [];
+    } catch { /* non-fatal */ }
   }
 
   filteredProviders() {

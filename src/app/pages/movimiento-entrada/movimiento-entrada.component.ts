@@ -23,6 +23,7 @@ export class MovimientoEntradaComponent implements OnInit {
   loteSeleccionado = signal<any>(null);
 
   lookups: { almacenes: any[]; ubicaciones: any[] } = { almacenes: [], ubicaciones: [] };
+  tiposMovimiento: { valor: string; etiqueta: string }[] = [];
   searchText = '';
   form = { tipo: 'entrada_compra', id_ubicacion_destino: 0, cantidad: 1, costo_unitario: 0, motivo: '' };
 
@@ -50,9 +51,13 @@ export class MovimientoEntradaComponent implements OnInit {
 
   async cargarLookups() {
     try {
-      const resp: any = await this.api.get('/inventory/lookups');
-      const data = resp?.data ?? resp ?? {};
+      const [inv, tipos] = await Promise.all([
+        this.api.get<any>('/inventory/lookups'),
+        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_entrada/activos')
+      ]);
+      const data = inv?.data ?? inv ?? {};
       this.lookups = { almacenes: data.almacenes ?? [], ubicaciones: data.ubicaciones ?? [] };
+      this.tiposMovimiento = tipos.data ?? [];
     } catch {}
   }
 

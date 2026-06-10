@@ -47,10 +47,21 @@ export class DevolucionPedidoComponent implements OnInit {
   devMeta: any = this.emptyDevMeta();
   devItems: any[] = [];
 
+  motivosDevolucion: { valor: string; etiqueta: string }[] = [];
+
   constructor(private readonly api: ApiService, private readonly cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     void this.cargarIngresos();
+    void this.loadMotivos();
+  }
+
+  private async loadMotivos() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/motivo_devolucion/activos');
+      this.motivosDevolucion = res.data ?? [];
+      this.cdr.markForCheck();
+    } catch { /* non-fatal */ }
   }
 
   async cargarIngresos() {

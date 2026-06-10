@@ -67,12 +67,9 @@
             Tipo de producto
             <select [(ngModel)]="form.tipo_producto">
               <option value="">Seleccionar tipo</option>
-              <option value="medicamento">Medicamento</option>
-              <option value="insumo">Insumo</option>
-              <option value="controlado">Controlado</option>
-              <option value="vacuna">Vacuna</option>
-              <option value="dispositivo">Dispositivo</option>
-              <option value="otro">Otro</option>
+              @for (t of tiposProducto; track t.valor) {
+                <option [value]="t.valor">{{ t.etiqueta }}</option>
+              }
             </select>
           </label>
           <label>

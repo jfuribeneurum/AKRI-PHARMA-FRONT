@@ -19,6 +19,7 @@ export class MaestroMxComponent implements OnInit {
   selected = signal<any | null>(null);
   laboratorios = signal<any[]>([]);
   formas = signal<any[]>([]);
+  tiposProducto = signal<{ valor: string; etiqueta: string }[]>([]);
 
   message = signal('');
   formMessage = signal('');
@@ -53,11 +54,15 @@ export class MaestroMxComponent implements OnInit {
 
   private async loadLookups() {
     try {
-      const response = await this.api.get<{ success: boolean; data: { laboratorios: any[]; formas: any[] } }>('/products/lookups');
-      this.laboratorios.set(response.data.laboratorios ?? []);
-      this.formas.set(response.data.formas ?? []);
+      const [lookups, tipos] = await Promise.all([
+        this.api.get<{ success: boolean; data: { laboratorios: any[]; formas: any[] } }>('/products/lookups'),
+        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_producto/activos')
+      ]);
+      this.laboratorios.set(lookups.data.laboratorios ?? []);
+      this.formas.set(lookups.data.formas ?? []);
+      this.tiposProducto.set(tipos.data ?? []);
     } catch {
-      // non-fatal — form just won't have a lab dropdown populated
+      // non-fatal — dropdowns fallback to empty
     }
   }
 

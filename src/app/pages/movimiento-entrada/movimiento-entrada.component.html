@@ -93,9 +93,9 @@
                 <tr>
                   <td style="min-width:180px">
                     <select [(ngModel)]="form.tipo">
-                      <option value="entrada_compra">Entrada compra</option>
-                      <option value="devolucion_venta">Devolución de venta</option>
-                      <option value="liberacion">Liberación de cuarentena</option>
+                      @for (t of tiposMovimiento; track t.valor) {
+                        <option [value]="t.valor">{{ t.etiqueta }}</option>
+                      }
                     </select>
                   </td>
                   <td style="min-width:220px">

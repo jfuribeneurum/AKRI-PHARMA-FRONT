@@ -27,10 +27,9 @@
         <label>
           Tipo identificación
           <select [(ngModel)]="form.tipo_identificacion">
-            <option value="NIT">NIT</option>
-            <option value="CC">Cédula de ciudadanía</option>
-            <option value="CE">Cédula de extranjería</option>
-            <option value="Pasaporte">Pasaporte</option>
+            @for (t of tiposIdentificacion; track t.valor) {
+              <option [value]="t.valor">{{ t.etiqueta }}</option>
+            }
           </select>
         </label>
         <label>

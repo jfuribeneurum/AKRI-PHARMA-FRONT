@@ -29,6 +29,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   readonly allOrders = signal<any[]>([]);
   readonly filtered = signal<any[]>([]);
   readonly allProviders = signal<any[]>([]);
+  tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
 
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
@@ -68,6 +69,14 @@ export class SebasPurchaseOrderComponent implements OnInit {
   ngOnInit() {
     this.loadOrders();
     this.loadProviders();
+    void this.loadTiposIdentificacion();
+  }
+
+  private async loadTiposIdentificacion() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_identificacion/activos');
+      this.tiposIdentificacion = res.data ?? [];
+    } catch { /* non-fatal */ }
   }
 
   async loadProviders() {

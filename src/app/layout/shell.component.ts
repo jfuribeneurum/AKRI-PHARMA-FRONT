@@ -104,7 +104,8 @@ export class ShellComponent {
         { path: '/providers', label: 'Proveedores', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
         { path: '/pacientes', label: 'Pacientes', any: [] },
         { path: '/bodegas', label: 'Bodegas', any: [] },
-        { path: '/ciudades', label: 'Ciudades', any: [] }
+        { path: '/ciudades', label: 'Ciudades', any: [] },
+        { path: '/parametros', label: 'Parámetros del sistema', any: [] }
       ]
     },
     {
