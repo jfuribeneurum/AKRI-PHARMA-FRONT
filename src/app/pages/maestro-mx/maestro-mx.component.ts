@@ -117,8 +117,6 @@ export class MaestroMxComponent implements OnInit {
       consecutivo_cum:      full.consecutivo_cum ?? null,
       id_laboratorio:       full.id_laboratorio ?? null,
       iva:                  full.iva_tasa ?? 0,
-      precio_venta:         full.precio_venta ?? 0,
-      costo_referencia:     full.costo_referencia ?? 0,
       mx_control:      !!full.mx_control,
       es_controlado:        !!full.es_controlado,
       requiere_cadena_frio: !!full.requiere_cadena_frio
@@ -273,8 +271,6 @@ export class MaestroMxComponent implements OnInit {
       tipo_producto:        this.form.tipo_producto || undefined,
       id_laboratorio:       this.form.id_laboratorio || null,
       iva_tasa:             Number(this.form.iva ?? 0),
-      precio_venta:         Number(this.form.precio_venta ?? 0),
-      costo_referencia:     Number(this.form.costo_referencia ?? 0),
       mx_control:      !!this.form.mx_control,
       es_controlado:        !!this.form.es_controlado,
       requiere_cadena_frio: !!this.form.requiere_cadena_frio
@@ -336,8 +332,6 @@ export class MaestroMxComponent implements OnInit {
       consecutivo_cum:      null,
       id_laboratorio:       null,
       iva:                  0,
-      precio_venta:         0,
-      costo_referencia:     0,
       mx_control:      false,
       es_controlado:        false,
       requiere_cadena_frio: false

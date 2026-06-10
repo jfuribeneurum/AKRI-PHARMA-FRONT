@@ -177,14 +177,6 @@
                     </label>
                   </div>
                 </label>
-                <label>
-                  Precio de venta
-                  <input type="number" [(ngModel)]="form.precio_venta" placeholder="0">
-                </label>
-                <label>
-                  Costo de referencia
-                  <input type="number" [(ngModel)]="form.costo_referencia" placeholder="0">
-                </label>
               </div>
 
               <div class="switch-row" style="margin-top:1rem;gap:1.5rem;">
@@ -241,10 +233,6 @@
             <div class="summary-tile">
               <small>Código de barras</small>
               <strong style="font-size: 1rem;">{{ item.codigo_barras || 'Pendiente' }}</strong>
-            </div>
-            <div class="summary-tile">
-              <small>Precio de venta</small>
-              <strong>{{ item.precio_venta | number:'1.0-0' }}</strong>
             </div>
             <div class="summary-tile">
               <small>Imágenes</small>

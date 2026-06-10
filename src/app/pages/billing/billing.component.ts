@@ -2,13 +2,11 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
-import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
-
 @Component({
   selector: 'akri-billing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, UppercaseInputDirective],
+  imports: [CommonModule, FormsModule],
   templateUrl: './billing.component.html',
   styleUrls: ['./billing.component.css']
 })

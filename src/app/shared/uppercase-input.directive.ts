@@ -1,4 +1,4 @@
-import { Directive, HostListener, Self } from '@angular/core';
+import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { NgModel } from '@angular/forms';
 
 @Directive({
@@ -10,16 +10,19 @@ import { NgModel } from '@angular/forms';
   standalone: true
 })
 export class UppercaseInputDirective {
-  constructor(@Self() private readonly ngModel: NgModel) {}
+  private readonly ngModel = inject(NgModel);
+  private readonly el = inject<ElementRef<HTMLInputElement>>(ElementRef);
 
-  @HostListener('input', ['$event.target'])
-  onInput(target: HTMLInputElement | HTMLTextAreaElement) {
+  @HostListener('input')
+  onInput() {
+    const target = this.el.nativeElement;
     const upper = target.value.toUpperCase();
     if (target.value === upper) return;
-    const input = target as HTMLInputElement;
-    const pos = input.selectionStart ?? upper.length;
+    const pos = target.selectionStart ?? upper.length;
     target.value = upper;
-    input.setSelectionRange?.(pos, pos);
-    this.ngModel.control.setValue(upper, { emitEvent: false });
+    target.setSelectionRange?.(pos, pos);
+    // emitModelToViewChange:false → Angular no sobreescribe el DOM (cursor se preserva)
+    // emitEvent:true → valueChanges emite → ngModelChange dispara → propiedad del componente se actualiza
+    this.ngModel.control.setValue(upper, { emitEvent: true, emitModelToViewChange: false });
   }
 }
