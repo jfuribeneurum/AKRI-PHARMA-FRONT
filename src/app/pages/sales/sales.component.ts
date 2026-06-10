@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { BarcodeScannerComponent, BarcodeScanEvent } from '../../shared/barcode-scanner.component';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type ExportFormat = 'json' | 'excel' | 'pdf';
 
@@ -10,7 +11,7 @@ type ExportFormat = 'json' | 'excel' | 'pdf';
   selector: 'akri-sales',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, BarcodeScannerComponent],
+  imports: [CommonModule, FormsModule, BarcodeScannerComponent, UppercaseInputDirective],
   templateUrl: './sales.component.html',
   styleUrls: ['./sales.component.css']
 })

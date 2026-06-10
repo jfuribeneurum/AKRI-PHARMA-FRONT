@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { SignaturePadComponent } from '../../shared/signature-pad.component';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
   selector: 'akri-dispensing',
@@ -11,7 +12,7 @@ import { SignaturePadComponent } from '../../shared/signature-pad.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dispensing.component.html',
   styleUrls: ['./dispensing.component.css'],
-  imports: [CommonModule, FormsModule, SignaturePadComponent]
+  imports: [CommonModule, FormsModule, SignaturePadComponent, UppercaseInputDirective]
 })
 export class DispensingComponent implements OnInit {
   readonly message = signal('');

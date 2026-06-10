@@ -2,6 +2,7 @@ import { Component, OnInit, signal, inject, ChangeDetectionStrategy, computed } 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type Tab = 'enviar' | 'recibir';
 
@@ -11,7 +12,7 @@ type Tab = 'enviar' | 'recibir';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './traslados.component.html',
   styleUrls: ['./traslados.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class TrasladosComponent implements OnInit {
   private api = inject(ApiService);

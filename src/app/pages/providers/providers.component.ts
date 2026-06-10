@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type ProviderForm = {
   id_proveedor: number | null;
@@ -26,7 +27,7 @@ type CiudadItem = { nombre: string; departamento: string };
   selector: 'akri-providers',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, UppercaseInputDirective],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.css']
 })

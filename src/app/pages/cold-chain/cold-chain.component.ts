@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type ExportFormat = 'json' | 'excel' | 'pdf';
 
@@ -11,7 +12,7 @@ type ExportFormat = 'json' | 'excel' | 'pdf';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './cold-chain.component.html',
   styleUrls: ['./cold-chain.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class ColdChainComponent implements OnInit {
   equipment = signal<any[]>([]);

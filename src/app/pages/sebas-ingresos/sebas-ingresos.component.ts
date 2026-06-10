@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
   selector: 'akri-sebas-ingresos',
@@ -9,7 +10,7 @@ import { ApiService } from '../../core/api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sebas-ingresos.component.html',
   styleUrls: ['./sebas-ingresos.component.css'],
-  imports: [CommonModule, FormsModule, DatePipe]
+  imports: [CommonModule, FormsModule, DatePipe, UppercaseInputDirective]
 })
 export class SebasIngresosComponent implements OnInit {
   readonly message = signal('');

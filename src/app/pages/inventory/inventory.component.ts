@@ -2,6 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild, signal, ChangeDete
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
   selector: 'akri-inventory',
@@ -9,7 +10,7 @@ import { ApiService } from '../../core/api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './inventory.component.html',
   styleUrls: ['./inventory.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class InventoryComponent implements OnInit, OnDestroy {
   @ViewChild('cameraVideo') cameraVideo?: ElementRef<HTMLVideoElement>;

@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef }
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 interface TraceEntry {
   id_traza: number;
@@ -52,7 +53,7 @@ type Tab = 'procesos' | 'usuarios';
   selector: 'akri-trazabilidad',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   template: `
     <div class="page-wrap">
       <div class="page-header">

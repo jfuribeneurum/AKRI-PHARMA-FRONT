@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef }
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 interface Grupo {
   grupo: string;
@@ -24,7 +25,7 @@ interface Parametro {
   selector: 'akri-parametros',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   templateUrl: './parametros.component.html',
   styleUrls: ['./parametros.component.css']
 })

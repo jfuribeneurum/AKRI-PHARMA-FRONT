@@ -47,6 +47,11 @@ button, input, select, textarea {
   font: inherit;
 }
 
+input:not([type=email]):not([type=password]):not([type=number]):not([type=radio]):not([type=checkbox]):not([readonly]),
+textarea:not([readonly]) {
+  text-transform: uppercase;
+}
+
 button {
   cursor: pointer;
 }

@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 interface Ciudad {
   id: number;
@@ -15,7 +16,7 @@ interface Ciudad {
   selector: 'akri-ciudades',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   templateUrl: './ciudades.component.html',
   styleUrls: ['./ciudades.component.css']
 })

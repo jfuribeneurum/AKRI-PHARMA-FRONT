@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef }
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 interface IngresoRow {
   id_ingreso: number;
@@ -28,7 +29,7 @@ interface IngresoRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './devolucion-pedido.component.html',
   styleUrls: ['./devolucion-pedido.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class DevolucionPedidoComponent implements OnInit {
   readonly filterType = signal<'numero' | 'fecha' | 'proveedor' | 'laboratorio'>('numero');

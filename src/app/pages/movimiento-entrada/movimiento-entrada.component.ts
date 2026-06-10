@@ -2,6 +2,7 @@ import { Component, OnInit, signal, inject, ChangeDetectionStrategy } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
   selector: 'akri-movimiento-entrada',
@@ -9,7 +10,7 @@ import { ApiService } from '../../core/api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './movimiento-entrada.component.html',
   styleUrls: ['./movimiento-entrada.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class MovimientoEntradaComponent implements OnInit {
   private api = inject(ApiService);

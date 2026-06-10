@@ -2,6 +2,7 @@ import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type ExportFormat = 'json' | 'excel' | 'pdf';
 type ReportKey =
@@ -21,7 +22,7 @@ type ReportKey =
   selector: 'akri-reports',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css']
 })

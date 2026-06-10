@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
 
@@ -11,7 +12,7 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './maestro-mx.component.html',
   styleUrls: ['./maestro-mx.component.css'],
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
 export class MaestroMxComponent implements OnInit {
   search = '';

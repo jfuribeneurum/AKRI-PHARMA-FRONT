@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type ExportFormat = 'json' | 'excel' | 'pdf';
 
@@ -9,7 +10,7 @@ type ExportFormat = 'json' | 'excel' | 'pdf';
   selector: 'akri-purchases',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   templateUrl: './purchases.component.html',
   styleUrls: ['./purchases.component.css']
 })
