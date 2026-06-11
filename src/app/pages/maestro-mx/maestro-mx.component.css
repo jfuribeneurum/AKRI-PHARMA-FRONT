@@ -232,3 +232,8 @@
   color: var(--muted);
   line-height: 1.4;
 }
+
+.field-error {
+  border-color: #ef4444 !important;
+  outline-color: #ef4444 !important;
+}

@@ -93,12 +93,19 @@
                 </label>
                 <label>
                   Forma farmacéutica
-                  <select [(ngModel)]="form.id_forma" [class.hs-filled]="form.id_medicamento_hs && form.id_forma">
+                  <select [(ngModel)]="form.id_forma"
+                    [class.hs-filled]="form.id_medicamento_hs && form.id_forma"
+                    [disabled]="!!form.id_medicamento_hs">
                     <option [value]="null">Sin especificar</option>
                     @for (f of formas(); track f.id_forma) {
                       <option [value]="f.id_forma">{{ f.nombre }}</option>
                     }
                   </select>
+                  @if (form.id_medicamento_hs && !form.id_forma) {
+                    <span class="field-hint" style="color:#f59e0b; font-weight:500;">
+                      ⚠ Este medicamento no tiene forma farmacéutica en HealthSphere. Debes actualizarlo allí antes de poder guardarlo aquí.
+                    </span>
+                  }
                 </label>
                 <label>
                   Clasificación
@@ -120,7 +127,23 @@
                   Código interno
                   <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único"
                     [readOnly]="!!form.id_medicamento_hs"
-                    [class.hs-filled]="form.id_medicamento_hs">
+                    [class.hs-filled]="form.id_medicamento_hs"
+                    (ngModelChange)="onCodigoOrLabChange()">
+                </label>
+                <label>
+                  Código de control
+                  @if (editingId()) {
+                    <input [value]="form.codigo_control || '—'" readonly style="color:var(--muted);">
+                  } @else {
+                    <input [value]="codigoControlPreview()" readonly style="color:var(--muted);" placeholder="Se genera al guardar">
+                    @if (codigoControlDuplicateCum()) {
+                      <span class="field-hint" style="color:var(--error, #ef4444);">
+                        ⚠ Ya existe <strong>{{ codigoControlDuplicateCum() }}</strong> con el mismo consecutivo CUM. No se puede crear.
+                      </span>
+                    } @else if (codigoControlPreview() && form.consecutivo_cum) {
+                      <span class="field-hint">Se asignará <strong>{{ codigoControlPreview() }}</strong> al guardar.</span>
+                    }
+                  }
                 </label>
                 <label>
                   Tipo de producto
@@ -149,15 +172,19 @@
                 </label>
                 <label>
                   CUM
-                  <input type="number" [(ngModel)]="form.cum" placeholder="Código único de medicamento">
+                  <input type="number" [(ngModel)]="form.cum" placeholder="Código único de medicamento"
+                    [class.field-error]="submitted() && !form.cum && form.cum !== 0">
                 </label>
                 <label>
                   Consecutivo CUM
-                  <input type="number" [(ngModel)]="form.consecutivo_cum" placeholder="Número consecutivo">
+                  <input [(ngModel)]="form.consecutivo_cum" placeholder="Ej: 5635636-8 o simplemente 8"
+                    (ngModelChange)="onCodigoOrLabChange()"
+                    [class.field-error]="submitted() && !form.consecutivo_cum">
                 </label>
                 <label>
                   Proveedor / Laboratorio
-                  <select [(ngModel)]="form.id_laboratorio">
+                  <select [(ngModel)]="form.id_laboratorio" (ngModelChange)="onCodigoOrLabChange()"
+                    [class.field-error]="submitted() && !form.id_laboratorio">
                     <option [value]="null">Sin proveedor</option>
                     @for (lab of laboratorios(); track lab.id_laboratorio) {
                       <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
@@ -195,7 +222,7 @@
 
           <div class="form-actions" style="margin-top:1.5rem;">
             <button class="btn secondary" (click)="closeModal()">Cancelar</button>
-            <button class="btn" (click)="save()">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
+            <button class="btn" (click)="save()" [disabled]="form.id_medicamento_hs && !form.id_forma">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
           </div>
         </div>
       </div>
@@ -397,7 +424,7 @@
                 <tr class="table-row-clickable" (click)="openDetail(p.id_producto)">
                   <td>
                     <strong>{{ p.nombre_comercial }}</strong><br>
-                    <span class="muted">{{ p.sku }} · {{ p.principio_activo || 'Sin principio activo' }}</span>
+                    <span class="muted">{{ p.codigo_control || p.sku }} · {{ p.principio_activo || 'Sin principio activo' }}</span>
                   </td>
                   <td>{{ p.laboratorio_nombre || '—' }}</td>
                   <td>{{ p.stock_actual }}</td>

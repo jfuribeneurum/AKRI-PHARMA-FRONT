@@ -39,6 +39,11 @@ export class MaestroMxComponent implements OnInit {
   hsNoResults = signal(false);
   private hsDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  codigoControlPreview = signal<string>('');
+  codigoControlDuplicateCum = signal<string | null>(null);
+  submitted = signal(false);
+  private controlCodeDebounce: ReturnType<typeof setTimeout> | null = null;
+
   mediaForm: { tipo_origen: MediaSourceType; descripcion: string } = {
     tipo_origen: 'importada',
     descripcion: ''
@@ -78,6 +83,9 @@ export class MaestroMxComponent implements OnInit {
     this.hsNoResults.set(false);
     this.formMessage.set('');
     this.formError.set('');
+    this.codigoControlPreview.set('');
+    this.codigoControlDuplicateCum.set(null);
+    this.submitted.set(false);
     this.showModal.set(true);
   }
 
@@ -99,10 +107,14 @@ export class MaestroMxComponent implements OnInit {
       full = resp.data;
     } catch { /* usa datos del listado como fallback */ }
 
+    this.codigoControlPreview.set('');
+    this.codigoControlDuplicateCum.set(null);
+    this.submitted.set(false);
     this.editingId.set(full.id_producto);
     this.form = {
       id_medicamento_hs:    full.id_medicamento_hs ?? null,
       codigo_interno:       full.sku ?? '',
+      codigo_control:       full.codigo_control ?? '',
       tipo_producto:        full.tipo_producto ?? '',
       nombre_comercial:     full.nombre_comercial ?? '',
       principio_activo:     full.principio_activo ?? '',
@@ -150,11 +162,22 @@ export class MaestroMxComponent implements OnInit {
   }
 
   async save() {
+    this.submitted.set(true);
+    const err = this.validateForm();
+    if (err) { this.formError.set(err); return; }
     if (this.editingId()) {
       await this.update();
     } else {
       await this.create();
     }
+  }
+
+  private validateForm(): string | null {
+    if (this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
+    if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
+    if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
+    if (!this.form.consecutivo_cum || String(this.form.consecutivo_cum).trim() === '') return 'El campo Consecutivo CUM es obligatorio.';
+    return null;
   }
 
   async create() {
@@ -314,10 +337,73 @@ export class MaestroMxComponent implements OnInit {
     this.form = this.blankForm();
   }
 
+  private extractLastCumPart(cum: any): string {
+    if (cum == null) return '';
+    const str = String(cum).trim();
+    // Extrae el último segmento después del último '.' o '-'
+    const match = str.match(/[.\-](\w+)$/);
+    return match ? match[1] : str;
+  }
+
+  onCodigoOrLabChange() {
+    if (this.editingId()) return;
+
+    const sku   = (this.form.codigo_interno ?? '').trim();
+    const idLab = this.form.id_laboratorio;
+    const cum   = this.form.consecutivo_cum;
+
+    if (!sku) {
+      this.codigoControlPreview.set('');
+      this.codigoControlDuplicateCum.set(null);
+      if (this.controlCodeDebounce) clearTimeout(this.controlCodeDebounce);
+      return;
+    }
+
+    // Construir preview: MX01 → MX01-1 → MX01-1.9 (solo último número del CUM)
+    let preview = sku;
+    if (idLab != null) {
+      preview += `-${idLab}`;
+    }
+    const cumStr = cum != null ? String(cum).trim() : '';
+    if (cumStr !== '') {
+      preview += `.${this.extractLastCumPart(cum)}`;
+    }
+    this.codigoControlPreview.set(preview);
+
+    // API solo para verificar duplicado (debounced)
+    if (this.controlCodeDebounce) clearTimeout(this.controlCodeDebounce);
+    if (cumStr !== '') {
+      this.controlCodeDebounce = setTimeout(() => void this.checkControlCode(), 400);
+    } else {
+      this.codigoControlDuplicateCum.set(null);
+    }
+  }
+
+  async checkControlCode() {
+    const sku = this.form.codigo_interno?.trim();
+    if (!sku) return;
+    try {
+      const idLab = this.form.id_laboratorio;
+      const cum = this.form.consecutivo_cum;
+      const params = [
+        `sku=${encodeURIComponent(sku)}`,
+        idLab ? `id_laboratorio=${idLab}` : '',
+        cum != null && cum !== '' ? `consecutivo_cum=${cum}` : ''
+      ].filter(Boolean).join('&');
+      const resp = await this.api.get<{
+        success: boolean;
+        data: { codigo_control: string; duplicate_cum: string | null };
+      }>(`/products/next-control-code?${params}`);
+      this.codigoControlPreview.set(resp.data.codigo_control);
+      this.codigoControlDuplicateCum.set(resp.data.duplicate_cum);
+    } catch { /* non-fatal */ }
+  }
+
   private blankForm() {
     return {
       id_medicamento_hs:    null,
       codigo_interno:       '',
+      codigo_control:       '',
       tipo_producto:        '',
       nombre_comercial:     '',
       principio_activo:     '',
