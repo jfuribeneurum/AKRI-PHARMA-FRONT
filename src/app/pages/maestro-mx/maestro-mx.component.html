@@ -75,9 +75,11 @@
               </div>
               <div class="form-grid form-grid-1">
                 <label>
-                  Nombre comercial <span class="field-own-badge">Tu catálogo</span>
-                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca">
-                  <span class="field-hint">Este nombre es el que quedará guardado en tu base de datos de farmacia. Puedes modificarlo libremente.</span>
+                  Código interno
+                  <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único"
+                    [readOnly]="!!form.id_medicamento_hs"
+                    [class.hs-filled]="form.id_medicamento_hs"
+                    (ngModelChange)="onCodigoOrLabChange()">
                 </label>
                 <label>
                   Principio activo
@@ -109,8 +111,12 @@
                 </label>
                 <label>
                   Clasificación
+                  @if (form.tipo_producto !== 'dispositivo') {
+                    <span class="field-hint" style="color:var(--muted); font-style:italic;">Solo aplica para Dispositivo médico</span>
+                  }
                   <select [(ngModel)]="form.clasificacion"
-                    [class.field-error]="submitted() && !form.clasificacion">
+                    [disabled]="form.tipo_producto !== 'dispositivo'"
+                    [class.field-error]="submitted() && form.tipo_producto === 'dispositivo' && !form.clasificacion">
                     <option value="">Seleccionar clasificación</option>
                     @for (c of clasificaciones(); track c.valor) {
                       <option [value]="c.valor">{{ c.etiqueta }}</option>
@@ -124,31 +130,25 @@
             <div>
               <div class="hs-section-title">Datos de farmacia</div>
               <div class="form-grid form-grid-2">
-                <label>
-                  Código interno
-                  <input [(ngModel)]="form.codigo_interno" placeholder="SKU / Código único"
-                    [readOnly]="!!form.id_medicamento_hs"
-                    [class.hs-filled]="form.id_medicamento_hs"
-                    (ngModelChange)="onCodigoOrLabChange()">
+                <label style="grid-column: span 2">
+                  Nombre comercial <span class="field-own-badge">Tu catálogo</span>
+                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca">
+                  <span class="field-hint">Este nombre es el que quedará guardado en tu base de datos de farmacia. Puedes modificarlo libremente.</span>
                 </label>
                 <label>
-                  Código de control
-                  @if (editingId()) {
-                    <input [value]="form.codigo_control || '—'" readonly style="color:var(--muted);">
-                  } @else {
-                    <input [value]="codigoControlPreview()" readonly style="color:var(--muted);" placeholder="Se genera al guardar">
-                    @if (codigoControlDuplicateCum()) {
-                      <span class="field-hint" style="color:var(--error, #ef4444);">
-                        ⚠ Ya existe <strong>{{ codigoControlDuplicateCum() }}</strong> con el mismo consecutivo CUM. No se puede crear.
-                      </span>
-                    } @else if (codigoControlPreview() && form.consecutivo_cum) {
-                      <span class="field-hint">Se asignará <strong>{{ codigoControlPreview() }}</strong> al guardar.</span>
+                  Proveedor / Laboratorio
+                  <select [(ngModel)]="form.id_laboratorio" (ngModelChange)="onCodigoOrLabChange()"
+                    [class.field-error]="submitted() && !form.id_laboratorio">
+                    <option [value]="null">Sin proveedor</option>
+                    @for (lab of laboratorios(); track lab.id_laboratorio) {
+                      <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
                     }
-                  }
+                  </select>
                 </label>
                 <label>
                   Tipo de producto
                   <select [(ngModel)]="form.tipo_producto"
+                    (ngModelChange)="onTipoProductoChange($event)"
                     [class.field-error]="submitted() && !form.tipo_producto">
                     <option value="">Seleccionar tipo</option>
                     @for (t of tiposProducto(); track t.valor) {
@@ -166,13 +166,33 @@
                 </label>
                 <label>
                   Presentación
-                  <input [(ngModel)]="form.presentacion" placeholder="Ej: 30 tabletas / caja"
-                    [class.field-error]="submitted() && !form.presentacion">
+                  <input type="number" min="1" [(ngModel)]="form.presentacion" placeholder="Ej: 30"
+                    (ngModelChange)="onPresentacionChange()"
+                    [class.field-error]="submitted() && !form.presentacion || !!presentacionDuplicate()">
+                  @if (presentacionDuplicate()) {
+                    <span class="field-hint" style="color:var(--error, #ef4444);">
+                      ⚠ Esta presentación ya se asoció a <strong>{{ presentacionDuplicate() }}</strong>. No se puede crear.
+                    </span>
+                  }
                 </label>
                 <label>
-                  Registro INVIMA
-                  <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX"
-                    [class.field-error]="submitted() && !form.registro_invima">
+                  Código DCI
+                  <input type="number" min="1" [(ngModel)]="form.codigo_dci" placeholder="Ej: 12345">
+                </label>
+                <label>
+                  Código de control
+                  @if (editingId()) {
+                    <input [value]="form.codigo_control || '—'" readonly style="color:var(--muted);">
+                  } @else {
+                    <input [value]="codigoControlPreview()" readonly style="color:var(--muted);" placeholder="Se genera al guardar">
+                    @if (codigoControlDuplicateCum()) {
+                      <span class="field-hint" style="color:var(--error, #ef4444);">
+                        ⚠ Ya existe <strong>{{ codigoControlDuplicateCum() }}</strong> con el mismo consecutivo CUM. No se puede crear.
+                      </span>
+                    } @else if (codigoControlPreview() && form.consecutivo_cum) {
+                      <span class="field-hint">Se asignará <strong>{{ codigoControlPreview() }}</strong> al guardar.</span>
+                    }
+                  }
                 </label>
                 <label>
                   CUM
@@ -181,19 +201,14 @@
                 </label>
                 <label>
                   Consecutivo CUM
-                  <input [(ngModel)]="form.consecutivo_cum" placeholder="Ej: 5635636-8 o simplemente 8"
+                  <input type="number" min="1" [(ngModel)]="form.consecutivo_cum" placeholder="Ej: 8"
                     (ngModelChange)="onCodigoOrLabChange()"
                     [class.field-error]="submitted() && !form.consecutivo_cum">
                 </label>
                 <label>
-                  Proveedor / Laboratorio
-                  <select [(ngModel)]="form.id_laboratorio" (ngModelChange)="onCodigoOrLabChange()"
-                    [class.field-error]="submitted() && !form.id_laboratorio">
-                    <option [value]="null">Sin proveedor</option>
-                    @for (lab of laboratorios(); track lab.id_laboratorio) {
-                      <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
-                    }
-                  </select>
+                  Registro INVIMA
+                  <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX"
+                    [class.field-error]="submitted() && !form.registro_invima">
                 </label>
                 <label>
                   IVA
@@ -212,10 +227,7 @@
 
               <div class="switch-row" style="margin-top:1rem;gap:1.5rem;">
                 <label style="display:flex;align-items:center;gap:0.4rem;">
-                  <input type="checkbox" [(ngModel)]="form.mx_control"> MX de control especial
-                </label>
-                <label style="display:flex;align-items:center;gap:0.4rem;">
-                  <input type="checkbox" [(ngModel)]="form.es_controlado"> Controlado
+                  <input type="checkbox" [(ngModel)]="form.mx_control"> MCE de control especial
                 </label>
                 <label style="display:flex;align-items:center;gap:0.4rem;">
                   <input type="checkbox" [(ngModel)]="form.requiere_cadena_frio"> Cadena de frío

@@ -41,8 +41,10 @@ export class MaestroMxComponent implements OnInit {
 
   codigoControlPreview = signal<string>('');
   codigoControlDuplicateCum = signal<string | null>(null);
+  presentacionDuplicate = signal<string | null>(null);
   submitted = signal(false);
   private controlCodeDebounce: ReturnType<typeof setTimeout> | null = null;
+  private presentacionDebounce: ReturnType<typeof setTimeout> | null = null;
 
   mediaForm: { tipo_origen: MediaSourceType; descripcion: string } = {
     tipo_origen: 'importada',
@@ -85,6 +87,7 @@ export class MaestroMxComponent implements OnInit {
     this.formError.set('');
     this.codigoControlPreview.set('');
     this.codigoControlDuplicateCum.set(null);
+    this.presentacionDuplicate.set(null);
     this.submitted.set(false);
     this.showModal.set(true);
   }
@@ -109,6 +112,7 @@ export class MaestroMxComponent implements OnInit {
 
     this.codigoControlPreview.set('');
     this.codigoControlDuplicateCum.set(null);
+    this.presentacionDuplicate.set(null);
     this.submitted.set(false);
     this.editingId.set(full.id_producto);
     this.form = {
@@ -121,6 +125,7 @@ export class MaestroMxComponent implements OnInit {
       concentracion:        full.concentracion ?? '',
       presentacion:         full.presentacion ?? '',
       atc:                  full.codigo_atc ?? '',
+      codigo_dci:           full.codigo_dci ?? '',
       id_forma:             full.id_forma ?? null,
       clasificacion:        full.clasificacion ?? '',
       unidad_medida:        full.unidad_medida ?? '',
@@ -129,8 +134,7 @@ export class MaestroMxComponent implements OnInit {
       consecutivo_cum:      full.consecutivo_cum ?? null,
       id_laboratorio:       full.id_laboratorio ?? null,
       iva:                  full.iva_tasa ?? 0,
-      mx_control:      !!full.mx_control,
-      es_controlado:        !!full.es_controlado,
+      mx_control:           !!full.mx_control,
       requiere_cadena_frio: !!full.requiere_cadena_frio
     };
     this.showModal.set(true);
@@ -172,11 +176,18 @@ export class MaestroMxComponent implements OnInit {
     }
   }
 
+  onTipoProductoChange(tipo: string) {
+    if (tipo !== 'dispositivo') {
+      this.form.clasificacion = '';
+    }
+  }
+
   private validateForm(): string | null {
     if (this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
-    if (!this.form.clasificacion) return 'El campo Clasificación es obligatorio.';
+    if (this.form.tipo_producto === 'dispositivo' && !this.form.clasificacion) return 'El campo Clasificación es obligatorio para dispositivos médicos.';
     if (!this.form.tipo_producto) return 'El campo Tipo de producto es obligatorio.';
     if (!this.form.presentacion) return 'El campo Presentación es obligatorio.';
+    if (this.presentacionDuplicate()) return `La presentación ya está asociada a "${this.presentacionDuplicate()}". No se puede duplicar.`;
     if (!this.form.registro_invima) return 'El campo Registro INVIMA es obligatorio.';
     if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
     if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
@@ -287,19 +298,19 @@ export class MaestroMxComponent implements OnInit {
       nombre_comercial:     this.form.nombre_comercial,
       principio_activo:     this.form.principio_activo || null,
       concentracion:        this.form.concentracion || null,
-      presentacion:         this.form.presentacion || null,
+      presentacion:         this.form.presentacion != null && this.form.presentacion !== '' ? Number(this.form.presentacion) : null,
       unidad_medida:        this.form.unidad_medida || 'UND',
       registro_invima:      this.form.registro_invima || null,
       cum:                  this.form.cum != null ? Number(this.form.cum) : null,
-      consecutivo_cum:      this.form.consecutivo_cum != null && String(this.form.consecutivo_cum).trim() !== '' ? String(this.form.consecutivo_cum).trim() : null,
+      consecutivo_cum:      this.form.consecutivo_cum != null && this.form.consecutivo_cum !== '' ? Number(this.form.consecutivo_cum) : null,
       codigo_atc:           this.form.atc || null,
+      codigo_dci:           this.form.codigo_dci != null && this.form.codigo_dci !== '' ? Number(this.form.codigo_dci) : null,
       clasificacion:        this.form.clasificacion || null,
       id_forma:             this.form.id_forma || null,
       tipo_producto:        this.form.tipo_producto || undefined,
       id_laboratorio:       this.form.id_laboratorio || null,
       iva_tasa:             Number(this.form.iva ?? 0),
       mx_control:           !!this.form.mx_control,
-      es_controlado:        !!this.form.es_controlado,
       requiere_cadena_frio: !!this.form.requiere_cadena_frio
     };
   }
@@ -350,6 +361,7 @@ export class MaestroMxComponent implements OnInit {
   }
 
   onCodigoOrLabChange() {
+    this.onPresentacionChange();
     if (this.editingId()) return;
 
     const sku   = (this.form.codigo_interno ?? '').trim();
@@ -383,6 +395,34 @@ export class MaestroMxComponent implements OnInit {
     }
   }
 
+  onPresentacionChange() {
+    if (this.presentacionDebounce) clearTimeout(this.presentacionDebounce);
+    const presentacion = this.form.presentacion;
+    if (presentacion == null || presentacion === '') {
+      this.presentacionDuplicate.set(null);
+      return;
+    }
+    this.presentacionDebounce = setTimeout(() => void this.checkPresentacionDuplicate(), 400);
+  }
+
+  async checkPresentacionDuplicate() {
+    const presentacion = this.form.presentacion;
+    const idLab = this.form.id_laboratorio;
+    if (presentacion == null || presentacion === '') return;
+    try {
+      const params = [
+        `presentacion=${encodeURIComponent(presentacion)}`,
+        idLab ? `id_laboratorio=${idLab}` : '',
+        this.editingId() ? `exclude_id=${this.editingId()}` : ''
+      ].filter(Boolean).join('&');
+      const resp = await this.api.get<{
+        success: boolean;
+        data: { codigo_control: string | null };
+      }>(`/products/check-presentacion?${params}`);
+      this.presentacionDuplicate.set(resp.data.codigo_control);
+    } catch { /* non-fatal */ }
+  }
+
   async checkControlCode() {
     const sku = this.form.codigo_interno?.trim();
     if (!sku) return;
@@ -413,6 +453,7 @@ export class MaestroMxComponent implements OnInit {
       principio_activo:     '',
       concentracion:        '',
       atc:                  '',
+      codigo_dci:           '',
       id_forma:             null,
       clasificacion:        '',
       unidad_medida:        '',
@@ -422,8 +463,7 @@ export class MaestroMxComponent implements OnInit {
       consecutivo_cum:      null,
       id_laboratorio:       null,
       iva:                  0,
-      mx_control:      false,
-      es_controlado:        false,
+      mx_control:           false,
       requiere_cadena_frio: false
     };
   }
