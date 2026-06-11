@@ -174,6 +174,10 @@ export class MaestroMxComponent implements OnInit {
 
   private validateForm(): string | null {
     if (this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
+    if (!this.form.clasificacion) return 'El campo Clasificación es obligatorio.';
+    if (!this.form.tipo_producto) return 'El campo Tipo de producto es obligatorio.';
+    if (!this.form.presentacion) return 'El campo Presentación es obligatorio.';
+    if (!this.form.registro_invima) return 'El campo Registro INVIMA es obligatorio.';
     if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
     if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
     if (!this.form.consecutivo_cum || String(this.form.consecutivo_cum).trim() === '') return 'El campo Consecutivo CUM es obligatorio.';

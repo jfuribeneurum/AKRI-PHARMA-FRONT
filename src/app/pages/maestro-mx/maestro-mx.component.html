@@ -109,7 +109,8 @@
                 </label>
                 <label>
                   Clasificación
-                  <select [(ngModel)]="form.clasificacion">
+                  <select [(ngModel)]="form.clasificacion"
+                    [class.field-error]="submitted() && !form.clasificacion">
                     <option value="">Seleccionar clasificación</option>
                     @for (c of clasificaciones(); track c.valor) {
                       <option [value]="c.valor">{{ c.etiqueta }}</option>
@@ -147,7 +148,8 @@
                 </label>
                 <label>
                   Tipo de producto
-                  <select [(ngModel)]="form.tipo_producto">
+                  <select [(ngModel)]="form.tipo_producto"
+                    [class.field-error]="submitted() && !form.tipo_producto">
                     <option value="">Seleccionar tipo</option>
                     @for (t of tiposProducto(); track t.valor) {
                       @if (['medicamento','insumo','dispositivo'].includes(t.valor)) {
@@ -164,11 +166,13 @@
                 </label>
                 <label>
                   Presentación
-                  <input [(ngModel)]="form.presentacion" placeholder="Ej: 30 tabletas / caja">
+                  <input [(ngModel)]="form.presentacion" placeholder="Ej: 30 tabletas / caja"
+                    [class.field-error]="submitted() && !form.presentacion">
                 </label>
                 <label>
                   Registro INVIMA
-                  <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX">
+                  <input [(ngModel)]="form.registro_invima" placeholder="INVIMA-XXXXXX"
+                    [class.field-error]="submitted() && !form.registro_invima">
                 </label>
                 <label>
                   CUM
