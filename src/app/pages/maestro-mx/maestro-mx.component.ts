@@ -16,6 +16,8 @@ type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
 })
 export class MaestroMxComponent implements OnInit {
   search = '';
+  filterLaboratorio: number | null = null;
+  filterLote = '';
   products = signal<any[]>([]);
   selected = signal<any | null>(null);
   laboratorios = signal<any[]>([]);
@@ -152,7 +154,10 @@ export class MaestroMxComponent implements OnInit {
   }
 
   async load(preselectId?: number | null) {
-    const response = await this.api.get<{ success: boolean; data: any[] }>(`/products?search=${encodeURIComponent(this.search)}`);
+    const params = new URLSearchParams({ search: this.search });
+    if (this.filterLaboratorio) params.set('id_laboratorio', String(this.filterLaboratorio));
+    if (this.filterLote.trim()) params.set('lote', this.filterLote.trim());
+    const response = await this.api.get<{ success: boolean; data: any[] }>(`/products?${params.toString()}`);
     this.products.set(response.data);
 
     if (preselectId) {

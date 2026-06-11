@@ -150,7 +150,7 @@
             <div class="po-section-title">Datos del proveedor</div>
             <div class="form-grid">
               <label style="grid-column: span 2">
-                Proveedor (laboratorio)
+                Proveedor
                 <select (change)="onProviderChange($any($event.target).value)">
                   <option value="">— Seleccionar proveedor —</option>
                   @for (p of allProviders(); track p.id_proveedor) {
@@ -210,8 +210,8 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Producto</th>
                       <th>Código</th>
+                      <th>Producto</th>
                       <th>Laboratorio</th>
                       <th style="text-align:right">Cantidad</th>
                       <th style="text-align:right">Valor unitario</th>
@@ -224,6 +224,7 @@
                     @for (item of items; track $index) {
                       <tr>
                         <td style="color:#9ca3af; font-size:0.8rem;">{{ $index + 1 }}</td>
+                        <td><input [ngModel]="item.codigo" readonly placeholder="—"></td>
                         <td>
                           <select (change)="onProductKeySelect(item, $any($event.target).value)" style="min-width:220px">
                             <option value="">— Seleccionar MX —</option>
@@ -234,7 +235,6 @@
                             }
                           </select>
                         </td>
-                        <td><input [ngModel]="item.codigo" readonly placeholder="—"></td>
                         <td>
                           @if (item.product_key) {
                             <select (change)="onLabSelect(item, $any($event.target).value)" style="min-width:180px">

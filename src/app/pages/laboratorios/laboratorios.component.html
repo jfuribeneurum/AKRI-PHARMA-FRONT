@@ -24,26 +24,6 @@
       </div>
 
       <div class="form-grid">
-        <label>
-          Tipo identificación
-          <select [(ngModel)]="form.tipo_identificacion">
-            @for (t of tiposIdentificacion; track t.valor) {
-              <option [value]="t.valor">{{ t.etiqueta }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          Número de identificación
-          <input [(ngModel)]="form.numero_identificacion" placeholder="900000000">
-        </label>
-        <label>
-          Dígito de verificación
-          <input [(ngModel)]="form.digito_verificacion" placeholder="1" maxlength="2">
-        </label>
-        <label>
-          Código interno
-          <input [(ngModel)]="form.codigo" placeholder="LAB-001">
-        </label>
         <label style="grid-column: span 2">
           Nombre del laboratorio
           <input [(ngModel)]="form.nombre" placeholder="Nombre o razón social del laboratorio">
@@ -74,7 +54,7 @@
       </div>
 
       <div class="toolbar">
-        <input [(ngModel)]="search" placeholder="Buscar por nombre, NIT, código o contacto">
+        <input [(ngModel)]="search" placeholder="Buscar por nombre">
       </div>
 
       <div class="table-wrap">
@@ -82,8 +62,6 @@
           <thead>
             <tr>
               <th>Laboratorio</th>
-              <th>Contacto</th>
-              <th>Ciudad</th>
               <th>Estado</th>
               <th>Acción</th>
             </tr>
@@ -91,22 +69,7 @@
           <tbody>
             @for (lab of filteredLabs(); track lab.id_laboratorio) {
               <tr>
-                <td>
-                  <strong>{{ lab.nombre }}</strong><br>
-                  <span class="muted">
-                    {{ lab.tipo_identificacion }} {{ lab.numero_identificacion }}{{ lab.digito_verificacion ? '-' + lab.digito_verificacion : '' }}
-                  </span>
-                </td>
-                <td>
-                  <div>{{ (lab.nombres + ' ' + lab.apellidos).trim() || 'Sin contacto' }}</div>
-                  <span class="muted">{{ lab.telefono || lab.email || 'Sin canal registrado' }}</span>
-                </td>
-                <td>
-                  {{ lab.ciudad || '—' }}
-                  @if (lab.departamento) {
-                    <br><span class="muted" style="font-size:.8rem">{{ lab.departamento }}</span>
-                  }
-                </td>
+                <td><strong>{{ lab.nombre }}</strong></td>
                 <td>
                   <span class="chip" [ngClass]="lab.activo ? 'success' : 'warn'">{{ lab.activo ? 'Activo' : 'Inactivo' }}</span>
                 </td>
@@ -116,7 +79,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="muted">No hay laboratorios para el filtro actual.</td>
+                <td colspan="3" class="muted">No hay laboratorios para el filtro actual.</td>
               </tr>
             }
           </tbody>

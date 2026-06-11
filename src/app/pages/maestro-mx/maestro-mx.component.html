@@ -136,7 +136,7 @@
                   <span class="field-hint">Este nombre es el que quedará guardado en tu base de datos de farmacia. Puedes modificarlo libremente.</span>
                 </label>
                 <label>
-                  Proveedor / Laboratorio
+                  Laboratorio
                   <select [(ngModel)]="form.id_laboratorio" (ngModelChange)="onCodigoOrLabChange()"
                     [class.field-error]="submitted() && !form.id_laboratorio">
                     <option [value]="null">Sin proveedor</option>
@@ -292,30 +292,6 @@
                   <small>Nombre</small>
                   <strong>{{ item.laboratorio.nombre }}</strong>
                 </div>
-                @if (item.laboratorio.pais) {
-                  <div class="lab-field">
-                    <small>País</small>
-                    <span>{{ item.laboratorio.pais }}</span>
-                  </div>
-                }
-                @if (item.laboratorio.contacto) {
-                  <div class="lab-field">
-                    <small>Contacto</small>
-                    <span>{{ item.laboratorio.contacto }}</span>
-                  </div>
-                }
-                @if (item.laboratorio.telefono) {
-                  <div class="lab-field">
-                    <small>Teléfono</small>
-                    <span>{{ item.laboratorio.telefono }}</span>
-                  </div>
-                }
-                @if (item.laboratorio.email) {
-                  <div class="lab-field">
-                    <small>Email</small>
-                    <span>{{ item.laboratorio.email }}</span>
-                  </div>
-                }
               </div>
             </div>
           }
@@ -421,7 +397,14 @@
 
       <div class="card">
         <div class="toolbar">
-          <input [(ngModel)]="search" placeholder="Buscar por nombre, SKU, principio activo o código de barras" (keyup.enter)="load()">
+          <input [(ngModel)]="search" placeholder="Buscar por nombre, SKU, principio activo o código de barras" (keyup.enter)="load()" style="flex:2;">
+          <select [(ngModel)]="filterLaboratorio" (ngModelChange)="load()" style="flex:1;min-width:0;">
+            <option [ngValue]="null">Todos los laboratorios</option>
+            @for (lab of laboratorios(); track lab.id_laboratorio) {
+              <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
+            }
+          </select>
+          <input [(ngModel)]="filterLote" placeholder="Filtrar por lote" (keyup.enter)="load()" style="flex:1;min-width:0;">
           <button class="btn secondary" (click)="load()">Buscar</button>
         </div>
 

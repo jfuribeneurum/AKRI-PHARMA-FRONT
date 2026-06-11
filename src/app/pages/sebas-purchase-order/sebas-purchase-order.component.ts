@@ -176,6 +176,11 @@ export class SebasPurchaseOrderComponent implements OnInit {
     item.valor_unitario = 0;
     item.precio_venta = 0;
     item.costo_referencia = 0;
+
+    const labs = this.labsForProduct(key);
+    if (labs.length === 1) {
+      this.onLabSelect(item, String(labs[0].id_producto));
+    }
   }
 
   onLabSelect(item: any, idProducto: string) {
