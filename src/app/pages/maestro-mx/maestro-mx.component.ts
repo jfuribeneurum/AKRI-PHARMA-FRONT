@@ -261,7 +261,6 @@ export class MaestroMxComponent implements OnInit {
     const norm = (s: string) =>
       s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const hsNorm = norm(hsText);
-    console.log('[matchForma] HS text:', hsText, '| formas:', this.formas().map(f => f.nombre));
     const match = this.formas().find(f => {
       const fNorm = norm(f.nombre);
       return hsNorm.includes(fNorm) || fNorm.includes(hsNorm);
@@ -291,14 +290,15 @@ export class MaestroMxComponent implements OnInit {
       presentacion:         this.form.presentacion || null,
       unidad_medida:        this.form.unidad_medida || 'UND',
       registro_invima:      this.form.registro_invima || null,
-      cum:                  this.form.cum ? Number(this.form.cum) : null,
-      consecutivo_cum:      this.form.consecutivo_cum ? Number(this.form.consecutivo_cum) : null,
+      cum:                  this.form.cum != null ? Number(this.form.cum) : null,
+      consecutivo_cum:      this.form.consecutivo_cum != null && String(this.form.consecutivo_cum).trim() !== '' ? String(this.form.consecutivo_cum).trim() : null,
       codigo_atc:           this.form.atc || null,
+      clasificacion:        this.form.clasificacion || null,
       id_forma:             this.form.id_forma || null,
       tipo_producto:        this.form.tipo_producto || undefined,
       id_laboratorio:       this.form.id_laboratorio || null,
       iva_tasa:             Number(this.form.iva ?? 0),
-      mx_control:      !!this.form.mx_control,
+      mx_control:           !!this.form.mx_control,
       es_controlado:        !!this.form.es_controlado,
       requiere_cadena_frio: !!this.form.requiere_cadena_frio
     };
