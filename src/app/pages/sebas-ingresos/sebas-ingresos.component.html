@@ -251,37 +251,6 @@
             </div>
           </div>
 
-          <!-- 5. DATOS DEL MEDICAMENTO -->
-          <div class="po-section">
-            <div class="po-section-title">Datos del medicamento</div>
-            <div style="overflow-x:auto;">
-              <table class="items-table">
-                <thead>
-                  <tr>
-                    <th>Registro Invima MX</th>
-                    <th>CUM</th>
-                    <th>Consecutivo CUM</th>
-                    <th>Presentacion</th>
-                    <th>IVA (%)</th>
-                    <th>Temperatura</th>
-                    <th>Criterio de empleo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><input [(ngModel)]="ingresoExtra.registro_invima" placeholder="INVIMA-..."></td>
-                    <td><input [(ngModel)]="ingresoExtra.cum" placeholder="Codigo unico"></td>
-                    <td><input [(ngModel)]="ingresoExtra.consecutivo_cum"></td>
-                    <td><input [(ngModel)]="ingresoExtra.presentacion" placeholder="Ej: Tabletas x 20"></td>
-                    <td><input type="number" min="0" [(ngModel)]="ingresoExtra.iva" style="width:70px"></td>
-                    <td><input [(ngModel)]="ingresoExtra.temperatura" placeholder="Ej: 2-8°C"></td>
-                    <td><input [(ngModel)]="ingresoExtra.criterio_empleo" placeholder="Condicion de uso"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
           <!-- 6. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
@@ -396,37 +365,6 @@
               </table>
             </div>
             <button class="btn btn-outline" style="margin-top:0.6rem" (click)="agregarItem()">+ Agregar item</button>
-          </div>
-
-          <!-- 5. DATOS DEL MEDICAMENTO -->
-          <div class="po-section">
-            <div class="po-section-title">Datos del medicamento</div>
-            <div style="overflow-x:auto;">
-              <table class="items-table">
-                <thead>
-                  <tr>
-                    <th>Registro Invima MX</th>
-                    <th>CUM</th>
-                    <th>Consecutivo CUM</th>
-                    <th>Presentacion</th>
-                    <th>IVA (%)</th>
-                    <th>Temperatura</th>
-                    <th>Criterio de empleo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><input [(ngModel)]="ingresoExtra.registro_invima" placeholder="INVIMA-..."></td>
-                    <td><input [(ngModel)]="ingresoExtra.cum" placeholder="Codigo unico"></td>
-                    <td><input [(ngModel)]="ingresoExtra.consecutivo_cum"></td>
-                    <td><input [(ngModel)]="ingresoExtra.presentacion" placeholder="Ej: Tabletas x 20"></td>
-                    <td><input type="number" min="0" [(ngModel)]="ingresoExtra.iva" style="width:70px"></td>
-                    <td><input [(ngModel)]="ingresoExtra.temperatura" placeholder="Ej: 2-8°C"></td>
-                    <td><input [(ngModel)]="ingresoExtra.criterio_empleo" placeholder="Condicion de uso"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <!-- 6. DATOS DEL INGRESO -->

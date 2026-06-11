@@ -26,7 +26,7 @@ export class PurchasesComponent implements OnInit {
   reportSearch = '';
 
   purchase: any = {
-    numero_oc: `OC-${Date.now()}`,
+    numero_oc: '',
     id_proveedor: 1,
     items: [{ id_producto: 1, cantidad: 10, precio_unitario: 1500 }]
   };

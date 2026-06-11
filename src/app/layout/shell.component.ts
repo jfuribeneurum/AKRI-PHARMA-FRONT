@@ -101,6 +101,7 @@ export class ShellComponent {
       expanded: false,
       children: [
         { path: '/maestro-mx', label: 'Maestro MX', any: [] },
+        { path: '/laboratorios', label: 'Laboratorios', any: [] },
         { path: '/providers', label: 'Proveedores', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
         { path: '/pacientes', label: 'Pacientes', any: [] },
         { path: '/bodegas', label: 'Bodegas', any: [] },

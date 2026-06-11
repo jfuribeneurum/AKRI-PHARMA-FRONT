@@ -48,6 +48,15 @@
           Razón social
           <input [(ngModel)]="form.razon_social" placeholder="Nombre o razón social del proveedor">
         </label>
+        <label style="grid-column: span 2">
+          Laboratorio vinculado
+          <select [(ngModel)]="form.id_laboratorio">
+            <option [ngValue]="null">— Sin vincular —</option>
+            @for (lab of laboratorios(); track lab.id_laboratorio) {
+              <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
+            }
+          </select>
+        </label>
         <label>
           Nombres
           <input [(ngModel)]="form.nombres" placeholder="Nombres del contacto">

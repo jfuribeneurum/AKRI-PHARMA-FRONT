@@ -1,0 +1,127 @@
+<section class="page grid">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Laboratorios</h1>
+      <p class="page-subtitle">Gestiona los laboratorios farmacéuticos vinculados a productos y órdenes de compra.</p>
+    </div>
+    <button class="btn secondary" (click)="resetForm()">Nuevo laboratorio</button>
+  </div>
+
+  @if (message()) {
+    <div class="success-box">{{ message() }}</div>
+  }
+  @if (error()) {
+    <div class="error-box">{{ error() }}</div>
+  }
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>{{ form.id_laboratorio ? 'Editar laboratorio' : 'Crear laboratorio' }}</h3>
+        </div>
+        <span class="chip" [ngClass]="form.activo ? 'success' : 'warn'">{{ form.activo ? 'Activo' : 'Inactivo' }}</span>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Tipo identificación
+          <select [(ngModel)]="form.tipo_identificacion">
+            @for (t of tiposIdentificacion; track t.valor) {
+              <option [value]="t.valor">{{ t.etiqueta }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Número de identificación
+          <input [(ngModel)]="form.numero_identificacion" placeholder="900000000">
+        </label>
+        <label>
+          Dígito de verificación
+          <input [(ngModel)]="form.digito_verificacion" placeholder="1" maxlength="2">
+        </label>
+        <label>
+          Código interno
+          <input [(ngModel)]="form.codigo" placeholder="LAB-001">
+        </label>
+        <label style="grid-column: span 2">
+          Nombre del laboratorio
+          <input [(ngModel)]="form.nombre" placeholder="Nombre o razón social del laboratorio">
+        </label>
+      </div>
+
+      <div class="switch-row">
+        <label>
+          <input type="checkbox" [(ngModel)]="form.activo">
+          Laboratorio activo
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn secondary" (click)="resetForm()">Limpiar</button>
+        <button class="btn" (click)="saveLab()" [disabled]="saving()">
+          {{ saving() ? 'Guardando...' : (form.id_laboratorio ? 'Actualizar laboratorio' : 'Guardar laboratorio') }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3>Directorio</h3>
+          <div class="helper">{{ filteredLabs().length }} laboratorios registrados</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input [(ngModel)]="search" placeholder="Buscar por nombre, NIT, código o contacto">
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Laboratorio</th>
+              <th>Contacto</th>
+              <th>Ciudad</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (lab of filteredLabs(); track lab.id_laboratorio) {
+              <tr>
+                <td>
+                  <strong>{{ lab.nombre }}</strong><br>
+                  <span class="muted">
+                    {{ lab.tipo_identificacion }} {{ lab.numero_identificacion }}{{ lab.digito_verificacion ? '-' + lab.digito_verificacion : '' }}
+                  </span>
+                </td>
+                <td>
+                  <div>{{ (lab.nombres + ' ' + lab.apellidos).trim() || 'Sin contacto' }}</div>
+                  <span class="muted">{{ lab.telefono || lab.email || 'Sin canal registrado' }}</span>
+                </td>
+                <td>
+                  {{ lab.ciudad || '—' }}
+                  @if (lab.departamento) {
+                    <br><span class="muted" style="font-size:.8rem">{{ lab.departamento }}</span>
+                  }
+                </td>
+                <td>
+                  <span class="chip" [ngClass]="lab.activo ? 'success' : 'warn'">{{ lab.activo ? 'Activo' : 'Inactivo' }}</span>
+                </td>
+                <td>
+                  <button class="btn secondary btn-small" (click)="editLab(lab)">Editar</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="muted">No hay laboratorios para el filtro actual.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

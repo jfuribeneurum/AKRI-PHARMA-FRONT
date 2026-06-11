@@ -4,44 +4,44 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
-type ProviderForm = {
-  id_proveedor: number | null;
+type LabForm = {
+  id_laboratorio: number | null;
   codigo: string;
   tipo_identificacion: string;
   numero_identificacion: string;
   digito_verificacion: string;
-  razon_social: string;
+  nombre: string;
   nombres: string;
   apellidos: string;
   telefono: string;
   email: string;
+  pais: string;
   ciudad: string;
   departamento: string;
   direccion: string;
   activo: boolean;
-  id_laboratorio: number | null;
 };
 
 type CiudadItem = { nombre: string; departamento: string };
 
 @Component({
-  selector: 'akri-providers',
+  selector: 'akri-laboratorios',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgClass, FormsModule, UppercaseInputDirective],
-  templateUrl: './providers.component.html',
-  styleUrls: ['./providers.component.css']
+  templateUrl: './laboratorios.component.html',
+  styleUrls: ['./laboratorios.component.css']
 })
-export class ProvidersComponent implements OnInit {
-  readonly providers = signal<ProviderForm[]>([]);
-  readonly laboratorios = signal<{ id_laboratorio: number; nombre: string }[]>([]);
+export class LaboratoriosComponent implements OnInit {
+  readonly labs = signal<LabForm[]>([]);
   readonly message = signal('');
   readonly error = signal('');
   readonly saving = signal(false);
   readonly ciudadesList = signal<CiudadItem[]>([]);
+
   tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
   search = '';
-  form = this.blankProvider();
+  form = this.blankLab();
 
   get ciudadNames(): string[] {
     return this.ciudadesList().map(c => c.nombre);
@@ -50,17 +50,9 @@ export class ProvidersComponent implements OnInit {
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
-    this.loadProviders();
+    this.loadLabs();
     this.loadCiudades();
     void this.loadTiposIdentificacion();
-    void this.loadLaboratorios();
-  }
-
-  private async loadLaboratorios() {
-    try {
-      const res: any = await this.api.get('/products/lookups');
-      this.laboratorios.set(res?.data?.laboratorios ?? []);
-    } catch { /* non-fatal */ }
   }
 
   private async loadTiposIdentificacion() {
@@ -70,18 +62,18 @@ export class ProvidersComponent implements OnInit {
     } catch { /* non-fatal */ }
   }
 
-  filteredProviders() {
+  filteredLabs() {
     const term = this.search.trim().toLowerCase();
-    if (!term) return this.providers();
-    return this.providers().filter((p) =>
-      [p.codigo, p.razon_social, p.numero_identificacion, p.nombres, p.apellidos, p.telefono, p.email, p.ciudad]
+    if (!term) return this.labs();
+    return this.labs().filter((l) =>
+      [l.codigo, l.nombre, l.numero_identificacion, l.nombres, l.apellidos, l.telefono, l.email, l.ciudad]
         .some((v) => String(v ?? '').toLowerCase().includes(term))
     );
   }
 
-  async saveProvider() {
-    if (!this.form.numero_identificacion.trim() || !this.form.razon_social.trim()) {
-      this.error.set('Número de identificación y razón social son obligatorios.');
+  async saveLab() {
+    if (!this.form.nombre.trim()) {
+      this.error.set('El nombre del laboratorio es obligatorio.');
       return;
     }
 
@@ -90,75 +82,75 @@ export class ProvidersComponent implements OnInit {
     this.message.set('');
 
     try {
-      if (this.form.id_proveedor) {
-        await this.api.put(`/providers/${this.form.id_proveedor}`, this.form);
-        this.message.set('Proveedor actualizado.');
+      if (this.form.id_laboratorio) {
+        await this.api.put(`/laboratorios/${this.form.id_laboratorio}`, this.form);
+        this.message.set('Laboratorio actualizado.');
       } else {
-        await this.api.post('/providers', this.form);
-        this.message.set('Proveedor creado.');
+        await this.api.post('/laboratorios', this.form);
+        this.message.set('Laboratorio creado.');
       }
-      await this.loadProviders();
+      await this.loadLabs();
       this.resetForm();
     } catch (err: any) {
-      this.error.set(err?.error?.message || 'Error al guardar el proveedor.');
+      this.error.set(err?.error?.message || 'Error al guardar el laboratorio.');
     } finally {
       this.saving.set(false);
     }
   }
 
-  editProvider(provider: ProviderForm) {
-    this.form = { ...provider };
+  editLab(lab: LabForm) {
+    this.form = { ...lab };
   }
 
   resetForm() {
-    this.form = this.blankProvider();
+    this.form = this.blankLab();
     this.message.set('');
     this.error.set('');
   }
 
-  private async loadProviders() {
+  private async loadLabs() {
     try {
-      const resp: any = await this.api.get('/providers');
+      const resp: any = await this.api.get('/laboratorios');
       const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
-      this.providers.set(lista.map((p) => ({
-        id_proveedor: p.id_proveedor,
-        codigo: p.codigo ?? '',
-        tipo_identificacion: p.tipo_identificacion ?? 'NIT',
-        numero_identificacion: p.numero_identificacion ?? '',
-        digito_verificacion: p.digito_verificacion ?? '',
-        razon_social: p.razon_social ?? p.nombre ?? '',
-        nombres: p.nombres ?? '',
-        apellidos: p.apellidos ?? '',
-        telefono: p.telefono ?? '',
-        email: p.email ?? '',
-        ciudad: p.ciudad ?? '',
-        departamento: p.departamento ?? '',
-        direccion: p.direccion ?? '',
-        activo: !!p.activo,
-        id_laboratorio: p.id_laboratorio ?? null
+      this.labs.set(lista.map((l) => ({
+        id_laboratorio: l.id_laboratorio,
+        codigo: l.codigo ?? '',
+        tipo_identificacion: l.tipo_identificacion ?? 'NIT',
+        numero_identificacion: l.numero_identificacion ?? '',
+        digito_verificacion: l.digito_verificacion ?? '',
+        nombre: l.nombre ?? '',
+        nombres: l.nombres ?? '',
+        apellidos: l.apellidos ?? '',
+        telefono: l.telefono ?? '',
+        email: l.email ?? '',
+        pais: l.pais ?? 'Colombia',
+        ciudad: l.ciudad ?? '',
+        departamento: l.departamento ?? '',
+        direccion: l.direccion ?? '',
+        activo: !!l.activo,
       })));
     } catch {
-      this.error.set('No se pudieron cargar los proveedores.');
+      this.error.set('No se pudieron cargar los laboratorios.');
     }
   }
 
-  private blankProvider(): ProviderForm {
+  private blankLab(): LabForm {
     return {
-      id_proveedor: null,
+      id_laboratorio: null,
       codigo: '',
       tipo_identificacion: 'NIT',
       numero_identificacion: '',
       digito_verificacion: '',
-      razon_social: '',
+      nombre: '',
       nombres: '',
       apellidos: '',
       telefono: '',
       email: '',
+      pais: 'Colombia',
       ciudad: '',
       departamento: '',
       direccion: '',
       activo: true,
-      id_laboratorio: null
     };
   }
 

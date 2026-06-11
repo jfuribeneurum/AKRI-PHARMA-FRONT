@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
@@ -6,6 +6,7 @@ import { UppercaseInputDirective } from '../../shared/uppercase-input.directive'
 
 interface OrderItem {
   id_producto: number;
+  product_key: string;
   codigo: string;
   nombre: string;
   laboratorio: string;
@@ -32,6 +33,8 @@ export class SebasPurchaseOrderComponent implements OnInit {
   readonly allOrders = signal<any[]>([]);
   readonly filtered = signal<any[]>([]);
   readonly allProviders = signal<any[]>([]);
+  readonly allWarehouses = signal<any[]>([]);
+  readonly labProducts = signal<any[]>([]);
   tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
 
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
@@ -44,13 +47,15 @@ export class SebasPurchaseOrderComponent implements OnInit {
   }
 
   order: any = {
-    consecutivo: `OC-${Date.now()}`,
+    consecutivo: '',
     fecha: new Date().toISOString().slice(0, 10),
+    id_almacen: null,
     sede: '',
     bodega: '',
     direccion_sede: '',
     ciudad_sede: '',
     id_proveedor: null,
+    id_laboratorio_proveedor: null,
     proveedor_razon_social: '',
     proveedor_tipo_id: 'NIT',
     proveedor_numero_id: '',
@@ -63,8 +68,28 @@ export class SebasPurchaseOrderComponent implements OnInit {
     observaciones: ''
   };
 
+  readonly uniqueProducts = computed(() => {
+    const seen = new Map<string, { key: string; nombre_comercial: string; concentracion: string }>();
+    for (const p of this.labProducts()) {
+      const key = `${p.nombre_comercial}|${p.concentracion ?? ''}`;
+      if (!seen.has(key)) seen.set(key, { key, nombre_comercial: p.nombre_comercial, concentracion: p.concentracion });
+    }
+    return Array.from(seen.values());
+  });
+
+  labsForProduct(key: string) {
+    const [nombre, concentracion] = key.split('|');
+    const idLab = this.order.id_laboratorio_proveedor;
+    return this.labProducts().filter(
+      (p) =>
+        p.nombre_comercial === nombre &&
+        (p.concentracion ?? '') === concentracion &&
+        (idLab == null || p.id_laboratorio === idLab)
+    );
+  }
+
   items: OrderItem[] = [
-    { id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }
+    { id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }
   ];
 
   constructor(private readonly api: ApiService) {}
@@ -73,6 +98,24 @@ export class SebasPurchaseOrderComponent implements OnInit {
     this.loadOrders();
     this.loadProviders();
     void this.loadTiposIdentificacion();
+    void this.loadWarehouses();
+  }
+
+  private async loadWarehouses() {
+    try {
+      const res: any = await this.api.get('/purchases/warehouses');
+      this.allWarehouses.set(res?.data ?? []);
+    } catch { /* non-fatal */ }
+  }
+
+  onWarehouseChange(id: string) {
+    const wh = this.allWarehouses().find((w) => String(w.id_almacen) === String(id));
+    if (!wh) return;
+    this.order.id_almacen = wh.id_almacen;
+    this.order.bodega = wh.nombre;
+    this.order.sede = wh.sede_nombre ?? '';
+    this.order.direccion_sede = wh.sede_direccion ?? '';
+    this.order.ciudad_sede = wh.sede_ciudad ?? '';
   }
 
   private async loadTiposIdentificacion() {
@@ -95,6 +138,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
     const prov = this.allProviders().find((p) => String(p.id_proveedor) === String(id));
     if (!prov) return;
     this.order.id_proveedor = prov.id_proveedor;
+    this.order.id_laboratorio_proveedor = prov.id_laboratorio ?? null;
     this.order.proveedor_razon_social = prov.razon_social ?? prov.nombre ?? '';
     this.order.proveedor_tipo_id = prov.tipo_identificacion ?? 'NIT';
     this.order.proveedor_numero_id = prov.numero_identificacion ?? prov.nit ?? '';
@@ -104,6 +148,46 @@ export class SebasPurchaseOrderComponent implements OnInit {
     this.order.proveedor_telefono = prov.telefono ?? '';
     this.order.proveedor_ciudad = prov.ciudad ?? '';
     this.order.proveedor_direccion = prov.direccion ?? '';
+
+    // Limpiar selección de lab en cada ítem al cambiar proveedor
+    for (const item of this.items) {
+      item.id_producto = 0;
+      item.codigo = '';
+      item.nombre = '';
+      item.laboratorio = '';
+    }
+
+    if (this.items.length === 0) this.addItem();
+  }
+
+  private async loadLabProducts(idLaboratorio: number) {
+    try {
+      const res: any = await this.api.get(`/products/by-lab/${idLaboratorio}`);
+      this.labProducts.set(res?.data ?? []);
+    } catch { /* non-fatal */ }
+  }
+
+  onProductKeySelect(item: any, key: string) {
+    item.product_key = key;
+    item.id_producto = 0;
+    item.codigo = '';
+    item.nombre = '';
+    item.laboratorio = '';
+    item.valor_unitario = 0;
+    item.precio_venta = 0;
+    item.costo_referencia = 0;
+  }
+
+  onLabSelect(item: any, idProducto: string) {
+    const prod = this.labProducts().find((p) => String(p.id_producto) === String(idProducto));
+    if (!prod) return;
+    item.id_producto = prod.id_producto;
+    item.codigo = prod.codigo_control ?? prod.sku ?? '';
+    item.nombre = prod.nombre_comercial ?? '';
+    item.laboratorio = prod.laboratorio_nombre ?? '';
+    item.valor_unitario = Number(prod.costo_referencia ?? 0);
+    item.precio_venta = Number(prod.precio_venta ?? 0);
+    item.costo_referencia = Number(prod.costo_referencia ?? 0);
   }
 
   async loadOrders() {
@@ -151,11 +235,33 @@ export class SebasPurchaseOrderComponent implements OnInit {
   }
 
   addItem() {
-    this.items.push({ id_producto: 0, codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 });
+    this.items.push({ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 });
   }
 
   removeItem(index: number) {
     this.items.splice(index, 1);
+  }
+
+  async toggleForm() {
+    const opening = !this.showForm();
+    this.showForm.set(opening);
+    if (opening) {
+      try {
+        const res: any = await this.api.get('/purchases/next-number');
+        this.order.consecutivo = res?.data?.numero_oc ?? res?.numero_oc ?? '';
+      } catch { /* non-fatal */ }
+      void this.loadAllProducts();
+    }
+  }
+
+  private async loadAllProducts() {
+    try {
+      const res: any = await this.api.get('/products/for-po');
+      this.labProducts.set(res?.data ?? []);
+      if (this.items.length === 0) {
+        this.addItem();
+      }
+    } catch { /* non-fatal */ }
   }
 
   async createPurchase() {
@@ -163,8 +269,10 @@ export class SebasPurchaseOrderComponent implements OnInit {
     this.message.set('');
     this.saving.set(true);
     try {
-      await this.api.post('/purchases', this.buildPayload());
-      this.message.set('Orden de compra creada correctamente.');
+      const result: any = await this.api.post('/purchases', this.buildPayload());
+      const numeroCreado = result?.data?.numero_oc ?? result?.numero_oc ?? '';
+      this.order.consecutivo = numeroCreado;
+      this.message.set(`Orden de compra ${numeroCreado} creada correctamente.`);
       await this.loadOrders();
     } catch (err: any) {
       this.error.set(err?.error?.message || 'No fue posible crear la orden de compra.');
