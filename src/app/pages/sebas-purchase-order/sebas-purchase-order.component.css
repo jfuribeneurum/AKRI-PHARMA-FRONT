@@ -13,14 +13,48 @@
     .filter-input-row input:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
     .filter-btn { padding: 0.45rem 1rem; font-size: 0.85rem; }
 
+    /* ── filtro estado ───────────────────────────────────────── */
+    .estado-filter-row {
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      margin-bottom: 0.85rem; padding: 0.5rem 0.75rem;
+      background: var(--color-surface-2, #f3f4f6); border-radius: 8px;
+    }
+    .estado-filter-label {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--color-primary, #2563eb); white-space: nowrap;
+    }
+    .estado-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .estado-badge {
+      cursor: pointer; border: 2px solid transparent;
+      font-size: 0.82rem; padding: 0.3rem 0.9rem;
+      transition: box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+    }
+    .estado-badge:hover { opacity: 0.8; }
+    .estado-active { box-shadow: 0 0 0 2.5px currentColor; transform: scale(1.08); }
+    :host-context([data-theme="dark"]) .estado-filter-row { background: rgba(255,255,255,0.05); }
+
     /* ── tabla órdenes ───────────────────────────────────────── */
     .orders-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     .orders-table th { background: var(--color-surface-2, #f3f4f6); padding: 0.55rem 0.75rem; text-align: left; font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
     .orders-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--color-border, #e5e7eb); }
     .orders-table tr:last-child td { border-bottom: none; }
     .badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
-    .badge-borrador { background: #fef3c7; color: #92400e; }
+    .badge-borrador  { background: #f3f4f6; color: #6b7280; }
+    .badge-enviada  { background: #dbeafe; color: #1d4ed8; }
+    .badge-editada  { background: #fef3c7; color: #92400e; }
     .badge-aprobada { background: #d1fae5; color: #065f46; }
+    .badge-cancelada { background: #fee2e2; color: #991b1b; }
+
+    /* ── botones de acción en tabla ──────────────────────────── */
+    .actions-cell { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .btn-action {
+      padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.75rem; font-weight: 600;
+      border: 1.5px solid; cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+    }
+    .btn-action:hover { opacity: 0.75; }
+    .btn-action.edit    { border-color: #d97706; color: #d97706; background: transparent; }
+    .btn-action.approve { border-color: #16a34a; color: #16a34a; background: transparent; }
+    .btn-action.cancel-oc { border-color: #dc2626; color: #dc2626; background: transparent; }
     .empty-row td { text-align: center; color: #9ca3af; padding: 1.5rem; }
 
     /* ── secciones del formulario ────────────────────────────── */
@@ -52,9 +86,46 @@
     .toggle-arrow { font-size: 0.8rem; color: #6b7280; transition: transform 0.2s; }
     .toggle-arrow.open { transform: rotate(90deg); }
 
+    /* ── modal de éxito ─────────────────────────────────────── */
+    .success-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .success-modal {
+      background: var(--color-surface, #fff); border-radius: 16px;
+      padding: 2.5rem 3rem; text-align: center; max-width: 420px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.25s ease;
+    }
+    .success-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: #22c55e; color: #fff;
+      font-size: 2.2rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+    }
+    .success-title { margin: 0 0 0.4rem; font-size: 1.75rem; font-weight: 700; }
+    .success-number {
+      font-size: 1.4rem; font-weight: 700;
+      color: var(--color-primary, #2563eb); margin: 0 0 0.5rem;
+      letter-spacing: 0.04em;
+    }
+    .success-subtitle { color: #6b7280; margin: 0 0 1.75rem; font-size: 0.95rem; }
+    .success-btn { width: 100%; padding: 0.75rem; font-size: 1rem; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes slideUp { from { transform: translateY(24px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+
     /* ── dark mode ───────────────────────────────────────────── */
-    :host-context([data-theme="dark"]) .badge-borrador { background: rgba(251,191,36,0.12); color: #FCD34D; }
+    :host-context([data-theme="dark"]) .badge-borrador  { background: rgba(156,163,175,0.12); color: #9CA3AF; }
+    :host-context([data-theme="dark"]) .badge-enviada  { background: rgba(96,165,250,0.12); color: #93C5FD; }
+    :host-context([data-theme="dark"]) .badge-editada  { background: rgba(251,191,36,0.12); color: #FCD34D; }
     :host-context([data-theme="dark"]) .badge-aprobada { background: rgba(52,211,153,0.12); color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .badge-cancelada { background: rgba(248,113,113,0.12); color: #FCA5A5; }
+    :host-context([data-theme="dark"]) .btn-action.edit    { border-color: #FCD34D; color: #FCD34D; }
+    :host-context([data-theme="dark"]) .btn-action.approve { border-color: #4ADE80; color: #4ADE80; }
+    :host-context([data-theme="dark"]) .btn-action.cancel-oc { border-color: #F87171; color: #F87171; }
     :host-context([data-theme="dark"]) .empty-row td { color: var(--muted); }
     :host-context([data-theme="dark"]) .btn-remove { color: var(--danger); }
     :host-context([data-theme="dark"]) .btn-remove:hover { color: #FCA5A5; }

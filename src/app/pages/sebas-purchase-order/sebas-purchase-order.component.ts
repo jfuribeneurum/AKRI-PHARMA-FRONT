@@ -16,6 +16,8 @@ interface OrderItem {
   costo_referencia: number;
 }
 
+const EDITABLE_STATES = ['borrador', 'enviada', 'editada'];
+
 @Component({
   selector: 'akri-sebas-purchase-order',
   standalone: true,
@@ -35,14 +37,34 @@ export class SebasPurchaseOrderComponent implements OnInit {
   readonly allProviders = signal<any[]>([]);
   readonly allWarehouses = signal<any[]>([]);
   readonly labProducts = signal<any[]>([]);
+  readonly showSuccessModal = signal(false);
+  readonly createdOcNumber = signal('');
+  readonly successModalTitle = signal('¡Orden creada!');
+  readonly successModalSubtitle = signal('La orden de compra fue registrada correctamente.');
+  readonly editingOrderId = signal<number | null>(null);
   tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
 
+  readonly isEditMode = computed(() => this.editingOrderId() !== null);
+
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
-  filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+  filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '', estado: '' };
+
+  readonly estadoOptions = [
+    { value: 'enviada', label: 'Enviada' },
+    { value: 'editada', label: 'Editada' },
+    { value: 'aprobada', label: 'Aprobada' },
+    { value: 'cancelada', label: 'Cancelada' }
+  ];
 
   setFilterType(type: 'numero' | 'fecha' | 'laboratorio') {
     this.filterType.set(type);
-    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+    // Mantiene el filtro de estado al cambiar de tipo
+    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '', estado: this.filter.estado };
+    this.applyFilter();
+  }
+
+  toggleEstadoFilter(estado: string) {
+    this.filter.estado = this.filter.estado === estado ? '' : estado;
     this.applyFilter();
   }
 
@@ -79,13 +101,15 @@ export class SebasPurchaseOrderComponent implements OnInit {
 
   labsForProduct(key: string) {
     const [nombre, concentracion] = key.split('|');
-    const idLab = this.order.id_laboratorio_proveedor;
     return this.labProducts().filter(
       (p) =>
         p.nombre_comercial === nombre &&
-        (p.concentracion ?? '') === concentracion &&
-        (idLab == null || p.id_laboratorio === idLab)
+        (p.concentracion ?? '') === concentracion
     );
+  }
+
+  isEditable(estado: string) {
+    return EDITABLE_STATES.includes(estado);
   }
 
   items: OrderItem[] = [
@@ -129,9 +153,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
     try {
       const resp: any = await this.api.get('/providers');
       this.allProviders.set(Array.isArray(resp) ? resp : (resp?.data ?? []));
-    } catch {
-      // providers list is optional, order can still be created manually
-    }
+    } catch { /* non-fatal */ }
   }
 
   onProviderChange(id: string) {
@@ -149,7 +171,6 @@ export class SebasPurchaseOrderComponent implements OnInit {
     this.order.proveedor_ciudad = prov.ciudad ?? '';
     this.order.proveedor_direccion = prov.direccion ?? '';
 
-    // Limpiar selección de lab en cada ítem al cambiar proveedor
     for (const item of this.items) {
       item.id_producto = 0;
       item.codigo = '';
@@ -214,6 +235,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
     const desde = this.filter.fecha_desde.trim();
     const hasta = this.filter.fecha_hasta.trim();
     const lab = this.filter.laboratorio.toLowerCase().trim();
+    const estado = this.filter.estado;
 
     this.filtered.set(
       this.allOrders().filter(row => {
@@ -221,13 +243,14 @@ export class SebasPurchaseOrderComponent implements OnInit {
         if (desde && String(row.fecha ?? '') < desde) return false;
         if (hasta && String(row.fecha ?? '') > hasta) return false;
         if (lab && !String(row.observaciones ?? '').toLowerCase().includes(lab)) return false;
+        if (estado && row.estado !== estado) return false;
         return true;
       })
     );
   }
 
   clearFilter() {
-    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
+    this.filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '', estado: '' };
     this.applyFilter();
   }
 
@@ -247,15 +270,101 @@ export class SebasPurchaseOrderComponent implements OnInit {
     this.items.splice(index, 1);
   }
 
+  private resetForm() {
+    this.editingOrderId.set(null);
+    this.order = {
+      consecutivo: '',
+      fecha: new Date().toISOString().slice(0, 10),
+      id_almacen: null,
+      sede: '', bodega: '', direccion_sede: '', ciudad_sede: '',
+      id_proveedor: null, id_laboratorio_proveedor: null,
+      proveedor_razon_social: '', proveedor_tipo_id: 'NIT',
+      proveedor_numero_id: '', proveedor_digito_verificacion: '',
+      proveedor_nombres: '', proveedor_apellidos: '',
+      proveedor_telefono: '', proveedor_ciudad: '',
+      proveedor_direccion: '', observaciones: ''
+    };
+    this.items = [{ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }];
+  }
+
   async toggleForm() {
     const opening = !this.showForm();
-    this.showForm.set(opening);
     if (opening) {
+      this.resetForm();
       try {
         const res: any = await this.api.get('/purchases/next-number');
         this.order.consecutivo = res?.data?.numero_oc ?? res?.numero_oc ?? '';
       } catch { /* non-fatal */ }
       void this.loadAllProducts();
+    }
+    this.showForm.set(opening);
+  }
+
+  async loadOrderForEdit(orderId: number) {
+    this.error.set('');
+    try {
+      const res: any = await this.api.get(`/purchases/${orderId}`);
+      const oc = res?.data ?? res;
+
+      this.editingOrderId.set(orderId);
+      this.order.consecutivo = oc.numero_oc;
+      this.order.fecha = oc.fecha?.slice(0, 10) ?? '';
+      this.order.id_proveedor = oc.id_proveedor;
+      this.order.id_laboratorio_proveedor = null;
+
+      const prov = this.allProviders().find(p => p.id_proveedor === oc.id_proveedor);
+      if (prov) {
+        this.order.id_laboratorio_proveedor = prov.id_laboratorio ?? null;
+        this.order.proveedor_razon_social = prov.razon_social ?? prov.nombre ?? '';
+        this.order.proveedor_tipo_id = prov.tipo_identificacion ?? 'NIT';
+        this.order.proveedor_numero_id = prov.numero_identificacion ?? '';
+        this.order.proveedor_digito_verificacion = prov.digito_verificacion ?? '';
+        this.order.proveedor_nombres = prov.nombres ?? '';
+        this.order.proveedor_apellidos = prov.apellidos ?? '';
+        this.order.proveedor_telefono = prov.telefono ?? '';
+        this.order.proveedor_ciudad = prov.ciudad ?? '';
+        this.order.proveedor_direccion = prov.direccion ?? '';
+      } else {
+        this.order.proveedor_razon_social = oc.proveedor_nombre ?? '';
+      }
+
+      this.order.sede = oc.sede_nombre ?? '';
+      this.order.direccion_sede = oc.sede_direccion ?? '';
+      this.order.ciudad_sede = oc.sede_ciudad ?? '';
+
+      const wh = this.allWarehouses().find(w => String(w.id_sede) === String(oc.id_sede));
+      this.order.id_almacen = wh?.id_almacen ?? null;
+      if (wh) this.order.bodega = wh.nombre;
+
+      // Extraer solo las notas del usuario (antes del bloque de items)
+      const rawObs = oc.observaciones ?? '';
+      const itemsIdx = rawObs.indexOf('\nItem ');
+      this.order.observaciones = itemsIdx > -1 ? rawObs.slice(0, itemsIdx).trim() : rawObs;
+
+      this.items = (oc.items ?? []).map((item: any) => ({
+        id_producto: item.id_producto,
+        product_key: `${item.nombre_comercial}|${item.concentracion ?? ''}`,
+        codigo: item.codigo ?? '',
+        nombre: item.nombre_comercial ?? '',
+        laboratorio: item.laboratorio_nombre ?? '',
+        cantidad: item.cantidad,
+        valor_unitario: item.precio_unitario,
+        precio_venta: item.precio_venta ?? 0,
+        costo_referencia: item.costo_referencia ?? 0
+      }));
+      if (this.items.length === 0) this.addItem();
+
+      if (!this.showForm()) {
+        void this.loadAllProducts();
+        this.showForm.set(true);
+      }
+
+      setTimeout(() => {
+        document.querySelector('.new-order-toggle')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    } catch (err: any) {
+      console.error('[loadOrderForEdit]', err);
+      this.error.set(err?.error?.message ?? err?.message ?? 'No se pudo cargar la orden para editar.');
     }
   }
 
@@ -269,20 +378,68 @@ export class SebasPurchaseOrderComponent implements OnInit {
     } catch { /* non-fatal */ }
   }
 
-  async createPurchase() {
+  async saveOrder() {
     this.error.set('');
     this.message.set('');
+
+    const validItems = this.items.filter(i => Number(i.cantidad) > 0 && Number(i.id_producto) > 0);
+    if (validItems.length === 0) {
+      this.error.set('Debe agregar al menos un item con producto y cantidad válidos.');
+      return;
+    }
+
     this.saving.set(true);
     try {
-      const result: any = await this.api.post('/purchases', this.buildPayload());
-      const numeroCreado = result?.data?.numero_oc ?? result?.numero_oc ?? '';
-      this.order.consecutivo = numeroCreado;
-      this.message.set(`Orden de compra ${numeroCreado} creada correctamente.`);
+      const editId = this.editingOrderId();
+      let result: any;
+      if (editId) {
+        result = await this.api.put(`/purchases/${editId}`, this.buildPayload());
+        this.successModalTitle.set('¡Orden actualizada!');
+        this.successModalSubtitle.set('La orden de compra fue actualizada correctamente.');
+      } else {
+        result = await this.api.post('/purchases', this.buildPayload());
+        this.successModalTitle.set('¡Orden creada!');
+        this.successModalSubtitle.set('La orden de compra fue registrada correctamente.');
+      }
+      const numero = result?.data?.numero_oc ?? result?.numero_oc ?? this.order.consecutivo;
+      this.createdOcNumber.set(numero);
       await this.loadOrders();
+      this.showSuccessModal.set(true);
+      setTimeout(() => this.dismissSuccess(), 4000);
     } catch (err: any) {
-      this.error.set(err?.error?.message || 'No fue posible crear la orden de compra.');
+      console.error('[saveOrder]', err);
+      this.error.set(err?.error?.message ?? err?.message ?? 'No fue posible guardar la orden de compra.');
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  dismissSuccess() {
+    this.showSuccessModal.set(false);
+    this.showForm.set(false);
+    this.resetForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async approveOrder(id: number, numero: string) {
+    if (!confirm(`¿Aprobar la orden ${numero}? Una vez aprobada no podrá editarse ni cancelarse.`)) return;
+    this.error.set('');
+    try {
+      await this.api.patch(`/purchases/${id}/approve`, {});
+      await this.loadOrders();
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudo aprobar la orden.');
+    }
+  }
+
+  async cancelOrder(id: number, numero: string) {
+    if (!confirm(`¿Cancelar la orden ${numero}? Esta acción no se puede revertir.`)) return;
+    this.error.set('');
+    try {
+      await this.api.patch(`/purchases/${id}/cancel`, {});
+      await this.loadOrders();
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudo cancelar la orden.');
     }
   }
 
@@ -315,7 +472,6 @@ export class SebasPurchaseOrderComponent implements OnInit {
     return {
       numero_oc: this.order.consecutivo,
       id_proveedor: Number(this.order.id_proveedor) || 1,
-      estado: 'borrador',
       observaciones: notes,
       items: this.items
         .filter(i => i.cantidad > 0)

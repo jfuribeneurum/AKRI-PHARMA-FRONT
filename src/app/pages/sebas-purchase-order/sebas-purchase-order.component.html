@@ -11,11 +11,41 @@
       @if (message()) { <div class="success-box">{{ message() }}</div> }
       @if (error()) { <div class="error-box">{{ error() }}</div> }
 
+      @if (showSuccessModal()) {
+        <div class="success-overlay" (click)="dismissSuccess()">
+          <div class="success-modal" (click)="$event.stopPropagation()">
+            <div class="success-icon">&#10003;</div>
+            <h2 class="success-title">{{ successModalTitle() }}</h2>
+            <p class="success-number">{{ createdOcNumber() }}</p>
+            <p class="success-subtitle">{{ successModalSubtitle() }}</p>
+            <button class="btn success-btn" (click)="dismissSuccess()">Volver a órdenes</button>
+          </div>
+        </div>
+      }
+
       <!-- ══ BUSCADOR ════════════════════════════════════════════════ -->
       <div class="card">
         <div class="po-section-title">Buscar ordenes</div>
 
-        <!-- selector de tipo de filtro -->
+        <!-- Filtro de estado siempre visible -->
+        <div class="estado-filter-row">
+          <span class="estado-filter-label">Estado:</span>
+          <div class="estado-pills">
+            @for (e of estadoOptions; track e.value) {
+              <button
+                class="badge estado-badge"
+                [class.badge-enviada]="e.value === 'enviada'"
+                [class.badge-editada]="e.value === 'editada'"
+                [class.badge-aprobada]="e.value === 'aprobada'"
+                [class.badge-cancelada]="e.value === 'cancelada'"
+                [class.estado-active]="filter.estado === e.value"
+                (click)="toggleEstadoFilter(e.value)">
+                {{ e.label }}
+              </button>
+            }
+          </div>
+        </div>
+
         <div class="filter-type-row">
           <button class="filter-pill" [class.active]="filterType() === 'numero'"
             (click)="setFilterType('numero')">Numero de orden</button>
@@ -25,7 +55,6 @@
             (click)="setFilterType('laboratorio')">Laboratorio</button>
         </div>
 
-        <!-- input segun el tipo activo -->
         <div class="filter-input-row">
           @if (filterType() === 'numero') {
             <label>
@@ -62,13 +91,14 @@
                 <th>Sede</th>
                 <th>Estado</th>
                 <th style="text-align:right">Total</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               @if (loading()) {
-                <tr class="empty-row"><td colspan="6">Cargando...</td></tr>
+                <tr class="empty-row"><td colspan="7">Cargando...</td></tr>
               } @else if (filtered().length === 0) {
-                <tr class="empty-row"><td colspan="6">No se encontraron ordenes.</td></tr>
+                <tr class="empty-row"><td colspan="7">No se encontraron ordenes.</td></tr>
               } @else {
                 @for (row of filtered(); track row.id_oc) {
                   <tr>
@@ -77,11 +107,26 @@
                     <td>{{ row.proveedor }}</td>
                     <td>{{ row.sede }}</td>
                     <td>
-                      <span class="badge" [class.badge-borrador]="row.estado === 'borrador'" [class.badge-aprobada]="row.estado === 'aprobada'">
+                      <span class="badge"
+                        [class.badge-borrador]="row.estado === 'borrador'"
+                        [class.badge-enviada]="row.estado === 'enviada'"
+                        [class.badge-editada]="row.estado === 'editada'"
+                        [class.badge-aprobada]="row.estado === 'aprobada'"
+                        [class.badge-cancelada]="row.estado === 'cancelada'">
                         {{ row.estado }}
                       </span>
                     </td>
                     <td style="text-align:right">{{ row.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    <td>
+                      @if (isEditable(row.estado)) {
+                        <div class="actions-cell">
+                          <button class="btn-action edit" (click)="loadOrderForEdit(row.id_oc)">Editar</button>
+                          <button class="btn-action cancel-oc" (click)="cancelOrder(row.id_oc, row.numero_oc)">Cancelar</button>
+                        </div>
+                      } @else {
+                        <span style="color:#6b7280; font-size:0.78rem">—</span>
+                      }
+                    </td>
                   </tr>
                 }
               }
@@ -93,11 +138,14 @@
         </div>
       </div>
 
-      <!-- ══ FORMULARIO NUEVA ORDEN ══════════════════════════════════ -->
+      <!-- ══ FORMULARIO ═════════════════════════════════════════════ -->
       <div class="card">
         <div class="new-order-toggle" (click)="toggleForm()">
           <span class="toggle-arrow" [class.open]="showForm()">&#9654;</span>
-          <h3>Nueva orden de compra</h3>
+          <h3>
+            @if (isEditMode()) { Editar orden · {{ order.consecutivo }} }
+            @else { Nueva orden de compra }
+          </h3>
         </div>
 
         @if (showForm()) {
@@ -154,7 +202,7 @@
                 <select (change)="onProviderChange($any($event.target).value)">
                   <option value="">— Seleccionar proveedor —</option>
                   @for (p of allProviders(); track p.id_proveedor) {
-                    <option [value]="p.id_proveedor">
+                    <option [value]="p.id_proveedor" [selected]="p.id_proveedor === order.id_proveedor">
                       {{ p.razon_social || p.nombre }} · {{ p.tipo_identificacion }} {{ p.numero_identificacion }}{{ p.digito_verificacion ? '-' + p.digito_verificacion : '' }}
                     </option>
                   }
@@ -215,7 +263,6 @@
                       <th>Laboratorio</th>
                       <th style="text-align:right">Cantidad</th>
                       <th style="text-align:right">Valor unitario</th>
-
                       <th style="text-align:right">Valor total</th>
                       <th></th>
                     </tr>
@@ -251,7 +298,6 @@
                         </td>
                         <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
                         <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
-
                         <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                         <td>
                           @if (items.length > 1) {
@@ -284,9 +330,14 @@
             </div>
           </div>
 
-          <button class="btn" (click)="createPurchase()" [disabled]="saving()">
-            {{ saving() ? 'Guardando...' : 'Crear orden de compra' }}
-          </button>
+          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap">
+            <button class="btn" (click)="saveOrder()" [disabled]="saving()">
+              {{ saving() ? 'Guardando...' : (isEditMode() ? 'Guardar cambios' : 'Crear orden de compra') }}
+            </button>
+            @if (isEditMode()) {
+              <button class="btn secondary" (click)="toggleForm()">Cancelar edición</button>
+            }
+          </div>
 
         }
       </div>
