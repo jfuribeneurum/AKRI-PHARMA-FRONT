@@ -151,7 +151,12 @@
                       <span class="oc-numero">{{ oc.numero_oc }}</span>
                       <span class="oc-meta">{{ oc.proveedor }} &nbsp;|&nbsp; {{ oc.fecha | date:'dd/MM/yyyy' }}</span>
                     </div>
-                    <span class="oc-badge" [class.badge-borrador]="oc.estado==='borrador'" [class.badge-aprobada]="oc.estado==='aprobada'">
+                    <span class="oc-badge"
+                      [class.badge-borrador]="oc.estado==='borrador'"
+                      [class.badge-enviada]="oc.estado==='enviada'"
+                      [class.badge-editada]="oc.estado==='editada'"
+                      [class.badge-aprobada]="oc.estado==='aprobada'"
+                      [class.badge-cancelada]="oc.estado==='cancelada'">
                       {{ oc.estado }}
                     </span>
                   </div>

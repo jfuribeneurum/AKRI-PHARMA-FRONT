@@ -39,8 +39,11 @@
     .oc-numero { font-weight: 700; font-size: 0.9rem; }
     .oc-meta { font-size: 0.78rem; color: #6b7280; }
     .oc-badge { font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 99px; white-space: nowrap; }
-    .badge-borrador { background: #fef3c7; color: #92400e; }
-    .badge-aprobada { background: #d1fae5; color: #065f46; }
+    .badge-borrador  { background: #f3f4f6; color: #6b7280; }
+    .badge-enviada   { background: #dbeafe; color: #1d4ed8; }
+    .badge-editada   { background: #fef3c7; color: #92400e; }
+    .badge-aprobada  { background: #d1fae5; color: #065f46; }
+    .badge-cancelada { background: #fee2e2; color: #991b1b; }
     /* orden seleccionada */
     .selected-banner {
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
@@ -102,8 +105,11 @@
     :host-context([data-theme="dark"]) .oc-item:hover { background: rgba(139,92,246,0.07); }
     :host-context([data-theme="dark"]) .oc-item.selected { background: rgba(139,92,246,0.12); border-color: var(--primary); }
     :host-context([data-theme="dark"]) .oc-meta { color: var(--muted); }
-    :host-context([data-theme="dark"]) .badge-borrador { background: rgba(251,191,36,0.12); color: #FCD34D; }
-    :host-context([data-theme="dark"]) .badge-aprobada { background: rgba(52,211,153,0.12); color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .badge-borrador  { background: rgba(156,163,175,0.12); color: #9CA3AF; }
+    :host-context([data-theme="dark"]) .badge-enviada   { background: rgba(96,165,250,0.12);  color: #93C5FD; }
+    :host-context([data-theme="dark"]) .badge-editada   { background: rgba(251,191,36,0.12);  color: #FCD34D; }
+    :host-context([data-theme="dark"]) .badge-aprobada  { background: rgba(52,211,153,0.12);  color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .badge-cancelada { background: rgba(248,113,113,0.12); color: #FCA5A5; }
     :host-context([data-theme="dark"]) .selected-banner { background: rgba(139,92,246,0.08); border-color: var(--primary); }
     :host-context([data-theme="dark"]) .btn-deselect { color: var(--danger); }
     :host-context([data-theme="dark"]) .ing-card:hover { border-color: var(--primary); }
