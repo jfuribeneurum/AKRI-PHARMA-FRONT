@@ -44,6 +44,71 @@
     .badge-editada   { background: #fef3c7; color: #92400e; }
     .badge-aprobada  { background: #d1fae5; color: #065f46; }
     .badge-cancelada { background: #fee2e2; color: #991b1b; }
+    /* ── botón y panel datos medicamento por ítem ────────────── */
+    .num-toggle {
+      font-size: 0.8rem; font-weight: 700; cursor: pointer; user-select: none;
+      transition: color 0.15s; text-align: center;
+    }
+    .num-toggle-pending { color: #f59e0b; }
+    .num-toggle-done    { color: #22c55e; }
+    .num-toggle-no      { color: #ef4444; }
+    .med-expand-row td { padding: 0; border-bottom: 1px solid var(--color-border, #e5e7eb); }
+    .med-expand-panel {
+      padding: 0.75rem 1rem; background: var(--color-surface-2, #f3f4f6);
+      border-top: 2px solid var(--color-primary, #2563eb);
+    }
+    .med-expand-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--color-primary, #2563eb);
+      display: block; margin-bottom: 0.6rem;
+    }
+    .med-fields-grid {
+      display: flex; flex-wrap: wrap; gap: 0.6rem 1rem;
+    }
+    .med-fields-grid label {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.72rem; font-weight: 600; color: #6b7280;
+      min-width: 130px; flex: 1;
+    }
+    .med-fields-grid input {
+      padding: 0.28rem 0.4rem; border: 1px solid var(--color-border, #d1d5db);
+      border-radius: 4px; font-size: 0.82rem; background: var(--color-surface, #fff);
+      color: inherit;
+    }
+    .med-fields-grid input:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
+    .cumple-label { min-width: 110px !important; flex: 0 !important; }
+    .cumple-toggle {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0.22rem 0.7rem; border-radius: 99px; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; user-select: none; transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .cumple-si       { background: #d1fae5; color: #065f46; }
+    .cumple-no       { background: #fee2e2; color: #991b1b; }
+    .cumple-none     { background: #f3f4f6; color: #6b7280; }
+    .cumple-disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; opacity: 0.55; }
+    :host-context([data-theme="dark"]) .cumple-si       { background: rgba(52,211,153,0.15);  color: #6ee7b7; }
+    :host-context([data-theme="dark"]) .cumple-no       { background: rgba(248,113,113,0.15); color: #fca5a5; }
+    :host-context([data-theme="dark"]) .cumple-none     { background: rgba(255,255,255,0.08); color: #9ca3af; }
+    :host-context([data-theme="dark"]) .cumple-disabled { background: rgba(255,255,255,0.05); color: #6b7280; }
+    :host-context([data-theme="dark"]) .med-expand-panel { background: rgba(255,255,255,0.04); }
+    :host-context([data-theme="dark"]) .num-toggle-pending { color: #fbbf24; }
+    :host-context([data-theme="dark"]) .num-toggle-done    { color: #4ade80; }
+    :host-context([data-theme="dark"]) .num-toggle-no      { color: #f87171; }
+    :host-context([data-theme="dark"]) .med-fields-grid label { color: var(--muted); }
+
+    /* aviso MX sin validar */
+    .mx-warning {
+      margin-top: 1rem; padding: 0.65rem 1rem;
+      background: #fef9c3; color: #713f12;
+      border: 1.5px solid #fde047; border-radius: 8px;
+      font-size: 0.85rem; line-height: 1.4;
+    }
+    :host-context([data-theme="dark"]) .mx-warning {
+      background: rgba(251,191,36,0.1); color: #fcd34d; border-color: rgba(251,191,36,0.35);
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
     /* orden seleccionada */
     .selected-banner {
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;

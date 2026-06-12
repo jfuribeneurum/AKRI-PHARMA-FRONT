@@ -69,7 +69,7 @@
                       <span class="ing-creador">Registrado por: {{ ing.creado_por_nombre }}</span>
                     }
                   </div>
-                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0">
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.05rem;flex-shrink:0">
                     <span class="ing-badge"
                       [class.badge-recibido]="ing.estado==='recibido'"
                       [class.badge-pendiente]="ing.estado==='pendiente'"
@@ -233,22 +233,54 @@
                 </thead>
                 <tbody>
                   @for (item of ocItems; track $index) {
-                    <tr>
-                      <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
-                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
-                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
-                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
-                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
-                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
-                      <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
-                      <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
-                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                    </tr>
+                    <ng-container>
+                      <tr>
+                        <td class="num-toggle" [class.num-toggle-pending]="item.cumple == null" [class.num-toggle-done]="item.cumple === true" [class.num-toggle-no]="item.cumple === false" (click)="item._showMed = !item._showMed" title="Datos del medicamento">{{ $index + 1 }}</td>
+                        <td><input [(ngModel)]="item.codigo" placeholder="Cod." (blur)="autoFillMedFromCodigo(item)"></td>
+                        <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                        <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                        <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                        <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                        <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
+                        <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
+                        <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      </tr>
+                      @if (item._showMed) {
+                        <tr class="med-expand-row">
+                          <td colspan="10">
+                            <div class="med-expand-panel">
+                              <span class="med-expand-title">Datos del medicamento</span>
+                              <div class="med-fields-grid">
+                                <label>Registro Invima MX<input [(ngModel)]="item.registro_invima" placeholder="INVIMA-..."></label>
+                                <label>CUM<input [(ngModel)]="item.cum" placeholder="Codigo unico"></label>
+                                <label>Consecutivo CUM<input [(ngModel)]="item.consecutivo_cum"></label>
+                                <label>Presentacion<input [(ngModel)]="item.presentacion" placeholder="Ej: Tabletas x 20"></label>
+                                <label>IVA (%)<input type="number" min="0" [(ngModel)]="item.iva" style="width:70px"></label>
+                                <label>Temperatura<input [(ngModel)]="item.temperatura" placeholder="Ej: 2-8°C"></label>
+                                <label>Criterio de empleo<input [(ngModel)]="item.criterio_empleo" placeholder="Condicion de uso"></label>
+                                <label class="cumple-label">
+                                  Cumplimiento
+                                  <span class="cumple-toggle"
+                                    [class.cumple-si]="item.cumple === true && canToggleCumple(item)"
+                                    [class.cumple-no]="item.cumple === false && canToggleCumple(item)"
+                                    [class.cumple-none]="item.cumple == null && canToggleCumple(item)"
+                                    [class.cumple-disabled]="!canToggleCumple(item)"
+                                    [title]="canToggleCumple(item) ? '' : 'Completa todos los campos para validar'"
+                                    (click)="toggleCumple(item)">
+                                    {{ item.cumple === true ? 'Cumple' : item.cumple === false ? 'No cumple' : 'Sin validar' }}
+                                  </span>
+                                </label>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </ng-container>
                   }
                 </tbody>
                 <tfoot>
                   <tr class="total-row">
-                    <td colspan="8" style="text-align:right">Total</td>
+                    <td colspan="9" style="text-align:right">Total</td>
                     <td class="valor-total-cell">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                   </tr>
                 </tfoot>
@@ -256,7 +288,7 @@
             </div>
           </div>
 
-          <!-- 6. DATOS DEL INGRESO -->
+          <!-- 5. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
             <div style="overflow-x:auto;">
@@ -279,8 +311,13 @@
             </div>
           </div>
 
-          <div class="toolbar" style="margin-top:1rem">
-            <button class="btn" (click)="crearIngreso()">Crear ingreso</button>
+          @if (!allItemsValidated()) {
+            <div class="mx-warning">
+              Aún falta diligenciar el cumplimiento de algunos medicamentos (abre el panel del ítem y selecciona <strong>Cumple</strong> o <strong>No cumple</strong>).
+            </div>
+          }
+          <div class="toolbar" style="margin-top:0.75rem">
+            <button class="btn" (click)="crearIngreso()" [disabled]="!allItemsValidated()">Crear ingreso</button>
             <button class="btn secondary" (click)="limpiar()">Limpiar</button>
           </div>
         </div>
@@ -348,22 +385,54 @@
                 </thead>
                 <tbody>
                   @for (item of ocItems; track $index) {
-                    <tr>
-                      <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
-                      <td><input [(ngModel)]="item.codigo" placeholder="Cod."></td>
-                      <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
-                      <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
-                      <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
-                      <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
-                      <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
-                      <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
-                      <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                    </tr>
+                    <ng-container>
+                      <tr>
+                        <td class="num-toggle" [class.num-toggle-pending]="item.cumple == null" [class.num-toggle-done]="item.cumple === true" [class.num-toggle-no]="item.cumple === false" (click)="item._showMed = !item._showMed" title="Datos del medicamento">{{ $index + 1 }}</td>
+                        <td><input [(ngModel)]="item.codigo" placeholder="Cod." (blur)="autoFillMedFromCodigo(item)"></td>
+                        <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
+                        <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                        <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
+                        <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                        <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
+                        <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
+                        <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      </tr>
+                      @if (item._showMed) {
+                        <tr class="med-expand-row">
+                          <td colspan="10">
+                            <div class="med-expand-panel">
+                              <span class="med-expand-title">Datos del medicamento</span>
+                              <div class="med-fields-grid">
+                                <label>Registro Invima MX<input [(ngModel)]="item.registro_invima" placeholder="INVIMA-..."></label>
+                                <label>CUM<input [(ngModel)]="item.cum" placeholder="Codigo unico"></label>
+                                <label>Consecutivo CUM<input [(ngModel)]="item.consecutivo_cum"></label>
+                                <label>Presentacion<input [(ngModel)]="item.presentacion" placeholder="Ej: Tabletas x 20"></label>
+                                <label>IVA (%)<input type="number" min="0" [(ngModel)]="item.iva" style="width:70px"></label>
+                                <label>Temperatura<input [(ngModel)]="item.temperatura" placeholder="Ej: 2-8°C"></label>
+                                <label>Criterio de empleo<input [(ngModel)]="item.criterio_empleo" placeholder="Condicion de uso"></label>
+                                <label class="cumple-label">
+                                  Cumplimiento
+                                  <span class="cumple-toggle"
+                                    [class.cumple-si]="item.cumple === true && canToggleCumple(item)"
+                                    [class.cumple-no]="item.cumple === false && canToggleCumple(item)"
+                                    [class.cumple-none]="item.cumple == null && canToggleCumple(item)"
+                                    [class.cumple-disabled]="!canToggleCumple(item)"
+                                    [title]="canToggleCumple(item) ? '' : 'Completa todos los campos para validar'"
+                                    (click)="toggleCumple(item)">
+                                    {{ item.cumple === true ? 'Cumple' : item.cumple === false ? 'No cumple' : 'Sin validar' }}
+                                  </span>
+                                </label>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </ng-container>
                   }
                 </tbody>
                 <tfoot>
                   <tr class="total-row">
-                    <td colspan="8" style="text-align:right">Total</td>
+                    <td colspan="9" style="text-align:right">Total</td>
                     <td class="valor-total-cell">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                   </tr>
                 </tfoot>
@@ -372,7 +441,8 @@
             <button class="btn btn-outline" style="margin-top:0.6rem" (click)="agregarItem()">+ Agregar item</button>
           </div>
 
-          <!-- 6. DATOS DEL INGRESO -->
+          <!-- 5. DATOS DEL MEDICAMENTO -->
+          <!-- 5. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
             <div style="overflow-x:auto;">
@@ -395,8 +465,13 @@
             </div>
           </div>
 
-          <div class="toolbar" style="margin-top:1rem">
-            <button class="btn" (click)="crearIngreso()">Crear ingreso Sebas</button>
+          @if (!allItemsValidated()) {
+            <div class="mx-warning">
+              Aún falta diligenciar el cumplimiento de algunos medicamentos (abre el panel del ítem y selecciona <strong>Cumple</strong> o <strong>No cumple</strong>).
+            </div>
+          }
+          <div class="toolbar" style="margin-top:0.75rem">
+            <button class="btn" (click)="crearIngreso()" [disabled]="!allItemsValidated()">Crear ingreso Sebas</button>
             <button class="btn secondary" (click)="limpiar()">Limpiar</button>
           </div>
         </div>

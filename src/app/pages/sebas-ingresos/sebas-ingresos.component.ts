@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
@@ -38,7 +38,7 @@ export class SebasIngresosComponent implements OnInit {
   ingreso: any = this.emptyIngreso();
   factura: any = this.emptyFactura();
 
-  constructor(private readonly api: ApiService) {}
+  constructor(private readonly api: ApiService, private readonly cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.cargarIngresos();
@@ -189,7 +189,7 @@ export class SebasIngresosComponent implements OnInit {
     this.ocItems.push(this.emptyOcItem());
   }
 
-  private precargarDesdeOrden(oc: any) {
+  private async precargarDesdeOrden(oc: any) {
     this.limpiar();
     const obs = String(oc.observaciones ?? '');
     const meta = this.parseObservaciones(obs);
@@ -225,6 +225,9 @@ export class SebasIngresosComponent implements OnInit {
       i++;
     }
     this.ocItems = parsedItems.length > 0 ? parsedItems : [this.emptyOcItem()];
+    for (const item of this.ocItems) {
+      if (item.codigo) await this.autoFillMedFromCodigo(item);
+    }
   }
 
   private parseObservaciones(obs: string): Record<string, string> {
@@ -254,6 +257,66 @@ export class SebasIngresosComponent implements OnInit {
       result[key] = val;
     }
     return result;
+  }
+
+  medFilled(item: any): boolean {
+    return item.cumple !== null && item.cumple !== undefined;
+  }
+
+  allItemsValidated(): boolean {
+    const relevant = this.ocItems.filter(i => (i.codigo || '').trim());
+    if (relevant.length === 0) return true;
+    return relevant.every(i => i.cumple !== null && i.cumple !== undefined);
+  }
+
+  canToggleCumple(item: any): boolean {
+    return !!(
+      item.registro_invima?.trim() &&
+      item.cum?.trim() &&
+      item.consecutivo_cum?.trim() &&
+      item.presentacion?.trim() &&
+      item.temperatura?.trim() &&
+      item.criterio_empleo?.trim() &&
+      item.iva !== null && item.iva !== undefined && item.iva !== ''
+    );
+  }
+
+  toggleCumple(item: any) {
+    if (!this.canToggleCumple(item)) return;
+    item.cumple = item.cumple == null ? true : !item.cumple;
+  }
+
+  async autoFillMedFromCodigo(item: any) {
+    const codigo = (item.codigo || '').trim();
+    if (!codigo) return;
+    try {
+      const resp: any = await this.api.get<any>(`/products?search=${encodeURIComponent(codigo)}`);
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      const found = lista.find((f: any) => f.sku === codigo || f.codigo_control === codigo);
+      if (!found) return;
+
+      // nombre y laboratorio vienen del listado (tiene laboratorio_nombre)
+      if (!item.nombre && found.nombre_comercial) item.nombre = found.nombre_comercial;
+      if (!item.laboratorio && found.laboratorio_nombre) item.laboratorio = found.laboratorio_nombre;
+
+      // campos MX vienen del detalle del producto
+      const detResp: any = await this.api.get<any>(`/products/${found.id_producto}`);
+      const p: any = detResp?.data ?? detResp;
+      if (!item.registro_invima && p.registro_invima) item.registro_invima = p.registro_invima;
+      if (!item.cum && p.cum != null) item.cum = String(p.cum);
+      if (!item.consecutivo_cum && p.consecutivo_cum != null) item.consecutivo_cum = String(p.consecutivo_cum);
+      if (!item.iva && p.iva_tasa != null) item.iva = p.iva_tasa;
+      if (!item.temperatura && (p.temp_min != null || p.temp_max != null)) {
+        item.temperatura = p.temp_min != null && p.temp_max != null
+          ? `${p.temp_min} - ${p.temp_max}°C`
+          : p.temp_min != null ? `${p.temp_min}°C` : `${p.temp_max}°C`;
+      }
+      if (!item.presentacion && p.forma_farmaceutica) item.presentacion = p.forma_farmaceutica;
+      // fallback: laboratorio desde detalle si el listado no lo trajo
+      if (!item.laboratorio && p.laboratorio?.nombre) item.laboratorio = p.laboratorio.nombre;
+      item._showMed = true;
+      this.cdr.markForCheck();
+    } catch { /* silently ignore — product not found or network error */ }
   }
 
   itemTotal(item: any): number {
@@ -287,6 +350,10 @@ export class SebasIngresosComponent implements OnInit {
         this.error.set('Agrega al menos un item con cantidad.');
         return;
       }
+      if (!this.allItemsValidated()) {
+        this.error.set('Aún falta diligenciar el cumplimiento de algunos medicamentos.');
+        return;
+      }
       await this.api.post('/ingresos', this.ingresoConOrdenPayload());
       this.message.set('Ingreso Sebas creado exitosamente.');
       this.limpiar();
@@ -306,9 +373,19 @@ export class SebasIngresosComponent implements OnInit {
 
   private ingresoConOrdenPayload() {
     const items = this.ocItems.filter(i => Number(i.cantidad) > 0);
-    const itemLines = items.map((i, idx) =>
-      `Item ${idx + 1}: codigo=${i.codigo} | nombre=${i.nombre} | laboratorio=${i.laboratorio} | cantidad=${i.cantidad} | valor_unitario=${i.valor_unitario} | lote=${i.lote} | vencimiento=${i.fecha_vencimiento}`
-    ).join('\n');
+    const itemLines = items.map((i, idx) => {
+      const base = `Item ${idx + 1}: codigo=${i.codigo} | nombre=${i.nombre} | laboratorio=${i.laboratorio} | cantidad=${i.cantidad} | valor_unitario=${i.valor_unitario} | lote=${i.lote} | vencimiento=${i.fecha_vencimiento}`;
+      const med = [
+        i.registro_invima ? `invima=${i.registro_invima}` : '',
+        i.cum ? `cum=${i.cum}` : '',
+        i.consecutivo_cum ? `consec_cum=${i.consecutivo_cum}` : '',
+        i.presentacion ? `presentacion=${i.presentacion}` : '',
+        i.iva ? `iva=${i.iva}%` : '',
+        i.temperatura ? `temp=${i.temperatura}` : '',
+        i.criterio_empleo ? `criterio=${i.criterio_empleo}` : '',
+      ].filter(Boolean).join(' | ');
+      return med ? `${base}\n   [MX: ${med}]` : base;
+    }).join('\n');
     const metaLines = [
       `Orden: ${this.ocMeta.consecutivo}`,
       `Sede: ${this.ocMeta.sede}`,
@@ -317,14 +394,7 @@ export class SebasIngresosComponent implements OnInit {
       `NIT: ${this.ocMeta.proveedor_nit}`,
       `Factura: ${this.ingresoExtra.numero_factura}`,
       `CUFE: ${this.ingresoExtra.cufe}`,
-      `Invima: ${this.ingresoExtra.registro_invima}`,
-      `CUM: ${this.ingresoExtra.cum}`,
-      `Consecutivo CUM: ${this.ingresoExtra.consecutivo_cum}`,
-      `Presentacion: ${this.ingresoExtra.presentacion}`,
-      `IVA: ${this.ingresoExtra.iva}`,
-      `Temperatura: ${this.ingresoExtra.temperatura}`,
-      `Criterio de empleo: ${this.ingresoExtra.criterio_empleo}`,
-    ].filter(l => !l.endsWith(': ') && !l.endsWith(': 0')).join('\n');
+    ].filter(l => !l.endsWith(': ')).join('\n');
     return {
       referencia: [this.ocMeta.consecutivo, this.ingresoExtra.numero_factura ? `Factura ${this.ingresoExtra.numero_factura}` : ''].filter(Boolean).join(' - '),
       producto: [items[0]?.nombre ?? 'Ingreso', metaLines, itemLines].filter(Boolean).join('\n'),
@@ -353,7 +423,13 @@ export class SebasIngresosComponent implements OnInit {
   }
 
   private emptyOcItem() {
-    return { codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, lote: '', fecha_vencimiento: '' };
+    return {
+      codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0,
+      lote: '', fecha_vencimiento: '',
+      _showMed: false,
+      registro_invima: '', cum: '', consecutivo_cum: '',
+      presentacion: '', iva: 0, temperatura: '', criterio_empleo: '', cumple: null as (boolean | null),
+    };
   }
 
   private emptyIngresoExtra() {
@@ -362,13 +438,6 @@ export class SebasIngresosComponent implements OnInit {
       cufe: '',
       fecha_recepcion: new Date().toISOString().slice(0, 10),
       observaciones: '',
-      registro_invima: '',
-      cum: '',
-      consecutivo_cum: '',
-      presentacion: '',
-      iva: 0,
-      temperatura: '',
-      criterio_empleo: '',
     };
   }
 
