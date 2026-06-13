@@ -35,52 +35,86 @@
               @for (item of modalFormItems(); track item.med.id_med_formulacion) {
                 <div class="disp-med-card" [class.disp-med-card--done]="getMedRestante(item.med) === 0">
 
-                  <!-- Info izquierda -->
-                  <div class="disp-med-card__info">
-                    <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
-                    <div class="disp-med-card__meta">
-                      @if (item.med.presentacion) {
-                        <span>{{ item.med.presentacion }}</span>
-                      }
-                      @if (item.med.viaAdministracion) {
-                        <span class="disp-med-card__sep">·</span>
-                        <span>{{ item.med.viaAdministracion }}</span>
-                      }
-                      @if (item.med.pbs) {
-                        <span class="chip success" style="font-size:0.6rem; margin-left:4px;">PBS</span>
+                  <!-- Fila superior: info + controles -->
+                  <div class="disp-med-card__top">
+                    <div class="disp-med-card__info">
+                      <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
+                      <div class="disp-med-card__meta">
+                        @if (item.med.presentacion) {
+                          <span>{{ item.med.presentacion }}</span>
+                        }
+                        @if (item.med.viaAdministracion) {
+                          <span class="disp-med-card__sep">·</span>
+                          <span>{{ item.med.viaAdministracion }}</span>
+                        }
+                        @if (item.med.pbs) {
+                          <span class="chip success" style="font-size:0.6rem; margin-left:4px;">PBS</span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="disp-med-card__right">
+                      <div class="disp-med-card__stats">
+                        <div class="dsm dsm--neutral">
+                          <span class="dsm__v">{{ item.med.cantidad }}</span>
+                          <span class="dsm__l">Form.</span>
+                        </div>
+                        <div class="dsm dsm--blue">
+                          <span class="dsm__v">{{ item.med.control?.cantidad_dispensada ?? 0 }}</span>
+                          <span class="dsm__l">Disp.</span>
+                        </div>
+                        <div class="dsm" [class]="getMedRestante(item.med) === 0 ? 'dsm--green' : 'dsm--red'">
+                          <span class="dsm__v">{{ getMedRestante(item.med) }}</span>
+                          <span class="dsm__l">Rest.</span>
+                        </div>
+                      </div>
+
+                      @if (!item.med.idMedicamento) {
+                        <div class="disp-med-card__no-mx-badge">Sin MX</div>
+                      } @else if (getMedRestante(item.med) === 0) {
+                        <div class="disp-med-card__done-badge">✅ Completado</div>
+                      } @else {
+                        <div class="disp-med-card__stepper">
+                          <button class="stp-btn" (click)="stepItem(item, -1)"
+                                  [disabled]="item.cantidad <= 1">−</button>
+                          <input class="stp-input" type="number"
+                                 [(ngModel)]="item.cantidad"
+                                 [min]="1" [max]="getMedRestante(item.med)">
+                          <button class="stp-btn" (click)="stepItem(item, 1)"
+                                  [disabled]="item.cantidad >= getMedRestante(item.med)">+</button>
+                        </div>
                       }
                     </div>
                   </div>
 
-                  <!-- Controles derecha -->
-                  <div class="disp-med-card__right">
-                    <!-- Stats compactos -->
-                    <div class="disp-med-card__stats">
-                      <div class="dsm dsm--neutral">
-                        <span class="dsm__v">{{ item.med.cantidad }}</span>
-                        <span class="dsm__l">Form.</span>
-                      </div>
-                      <div class="dsm dsm--blue">
-                        <span class="dsm__v">{{ item.med.control?.cantidad_dispensada ?? 0 }}</span>
-                        <span class="dsm__l">Disp.</span>
-                      </div>
-                      <div class="dsm" [class]="getMedRestante(item.med) === 0 ? 'dsm--green' : 'dsm--red'">
-                        <span class="dsm__v">{{ getMedRestante(item.med) }}</span>
-                        <span class="dsm__l">Rest.</span>
-                      </div>
-                    </div>
-
-                    @if (getMedRestante(item.med) === 0) {
-                      <div class="disp-med-card__done-badge">✅ Completado</div>
+                  <!-- Disponibilidad por laboratorio -->
+                  <div class="disp-med-stock">
+                    @if (!item.med.idMedicamento) {
+                      <span class="disp-med-stock__msg disp-med-stock__msg--warn">
+                        ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
+                      </span>
+                    } @else if (stockLoading().has(item.med.idMedicamento)) {
+                      <span class="disp-med-stock__msg">Cargando stock…</span>
+                    } @else if (getMedStock(item.med.idMedicamento).length === 0) {
+                      <span class="disp-med-stock__msg disp-med-stock__msg--empty">Sin stock disponible en inventario</span>
                     } @else {
-                      <div class="disp-med-card__stepper">
-                        <button class="stp-btn" (click)="stepItem(item, -1)"
-                                [disabled]="item.cantidad <= 1">−</button>
-                        <input class="stp-input" type="number"
-                               [(ngModel)]="item.cantidad"
-                               [min]="1" [max]="getMedRestante(item.med)">
-                        <button class="stp-btn" (click)="stepItem(item, 1)"
-                                [disabled]="item.cantidad >= getMedRestante(item.med)">+</button>
+                      <div class="disp-med-stock__header">
+                        <span class="disp-med-stock__label">Disponibilidad por laboratorio</span>
+                        <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idMedicamento) }} uds totales</span>
+                      </div>
+                      <div class="disp-med-stock__rows">
+                        @for (lot of getMedStock(item.med.idMedicamento); track lot.id_lote) {
+                          <div class="disp-med-stock__row">
+                            <span class="disp-med-stock__lab">{{ lot.laboratorio_nombre || '—' }}</span>
+                            <span class="disp-med-stock__sep">·</span>
+                            <span class="disp-med-stock__lote">Lote {{ lot.numero_lote }}</span>
+                            <span class="disp-med-stock__sep">·</span>
+                            <span class="disp-med-stock__vence">Vence {{ lot.fecha_vencimiento | date:'dd/MM/yyyy' }}</span>
+                            <span class="disp-med-stock__sep">·</span>
+                            <span class="disp-med-stock__almacen">{{ lot.almacen }}</span>
+                            <span class="disp-med-stock__qty">{{ lot.cantidad_disponible }} uds</span>
+                          </div>
+                        }
                       </div>
                     }
                   </div>

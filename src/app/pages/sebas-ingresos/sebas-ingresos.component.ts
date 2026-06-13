@@ -393,7 +393,6 @@ export class SebasIngresosComponent implements OnInit {
       `Proveedor: ${this.ocMeta.proveedor_nombre}`,
       `NIT: ${this.ocMeta.proveedor_nit}`,
       `Factura: ${this.ingresoExtra.numero_factura}`,
-      `CUFE: ${this.ingresoExtra.cufe}`,
     ].filter(l => !l.endsWith(': ')).join('\n');
     return {
       referencia: [this.ocMeta.consecutivo, this.ingresoExtra.numero_factura ? `Factura ${this.ingresoExtra.numero_factura}` : ''].filter(Boolean).join(' - '),

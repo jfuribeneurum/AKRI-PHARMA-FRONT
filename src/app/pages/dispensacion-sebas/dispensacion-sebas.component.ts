@@ -91,6 +91,9 @@ export class DispensacionSebasComponent implements OnInit {
   modalError      = signal('');
   modalSuccess    = signal('');
 
+  readonly stockByMed   = signal<Record<number, any[]>>({});
+  readonly stockLoading = signal<Set<number>>(new Set());
+
   get totalPages(): number { return Math.max(1, Math.ceil(this.total() / this.limit)); }
 
   constructor(private api: ApiService) {}
@@ -180,7 +183,38 @@ export class DispensacionSebasComponent implements OnInit {
   }
 
   hasItemsToDispense(): boolean {
-    return this.modalFormItems().some(i => this.getMedRestante(i.med) > 0 && i.cantidad > 0);
+    const items = this.modalFormItems();
+    if (items.some(i => !i.med.idMedicamento)) return false;
+    const pendingItems = items.filter(i => this.getMedRestante(i.med) > 0);
+    if (!pendingItems.length) return false;
+    const anyPendingWithNoStock = pendingItems.some(i =>
+      !this.stockLoading().has(i.med.idMedicamento) &&
+      this.getMedStockTotal(i.med.idMedicamento) === 0
+    );
+    if (anyPendingWithNoStock) return false;
+    return pendingItems.some(i => i.cantidad > 0);
+  }
+
+  getMedStock(idMedicamento: number): any[] {
+    return this.stockByMed()[idMedicamento] ?? [];
+  }
+
+  getMedStockTotal(idMedicamento: number): number {
+    return this.getMedStock(idMedicamento).reduce((s, l) => s + Number(l.cantidad_disponible ?? 0), 0);
+  }
+
+  private async loadStockForMed(idMedicamento: number) {
+    if (!idMedicamento) return;
+    this.stockLoading.update(s => new Set([...s, idMedicamento]));
+    try {
+      const res = await this.api.get<any>(`/inventory/stock/product/${idMedicamento}`);
+      const lots = Array.isArray(res) ? res : (res?.data ?? []);
+      this.stockByMed.update(m => ({ ...m, [idMedicamento]: lots }));
+    } catch {
+      this.stockByMed.update(m => ({ ...m, [idMedicamento]: [] }));
+    } finally {
+      this.stockLoading.update(s => { const n = new Set(s); n.delete(idMedicamento); return n; });
+    }
   }
 
   openFormulacionModal() {
@@ -198,7 +232,12 @@ export class DispensacionSebasComponent implements OnInit {
     this.modalObs = '';
     this.modalError.set('');
     this.modalSuccess.set('');
+    this.stockByMed.set({});
     this.showModal.set(true);
+
+    for (const item of items) {
+      if (item.med.idMedicamento) this.loadStockForMed(item.med.idMedicamento);
+    }
   }
 
   closeModal() {
@@ -212,7 +251,7 @@ export class DispensacionSebasComponent implements OnInit {
     if (!detail) return;
 
     const toSave = this.modalFormItems().filter(
-      i => this.getMedRestante(i.med) > 0 && Number(i.cantidad) > 0
+      i => !!i.med.idMedicamento && this.getMedRestante(i.med) > 0 && Number(i.cantidad) > 0
     );
     if (!toSave.length) {
       this.modalError.set('No hay medicamentos pendientes por dispensar.');

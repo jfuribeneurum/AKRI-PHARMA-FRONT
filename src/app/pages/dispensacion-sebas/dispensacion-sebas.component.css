@@ -93,14 +93,15 @@
     /* Tarjeta de medicamento */
     .disp-med-card {
       display: flex;
-      align-items: center;
-      gap: 1rem;
+      flex-direction: column;
+      gap: 0.65rem;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
       padding: 0.85rem 1rem;
       background: #fff;
       transition: border-color .15s;
     }
+    .disp-med-card__top { display: flex; align-items: center; gap: 1rem; }
     .disp-med-card:not(.disp-med-card--done):hover { border-color: #c4b5fd; }
     .disp-med-card--done {
       background: #f0fdf4;
@@ -145,6 +146,14 @@
     .dsm--green   .dsm__v { color: #16a34a; }
     .dsm__l { font-size: 0.6rem; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; font-weight: 600; }
 
+    /* Sin MX badge */
+    .disp-med-card__no-mx-badge {
+      font-size: 0.75rem; font-weight: 700; color: #92400e;
+      background: #fef3c7; border: 1px solid #fde68a;
+      border-radius: 8px; padding: 0.35rem 0.75rem;
+      white-space: nowrap;
+    }
+
     /* Completado badge */
     .disp-med-card__done-badge {
       font-size: 0.75rem; font-weight: 600; color: #16a34a;
@@ -174,6 +183,57 @@
     }
     .stp-input::-webkit-inner-spin-button,
     .stp-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* Stock disponibilidad por laboratorio */
+    .disp-med-stock {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 0.55rem;
+      font-size: 0.78rem;
+    }
+    .disp-med-stock__msg { color: #94a3b8; font-style: italic; }
+    .disp-med-stock__msg--empty { color: #fca5a5; }
+    .disp-med-stock__msg--warn {
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      padding: 0.35rem 0.65rem;
+      font-style: normal;
+      font-weight: 600;
+      display: block;
+    }
+    .disp-med-stock__header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.35rem;
+    }
+    .disp-med-stock__label {
+      font-weight: 700; color: #475569;
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .disp-med-stock__total { font-weight: 700; color: #7c3aed; }
+    .disp-med-stock__rows { display: flex; flex-direction: column; gap: 0.22rem; }
+    .disp-med-stock__row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.6rem;
+      background: #f8fafc; border-radius: 6px; padding: 0.28rem 0.6rem;
+    }
+    .disp-med-stock__lab  { font-weight: 700; color: #6d28d9; }
+    .disp-med-stock__sep  { color: #cbd5e1; }
+    .disp-med-stock__lote { color: #374151; }
+    .disp-med-stock__vence { color: #64748b; }
+    .disp-med-stock__almacen { color: #64748b; margin-left: auto; }
+    .disp-med-stock__qty {
+      font-weight: 700; color: #059669;
+      background: #ecfdf5; padding: 0.1rem 0.4rem; border-radius: 4px;
+    }
+    :host-context([data-theme="dark"]) .disp-med-stock { border-top-color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-med-stock__label { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-stock__row { background: var(--surface-muted); }
+    :host-context([data-theme="dark"]) .disp-med-stock__lab { color: var(--primary); }
+    :host-context([data-theme="dark"]) .disp-med-stock__sep { color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-med-stock__lote,
+    :host-context([data-theme="dark"]) .disp-med-stock__vence,
+    :host-context([data-theme="dark"]) .disp-med-stock__almacen { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-stock__qty { background: rgba(52,211,153,0.1); color: var(--success); }
 
     /* Observaciones */
     .disp-modal__obs-label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #374151; }
@@ -241,6 +301,8 @@
     :host-context([data-theme="dark"]) .dsm--red .dsm__v { color: var(--danger); }
     :host-context([data-theme="dark"]) .dsm--green .dsm__v { color: var(--success); }
     :host-context([data-theme="dark"]) .dsm__l { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card__no-mx-badge { color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.25); }
+    :host-context([data-theme="dark"]) .disp-med-stock__msg--warn { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.2); }
     :host-context([data-theme="dark"]) .disp-med-card__done-badge { color: var(--success); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.22); }
     :host-context([data-theme="dark"]) .disp-med-card__stepper { background: var(--surface); border-color: var(--primary); }
     :host-context([data-theme="dark"]) .stp-btn { background: var(--primary-soft); color: var(--primary); }

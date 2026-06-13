@@ -97,6 +97,19 @@
     :host-context([data-theme="dark"]) .num-toggle-no      { color: #f87171; }
     :host-context([data-theme="dark"]) .med-fields-grid label { color: var(--muted); }
 
+    /* observaciones textarea */
+    .obs-label {
+      display: flex; flex-direction: column; gap: 0.3rem;
+      font-size: 0.8rem; font-weight: 600; width: 100%;
+    }
+    .obs-label textarea {
+      width: 100%; padding: 0.45rem 0.65rem;
+      border: 1px solid var(--color-border, #d1d5db); border-radius: 6px;
+      font-size: 0.88rem; background: var(--color-surface, #fff); color: inherit;
+      resize: vertical; min-height: 80px; font-family: inherit;
+    }
+    .obs-label textarea:focus { outline: 2px solid var(--color-primary, #2563eb); outline-offset: -1px; }
+
     /* aviso MX sin validar */
     .mx-warning {
       margin-top: 1rem; padding: 0.65rem 1rem;

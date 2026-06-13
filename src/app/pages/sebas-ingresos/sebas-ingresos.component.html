@@ -291,24 +291,13 @@
           <!-- 5. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
-            <div style="overflow-x:auto;">
-              <table class="items-table">
-                <thead>
-                  <tr>
-                    <th>Numero factura</th>
-                    <th>CUFE / CUDE</th>
-                    <th>Observaciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><input [(ngModel)]="ingresoExtra.numero_factura"></td>
-                    <td><input [(ngModel)]="ingresoExtra.cufe"></td>
-                    <td><input [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura"></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="form-grid" style="margin-bottom:0.75rem">
+              <label>Numero factura<input [(ngModel)]="ingresoExtra.numero_factura"></label>
             </div>
+            <label class="obs-label">
+              Observaciones
+              <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
+            </label>
           </div>
 
           @if (!allItemsValidated()) {
@@ -445,24 +434,13 @@
           <!-- 5. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
-            <div style="overflow-x:auto;">
-              <table class="items-table">
-                <thead>
-                  <tr>
-                    <th>Numero factura</th>
-                    <th>CUFE / CUDE</th>
-                    <th>Observaciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><input [(ngModel)]="ingresoExtra.numero_factura"></td>
-                    <td><input [(ngModel)]="ingresoExtra.cufe"></td>
-                    <td><input [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura"></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="form-grid" style="margin-bottom:0.75rem">
+              <label>Numero factura<input [(ngModel)]="ingresoExtra.numero_factura"></label>
             </div>
+            <label class="obs-label">
+              Observaciones
+              <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
+            </label>
           </div>
 
           @if (!allItemsValidated()) {
