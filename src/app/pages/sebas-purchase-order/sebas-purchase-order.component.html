@@ -316,7 +316,49 @@
                   </tfoot>
                 </table>
               </div>
-              <button class="btn btn-outline" style="margin-top:0.6rem" (click)="addItem()">+ Agregar item</button>
+              <div class="po-items-footer">
+                <button class="btn btn-outline" (click)="addItem()">+ Agregar item</button>
+
+                <!-- TABLA DE TOTALES -->
+                <table class="po-totals-table">
+                  <tr>
+                    <td>Total Items:</td>
+                    <td class="po-total-val">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Total Descuento:</td>
+                    <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Sub-Total:</td>
+                    <td class="po-total-val">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>IVA:</td>
+                    <td class="po-total-val">{{ totalIva() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>INC:</td>
+                    <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Impuestos Aplicados:</td>
+                    <td class="po-total-val">{{ totalIva() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Otros Costos:</td>
+                    <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Total Otros Conceptos:</td>
+                    <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                  <tr class="po-total-final">
+                    <td>TOTAL ORDEN DE COMPRA:</td>
+                    <td class="po-total-val">{{ totalOrdenCompra() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                  </tr>
+                </table>
+              </div>
             }
           </div>
 

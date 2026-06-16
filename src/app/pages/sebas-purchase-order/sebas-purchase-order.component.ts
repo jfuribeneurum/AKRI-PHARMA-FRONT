@@ -262,6 +262,19 @@ export class SebasPurchaseOrderComponent implements OnInit {
     return this.items.reduce((sum, item) => sum + this.itemTotal(item), 0);
   }
 
+  totalIva(): number {
+    return this.items.reduce((sum, item) => {
+      const prod = this.labProducts().find(p => p.id_producto === item.id_producto);
+      const tasa = Number(prod?.iva_tasa ?? 0);
+      const rate = tasa >= 1 ? tasa : 0;
+      return sum + (this.itemTotal(item) * rate / 100);
+    }, 0);
+  }
+
+  totalOrdenCompra(): number {
+    return this.grandTotal() + this.totalIva();
+  }
+
   addItem() {
     this.items.push({ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 });
   }
