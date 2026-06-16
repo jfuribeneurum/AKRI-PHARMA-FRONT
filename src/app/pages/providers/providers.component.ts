@@ -6,7 +6,6 @@ import { UppercaseInputDirective } from '../../shared/uppercase-input.directive'
 
 type ProviderForm = {
   id_proveedor: number | null;
-  codigo: string;
   tipo_identificacion: string;
   numero_identificacion: string;
   digito_verificacion: string;
@@ -17,9 +16,10 @@ type ProviderForm = {
   email: string;
   ciudad: string;
   departamento: string;
+  pais: string;
   direccion: string;
+  observaciones: string;
   activo: boolean;
-  id_laboratorio: number | null;
 };
 
 type CiudadItem = { nombre: string; departamento: string };
@@ -34,7 +34,7 @@ type CiudadItem = { nombre: string; departamento: string };
 })
 export class ProvidersComponent implements OnInit {
   readonly providers = signal<ProviderForm[]>([]);
-  readonly laboratorios = signal<{ id_laboratorio: number; nombre: string }[]>([]);
+  readonly paises = signal<{ valor: string; etiqueta: string }[]>([]);
   readonly message = signal('');
   readonly error = signal('');
   readonly saving = signal(false);
@@ -53,14 +53,7 @@ export class ProvidersComponent implements OnInit {
     this.loadProviders();
     this.loadCiudades();
     void this.loadTiposIdentificacion();
-    void this.loadLaboratorios();
-  }
-
-  private async loadLaboratorios() {
-    try {
-      const res: any = await this.api.get('/products/lookups');
-      this.laboratorios.set(res?.data?.laboratorios ?? []);
-    } catch { /* non-fatal */ }
+    void this.loadPaises();
   }
 
   private async loadTiposIdentificacion() {
@@ -70,18 +63,47 @@ export class ProvidersComponent implements OnInit {
     } catch { /* non-fatal */ }
   }
 
+  private async loadPaises() {
+    try {
+      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/pais/activos');
+      this.paises.set(res.data ?? []);
+    } catch { /* non-fatal */ }
+  }
+
   filteredProviders() {
     const term = this.search.trim().toLowerCase();
     if (!term) return this.providers();
     return this.providers().filter((p) =>
-      [p.codigo, p.razon_social, p.numero_identificacion, p.nombres, p.apellidos, p.telefono, p.email, p.ciudad]
+      [p.razon_social, p.numero_identificacion, p.nombres, p.apellidos, p.telefono, p.email, p.ciudad]
         .some((v) => String(v ?? '').toLowerCase().includes(term))
     );
   }
 
+  onTipoIdentificacionChange() {
+    if (this.form.tipo_identificacion !== 'NIT') {
+      this.form.digito_verificacion = '';
+      this.form.razon_social = '';
+    }
+    if (this.form.tipo_identificacion !== 'DIE') {
+      this.form.pais = '';
+    }
+    if (this.form.tipo_identificacion === 'DIE') {
+      this.form.ciudad = '';
+      this.form.departamento = '';
+    }
+  }
+
   async saveProvider() {
-    if (!this.form.numero_identificacion.trim() || !this.form.razon_social.trim()) {
-      this.error.set('Número de identificación y razón social son obligatorios.');
+    if (!this.form.numero_identificacion.trim()) {
+      this.error.set('El número de identificación es obligatorio.');
+      return;
+    }
+    if (this.form.tipo_identificacion === 'NIT' && !this.form.digito_verificacion.trim()) {
+      this.error.set('El dígito de verificación es obligatorio para NIT.');
+      return;
+    }
+    if (this.form.tipo_identificacion === 'NIT' && !this.form.razon_social.trim()) {
+      this.error.set('La razón social es obligatoria para NIT.');
       return;
     }
 
@@ -122,7 +144,6 @@ export class ProvidersComponent implements OnInit {
       const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
       this.providers.set(lista.map((p) => ({
         id_proveedor: p.id_proveedor,
-        codigo: p.codigo ?? '',
         tipo_identificacion: p.tipo_identificacion ?? 'NIT',
         numero_identificacion: p.numero_identificacion ?? '',
         digito_verificacion: p.digito_verificacion ?? '',
@@ -133,9 +154,10 @@ export class ProvidersComponent implements OnInit {
         email: p.email ?? '',
         ciudad: p.ciudad ?? '',
         departamento: p.departamento ?? '',
+        pais: p.pais ?? '',
         direccion: p.direccion ?? '',
-        activo: !!p.activo,
-        id_laboratorio: p.id_laboratorio ?? null
+        observaciones: p.observaciones ?? '',
+        activo: !!p.activo
       })));
     } catch {
       this.error.set('No se pudieron cargar los proveedores.');
@@ -145,7 +167,6 @@ export class ProvidersComponent implements OnInit {
   private blankProvider(): ProviderForm {
     return {
       id_proveedor: null,
-      codigo: '',
       tipo_identificacion: 'NIT',
       numero_identificacion: '',
       digito_verificacion: '',
@@ -156,9 +177,10 @@ export class ProvidersComponent implements OnInit {
       email: '',
       ciudad: '',
       departamento: '',
+      pais: '',
       direccion: '',
-      activo: true,
-      id_laboratorio: null
+      observaciones: '',
+      activo: true
     };
   }
 

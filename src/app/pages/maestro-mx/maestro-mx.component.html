@@ -215,13 +215,32 @@
                   <div class="iva-options">
                     <label class="iva-radio">
                       <input type="radio" name="iva_check" [value]="0" [(ngModel)]="form.iva">
-                      No tiene
+                      Excluido
+                    </label>
+                    <label class="iva-radio">
+                      <input type="radio" name="iva_check" [value]="0.01" [(ngModel)]="form.iva">
+                      IVA (0%)
+                    </label>
+                    <label class="iva-radio">
+                      <input type="radio" name="iva_check" [value]="8" [(ngModel)]="form.iva">
+                      IVA (8%)
                     </label>
                     <label class="iva-radio">
                       <input type="radio" name="iva_check" [value]="19" [(ngModel)]="form.iva">
-                      Tiene (19%)
+                      IVA (19%)
                     </label>
                   </div>
+                </label>
+                <label>
+                  Proveedores
+                  <select [(ngModel)]="form.regimen_proveedor">
+                    <option value="">— Seleccionar —</option>
+                    <option value="regimen_tributario">Régimen tributario</option>
+                    <option value="autorretenedor">Régimen autorretenedor</option>
+                    <option value="regimen_ordinario">Régimen ordinario</option>
+                    <option value="regimen_simple">Régimen simple</option>
+                    <option value="regimen_especial">Régimen especial</option>
+                  </select>
                 </label>
               </div>
 

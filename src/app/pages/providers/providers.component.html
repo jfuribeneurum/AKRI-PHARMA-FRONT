@@ -26,7 +26,7 @@
       <div class="form-grid">
         <label>
           Tipo identificación
-          <select [(ngModel)]="form.tipo_identificacion">
+          <select [(ngModel)]="form.tipo_identificacion" (ngModelChange)="onTipoIdentificacionChange()">
             @for (t of tiposIdentificacion; track t.valor) {
               <option [value]="t.valor">{{ t.etiqueta }}</option>
             }
@@ -37,25 +37,25 @@
           <input [(ngModel)]="form.numero_identificacion" placeholder="900000000">
         </label>
         <label>
-          Dígito de verificación
-          <input [(ngModel)]="form.digito_verificacion" placeholder="1" maxlength="2">
-        </label>
-        <label>
-          Código interno
-          <input [(ngModel)]="form.codigo" placeholder="PROV-001">
+          Dígito de verificación @if (form.tipo_identificacion === 'NIT') { <span style="color:#ef4444">*</span> }
+          <input
+            [(ngModel)]="form.digito_verificacion"
+            placeholder="{{ form.tipo_identificacion === 'NIT' ? '1' : '' }}"
+            maxlength="2"
+            [disabled]="form.tipo_identificacion !== 'NIT'"
+            [style.background]="form.tipo_identificacion !== 'NIT' ? 'var(--input-disabled-bg, #1e2330)' : ''"
+            [style.color]="form.tipo_identificacion !== 'NIT' ? 'transparent' : ''"
+            [style.cursor]="form.tipo_identificacion !== 'NIT' ? 'not-allowed' : ''">
         </label>
         <label style="grid-column: span 2">
-          Razón social
-          <input [(ngModel)]="form.razon_social" placeholder="Nombre o razón social del proveedor">
-        </label>
-        <label style="grid-column: span 2">
-          Laboratorio vinculado
-          <select [(ngModel)]="form.id_laboratorio">
-            <option [ngValue]="null">— Sin vincular —</option>
-            @for (lab of laboratorios(); track lab.id_laboratorio) {
-              <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
-            }
-          </select>
+          Razón social @if (form.tipo_identificacion === 'NIT') { <span style="color:#ef4444">*</span> }
+          <input
+            [(ngModel)]="form.razon_social"
+            placeholder="{{ form.tipo_identificacion === 'NIT' ? 'Nombre o razón social del proveedor' : '' }}"
+            [disabled]="form.tipo_identificacion !== 'NIT'"
+            [style.background]="form.tipo_identificacion !== 'NIT' ? 'var(--input-disabled-bg, #1e2330)' : ''"
+            [style.color]="form.tipo_identificacion !== 'NIT' ? 'transparent' : ''"
+            [style.cursor]="form.tipo_identificacion !== 'NIT' ? 'not-allowed' : ''">
         </label>
         <label>
           Nombres
@@ -74,13 +74,21 @@
           <input type="email" [(ngModel)]="form.email" placeholder="compras@proveedor.com">
         </label>
         <label>
+          Dirección
+          <input [(ngModel)]="form.direccion" placeholder="Dirección comercial">
+        </label>
+        <label>
           Ciudad
           <input
             [(ngModel)]="form.ciudad"
             (input)="onCiudadInput()"
             list="ciudad-list"
             placeholder="Escribe para buscar…"
-            autocomplete="off">
+            autocomplete="off"
+            [disabled]="form.tipo_identificacion === 'DIE'"
+            [style.background]="form.tipo_identificacion === 'DIE' ? 'var(--input-disabled-bg, #1e2330)' : ''"
+            [style.color]="form.tipo_identificacion === 'DIE' ? 'transparent' : ''"
+            [style.cursor]="form.tipo_identificacion === 'DIE' ? 'not-allowed' : ''">
           <datalist id="ciudad-list">
             @for (n of ciudadNames; track n) {
               <option [value]="n"></option>
@@ -90,14 +98,28 @@
         <label>
           Departamento
           <input [(ngModel)]="form.departamento" placeholder="Se llena solo al elegir ciudad" readonly
-                 style="background:#f8fafc; color:#64748b; cursor:default">
+                 [style.background]="form.tipo_identificacion === 'DIE' ? 'var(--input-disabled-bg, #1e2330)' : '#f8fafc'"
+                 [style.color]="form.tipo_identificacion === 'DIE' ? 'transparent' : '#64748b'"
+                 [style.cursor]="form.tipo_identificacion === 'DIE' ? 'not-allowed' : 'default'">
+        </label>
+        <label>
+          País
+          <select [(ngModel)]="form.pais"
+            [disabled]="form.tipo_identificacion !== 'DIE'"
+            [style.background]="form.tipo_identificacion !== 'DIE' ? 'var(--input-disabled-bg, #1e2330)' : ''"
+            [style.color]="form.tipo_identificacion !== 'DIE' ? 'var(--text-muted, #64748b)' : ''"
+            [style.cursor]="form.tipo_identificacion !== 'DIE' ? 'not-allowed' : ''">
+            <option value="">— Seleccionar país —</option>
+            @for (p of paises(); track p.valor) {
+              <option [value]="p.valor">{{ p.etiqueta }}</option>
+            }
+          </select>
+        </label>
+        <label style="grid-column: span 2">
+          Observaciones
+          <textarea [(ngModel)]="form.observaciones" placeholder="Notas adicionales sobre el proveedor" rows="3" style="resize:vertical"></textarea>
         </label>
       </div>
-
-      <label class="report-label" style="margin-top: 0.9rem;">
-        Dirección
-        <textarea [(ngModel)]="form.direccion" placeholder="Dirección comercial"></textarea>
-      </label>
 
       <div class="switch-row">
         <label>
