@@ -26,23 +26,13 @@ export class IngresosComponent implements OnInit {
     cantidad: 0,
     lote: '',
     fecha_vencimiento: '',
-    estado: 'pendiente'
+    estado: 'recibido'
   };
-
-  estadosIngreso: { valor: string; etiqueta: string }[] = [];
 
   constructor(private readonly api: ApiService) {}
 
   ngOnInit() {
     void this.load();
-    void this.loadEstados();
-  }
-
-  private async loadEstados() {
-    try {
-      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/estado_ingreso/activos');
-      this.estadosIngreso = res.data ?? [];
-    } catch { /* non-fatal */ }
   }
 
   async load() {
@@ -82,7 +72,7 @@ export class IngresosComponent implements OnInit {
       cantidad: 0,
       lote: '',
       fecha_vencimiento: '',
-      estado: 'pendiente'
+      estado: 'recibido'
     };
   }
 

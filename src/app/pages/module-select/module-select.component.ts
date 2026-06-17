@@ -48,13 +48,13 @@ import { Router } from '@angular/router';
         </button>
 
         <button
-          class="ms-card ms-card--inventory"
-          [class.ms-card--selected]="selected() === 'inventory'"
+          class="ms-card ms-card--inventory ms-card--soon"
           [disabled]="navigating()"
-          (click)="selectModule('inventory')"
+          (click)="openInventoryComingSoon()"
           type="button"
         >
           <div class="ms-card-glow"></div>
+          <div class="ms-card-soon-badge">Próximamente</div>
           <div class="ms-card-icon">📦</div>
           <div class="ms-card-body">
             <h2 class="ms-card-title">Inventario</h2>
@@ -64,6 +64,24 @@ import { Router } from '@angular/router';
         </button>
 
       </div>
+
+      <!-- Coming Soon Modal -->
+      @if (comingSoonVisible()) {
+        <div class="ms-cs-overlay" (click)="closeInventoryComingSoon()">
+          <div class="ms-cs-modal" (click)="$event.stopPropagation()">
+            <span class="ms-cs-icon">🚀</span>
+            <h2 class="ms-cs-title">¡Próximamente!</h2>
+            <p class="ms-cs-body">
+              Estamos construyendo algo increíble para ti.<br>
+              El módulo de <strong>Inventario</strong> estará completamente
+              funcional muy pronto, con control de stock, ingresos, movimientos
+              y trazabilidad integrada.
+            </p>
+            <p class="ms-cs-sub">¡Grandes cosas vienen en camino!</p>
+            <button class="ms-cs-btn" (click)="closeInventoryComingSoon()">Entendido</button>
+          </div>
+        </div>
+      }
 
       <footer class="ms-footer">
         <span>© 2025 AkriPharmacy · ERP farmacéutico</span>
@@ -368,6 +386,137 @@ import { Router } from '@angular/router';
       to   { opacity: 1; transform: translateY(0);    }
     }
 
+    /* ── Coming-soon card state ─────────────────────────── */
+    .ms-card--soon {
+      opacity: 0.72;
+      cursor: pointer;
+    }
+
+    .ms-card--soon:hover {
+      opacity: 0.88;
+      border-color: rgba(249, 115, 22, 0.40);
+      box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.40),
+        0 0 40px rgba(234, 88, 12, 0.20);
+    }
+
+    .ms-card-soon-badge {
+      position: absolute;
+      top: 1.1rem;
+      right: 1.1rem;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+      color: #FFFFFF;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      z-index: 2;
+    }
+
+    /* ── Coming-soon modal overlay ──────────────────────── */
+    .ms-cs-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.80);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: msCsOverlayIn 0.22s ease both;
+    }
+
+    @keyframes msCsOverlayIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .ms-cs-modal {
+      background: linear-gradient(145deg, #130820 0%, #220D42 55%, #130820 100%);
+      border: 1px solid rgba(139, 92, 246, 0.38);
+      border-radius: 28px;
+      padding: 3rem 2.5rem 2.5rem;
+      max-width: 480px;
+      width: 90%;
+      text-align: center;
+      box-shadow:
+        0 40px 90px rgba(0, 0, 0, 0.65),
+        0 0 70px rgba(109, 40, 217, 0.22);
+      animation: msCsModalIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes msCsModalIn {
+      from { opacity: 0; transform: scale(0.88) translateY(24px); }
+      to   { opacity: 1; transform: scale(1)    translateY(0);    }
+    }
+
+    .ms-cs-icon {
+      font-size: 4.25rem;
+      line-height: 1;
+      margin-bottom: 1.25rem;
+      display: block;
+      animation: msCsFloat 3.5s ease-in-out infinite;
+    }
+
+    @keyframes msCsFloat {
+      0%, 100% { transform: translateY(0);    }
+      50%       { transform: translateY(-9px); }
+    }
+
+    .ms-cs-title {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #A78BFA 0%, #F97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 1rem;
+      letter-spacing: -0.025em;
+    }
+
+    .ms-cs-body {
+      color: rgba(237, 233, 254, 0.82);
+      font-size: 1rem;
+      line-height: 1.7;
+      margin: 0 0 0.65rem;
+    }
+
+    .ms-cs-body strong {
+      color: #C4B5FD;
+    }
+
+    .ms-cs-sub {
+      color: rgba(237, 233, 254, 0.40);
+      font-size: 0.875rem;
+      margin: 0 0 2rem;
+    }
+
+    .ms-cs-btn {
+      background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%);
+      border: none;
+      border-radius: 14px;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 0.9rem 2.75rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 22px rgba(109, 40, 217, 0.45);
+      font-family: inherit;
+    }
+
+    .ms-cs-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(109, 40, 217, 0.6);
+    }
+
+    .ms-cs-btn:active {
+      transform: translateY(0);
+    }
+
     @media (max-width: 700px) {
       .ms-cards {
         flex-direction: column;
@@ -398,6 +547,7 @@ import { Router } from '@angular/router';
 export class ModuleSelectComponent {
   readonly selected = signal<'pharmacy' | 'inventory' | null>(null);
   readonly navigating = signal(false);
+  readonly comingSoonVisible = signal(false);
 
   constructor(private readonly router: Router) {}
 
@@ -408,5 +558,13 @@ export class ModuleSelectComponent {
     setTimeout(() => {
       void this.router.navigate(['/dashboard']);
     }, 350);
+  }
+
+  openInventoryComingSoon(): void {
+    this.comingSoonVisible.set(true);
+  }
+
+  closeInventoryComingSoon(): void {
+    this.comingSoonVisible.set(false);
   }
 }

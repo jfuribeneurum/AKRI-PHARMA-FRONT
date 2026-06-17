@@ -156,6 +156,58 @@
 /* empty */
 .empty-msg { text-align: center; color: #9ca3af; padding: 2rem; font-size: 0.9rem; }
 
+/* ── paso 1: nota crédito ─────────────────────────────────── */
+.step-desc {
+  font-size: 0.88rem; color: #6b7280; margin: 0 0 1.1rem;
+}
+.nc-input-row {
+  display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;
+}
+.nc-label {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  font-size: 0.8rem; font-weight: 600; flex: 1; min-width: 220px;
+}
+.nc-code-input {
+  padding: 0.52rem 0.8rem;
+  border: 2px solid var(--color-primary, #2563eb);
+  border-radius: 7px; font-size: 1.05rem; font-weight: 700;
+  letter-spacing: 0.06em; background: var(--color-surface, #fff);
+  color: inherit; width: 100%;
+  transition: box-shadow 0.15s;
+}
+.nc-code-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.18); }
+
+/* ── banner nota crédito confirmada ────────────────────────── */
+.nc-confirmed-banner {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.6rem 1.1rem;
+  background: linear-gradient(90deg, rgba(37,99,235,0.07) 0%, transparent 100%);
+  border: 1.5px solid var(--color-primary, #2563eb);
+  border-radius: 8px; margin-bottom: 1rem;
+}
+.nc-confirmed-label {
+  font-size: 0.78rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.nc-confirmed-code {
+  font-size: 1rem; font-weight: 800; color: var(--color-primary, #2563eb); letter-spacing: 0.05em;
+}
+.nc-step-hint {
+  font-size: 0.8rem; color: #6b7280; flex: 1;
+}
+.nc-change-btn {
+  background: none; border: 1.5px solid var(--color-border, #d1d5db);
+  border-radius: 6px; cursor: pointer; color: #6b7280;
+  font-size: 0.78rem; font-weight: 600; padding: 0.25rem 0.7rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+.nc-change-btn:hover { border-color: var(--color-primary, #2563eb); color: var(--color-primary, #2563eb); }
+
+/* ref display dentro del formulario */
+.nc-ref-display {
+  font-weight: 700 !important; font-size: 0.98rem !important;
+  letter-spacing: 0.04em !important; color: var(--color-primary, #2563eb) !important;
+}
+
 /* ── dark mode ────────────────────────────────────────────── */
 :host-context([data-theme="dark"]) .ing-card:hover { border-color: var(--info); }
 :host-context([data-theme="dark"]) .ing-card.expanded { border-color: var(--info); }
@@ -178,3 +230,12 @@
 :host-context([data-theme="dark"]) .toggle-todos-btn.active { background: var(--info, #2563eb); border-color: var(--info, #2563eb); }
 :host-context([data-theme="dark"]) .btn-action { border-color: var(--info, #2563eb); background: var(--info, #2563eb); }
 :host-context([data-theme="dark"]) .btn-action.secondary { background: transparent; color: var(--info, #60a5fa); border-color: var(--info, #60a5fa); }
+:host-context([data-theme="dark"]) .step-desc { color: var(--muted); }
+:host-context([data-theme="dark"]) .nc-code-input { border-color: var(--info, #60a5fa); color: var(--color-text, #e5e7eb); }
+:host-context([data-theme="dark"]) .nc-code-input:focus { box-shadow: 0 0 0 3px rgba(96,165,250,0.18); }
+:host-context([data-theme="dark"]) .nc-confirmed-banner { background: linear-gradient(90deg, rgba(96,165,250,0.08) 0%, transparent 100%); border-color: var(--info, #60a5fa); }
+:host-context([data-theme="dark"]) .nc-confirmed-code { color: var(--info, #60a5fa); }
+:host-context([data-theme="dark"]) .nc-confirmed-label, :host-context([data-theme="dark"]) .nc-step-hint { color: var(--muted); }
+:host-context([data-theme="dark"]) .nc-change-btn { color: var(--muted); }
+:host-context([data-theme="dark"]) .nc-change-btn:hover { border-color: var(--info, #60a5fa); color: var(--info, #60a5fa); }
+:host-context([data-theme="dark"]) .nc-ref-display { color: var(--info, #60a5fa) !important; }

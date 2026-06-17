@@ -2,7 +2,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Devolución de pedido</h1>
-      <p class="page-subtitle">Selecciona un ingreso Sebas recibido y registra las cantidades a devolver.</p>
+      <p class="page-subtitle">Registra el código de nota crédito y luego relaciona el ingreso a devolver.</p>
     </div>
     <div class="toolbar" style="margin-bottom:0">
       <button class="btn secondary" (click)="cargarIngresos()">Actualizar</button>
@@ -12,284 +12,319 @@
   @if (message()) { <div class="success-box">{{ message() }}</div> }
   @if (error()) { <div class="error-box">{{ error() }}</div> }
 
-  <!-- ══ BUSCADOR DE INGRESOS ══════════════════════════════════ -->
-  <div class="card">
-    <div class="section-header-row">
-      <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Buscar ingreso Sebas</div>
-      <button class="toggle-todos-btn" [class.active]="mostrarTodos()" (click)="toggleMostrarTodos()">
-        {{ mostrarTodos() ? 'Solo elegibles' : 'Ver todos' }}
-      </button>
-    </div>
-
-    <div class="filter-type-row">
-      <button class="filter-pill" [class.active]="filterType() === 'numero'"
-        (click)="setFilterType('numero')">N° de ingreso</button>
-      <button class="filter-pill" [class.active]="filterType() === 'proveedor'"
-        (click)="setFilterType('proveedor')">Proveedor</button>
-      <button class="filter-pill" [class.active]="filterType() === 'fecha'"
-        (click)="setFilterType('fecha')">Fecha</button>
-      <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
-        (click)="setFilterType('laboratorio')">Laboratorio</button>
-    </div>
-
-    <div class="filter-input-row">
-      @if (filterType() === 'numero') {
-        <label>Número / Referencia
-          <input [(ngModel)]="filter.numero_oc" placeholder="ING-SEBAS-..." (ngModelChange)="applyFilter()">
-        </label>
-      }
-      @if (filterType() === 'proveedor') {
-        <label>Proveedor / Laboratorio
-          <input [(ngModel)]="filter.proveedor" placeholder="Nombre del proveedor" (ngModelChange)="applyFilter()">
-        </label>
-      }
-      @if (filterType() === 'fecha') {
-        <label>Desde<input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="applyFilter()"></label>
-        <label>Hasta<input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="applyFilter()"></label>
-      }
-      @if (filterType() === 'laboratorio') {
-        <label>Laboratorio
-          <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="applyFilter()">
-        </label>
-      }
-      <button class="btn secondary" style="align-self:flex-end;padding:0.45rem 1rem;font-size:0.85rem" (click)="clearFilter()">Limpiar</button>
-    </div>
-
-    @if (ingresoSeleccionado()) {
-      <div class="selected-banner" style="margin-top:1rem">
-        <span>
-          Seleccionado: <strong>{{ ingresoSeleccionado()!.referencia }}</strong>
-          &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!.fecha_ingreso | date:'dd/MM/yyyy' }}
-          @if (ingresoSeleccionado()!._proveedor) {
-            &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!._proveedor }}
-          }
-          &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!._items_count }} item(s)
-        </span>
-        <button class="btn-deselect" (click)="deseleccionarIngreso()" title="Cambiar selección">&times; Cambiar</button>
-      </div>
-    } @else {
-      @if (loading()) {
-        <p class="empty-msg">Cargando ingresos...</p>
-      } @else if (filteredIngresos().length === 0) {
-        <p class="empty-msg">
-          No hay ingresos
-          {{ mostrarTodos() ? '' : 'recibidos/almacenados' }}
-          con los criterios actuales.
-        </p>
-      } @else {
-        <div class="ing-list">
-          @for (ing of filteredIngresos(); track ing.id_ingreso) {
-            <div class="ing-card" [class.expanded]="expandedId() === ing.id_ingreso">
-              <!-- fila principal clickeable para seleccionar -->
-              <div class="ing-card-main" (click)="seleccionarIngreso(ing)">
-                <div class="ing-card-left">
-                  <span class="ing-ref">{{ ing.referencia }}</span>
-                  <span class="ing-meta">
-                    {{ ing.fecha_ingreso | date:'dd/MM/yyyy' }}
-                    @if (ing._proveedor) { &nbsp;·&nbsp; <span class="tag-proveedor">{{ ing._proveedor }}</span> }
-                    @if (ing._sede) { &nbsp;·&nbsp; {{ ing._sede }} }
-                  </span>
-                  @if (ing._primer_producto) {
-                    <span class="ing-preview-prod">
-                      {{ ing._items_count > 1 ? ing._items_count + ' items: ' : '' }}{{ ing._primer_producto }}
-                      @if (ing._items_count > 1) { <span class="etc">…</span> }
-                    </span>
-                  }
-                  @if (ing.creado_por_nombre) {
-                    <span class="ing-creador">Registrado por: {{ ing.creado_por_nombre }}</span>
-                  }
-                </div>
-                <div class="ing-card-right">
-                  <span class="ing-badge"
-                    [class.badge-recibido]="ing.estado==='recibido'"
-                    [class.badge-pendiente]="ing.estado==='pendiente'"
-                    [class.badge-almacenado]="ing.estado==='almacenado'"
-                    [class.badge-cancelado]="ing.estado==='cancelado'">
-                    {{ ing.estado }}
-                  </span>
-                  <span class="ing-qty">{{ ing.cantidad }} uds.</span>
-                </div>
-              </div>
-              <!-- botón expandir -->
-              <button class="expand-btn" (click)="toggleExpand(ing.id_ingreso, $event)"
-                [title]="expandedId() === ing.id_ingreso ? 'Ocultar detalle' : 'Ver productos'">
-                {{ expandedId() === ing.id_ingreso ? '▲' : '▼' }}
-              </button>
-              <!-- panel expandido con preview de items -->
-              @if (expandedId() === ing.id_ingreso) {
-                <div class="ing-expand-panel" (click)="$event.stopPropagation()">
-                  @let previewItems = getPreviewItems(ing);
-                  @if (previewItems.length > 0) {
-                    <table class="preview-table">
-                      <thead>
-                        <tr>
-                          <th>Código</th><th>Nombre</th><th>Laboratorio</th><th>Lote</th><th style="text-align:right">Cantidad</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (it of previewItems; track $index) {
-                          <tr>
-                            <td>{{ it['codigo'] || '—' }}</td>
-                            <td>{{ it['nombre'] || '—' }}</td>
-                            <td>{{ it['laboratorio'] || '—' }}</td>
-                            <td>{{ it['lote'] || '—' }}</td>
-                            <td style="text-align:right">{{ it['cantidad'] || '—' }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  } @else {
-                    <p style="font-size:0.82rem;color:#9ca3af;padding:0.5rem 0">Sin detalle de items en este ingreso.</p>
-                  }
-                  <button class="btn" style="margin-top:0.6rem;font-size:0.82rem;padding:0.4rem 1.1rem" (click)="seleccionarIngreso(ing)">
-                    Seleccionar para devolver
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-        <div style="font-size:0.8rem;color:#9ca3af;margin-top:0.5rem">
-          {{ filteredIngresos().length }} de {{ allIngresos().length }} ingresos
-          @if (!mostrarTodos()) { &nbsp;(solo recibidos / almacenados) }
-        </div>
-      }
-    }
-  </div>
-
-  <!-- ══ FORMULARIO DE DEVOLUCIÓN ══════════════════════════════ -->
-  @if (ingresoSeleccionado()) {
+  <!-- ══ PASO 1: CÓDIGO DE NOTA CRÉDITO ═══════════════════════ -->
+  @if (!notaCredito()) {
     <div class="card">
-
-      <!-- 1. ENCABEZADO -->
       <div class="po-section">
-        <div class="po-section-title">Encabezado</div>
-        <div class="form-grid">
-          <label>
-            Consecutivo devolución
-            <input [(ngModel)]="devMeta.referencia" readonly class="field-readonly">
+        <div class="po-section-title">Paso 1 — Código de nota crédito</div>
+        <p class="step-desc">Ingresa el código alfanumérico de la nota crédito emitida por el proveedor antes de relacionar el ingreso.</p>
+        <div class="nc-input-row">
+          <label class="nc-label">
+            Código nota crédito <span style="color:#ef4444">*</span>
+            <input
+              [(ngModel)]="notaCreditoInput"
+              placeholder="Ej: NC-2024-001"
+              (keydown.enter)="confirmarNotaCredito()"
+              autocomplete="off"
+              class="nc-code-input"
+            >
           </label>
-          <label>
-            Fecha devolución
-            <input type="date" [(ngModel)]="devMeta.fecha">
-          </label>
-          <label>
-            Motivo <span style="color:#ef4444">*</span>
-            <select [(ngModel)]="devMeta.motivo">
-              <option value="">-- Seleccionar motivo --</option>
-              @for (m of motivosDevolucion; track m.valor) {
-                <option [value]="m.valor">{{ m.etiqueta }}</option>
-              }
-            </select>
-          </label>
+          <button class="btn" style="align-self:flex-end;padding:0.5rem 1.6rem" (click)="confirmarNotaCredito()">
+            Siguiente &rarr;
+          </button>
         </div>
       </div>
+    </div>
+  }
 
-      <!-- 2. DATOS DEL INGRESO ORIGINAL -->
-      <div class="po-section">
-        <div class="po-section-title">Datos del ingreso original</div>
-        <div style="overflow-x:auto;">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Referencia ingreso</th>
-                <th>Proveedor</th>
-                <th>Sede</th>
-                <th>Orden de compra</th>
-                <th>Registrado por</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><input readonly [value]="ingresoSeleccionado()!.referencia" class="field-readonly"></td>
-                <td><input readonly [value]="devMeta.proveedor" class="field-readonly"></td>
-                <td><input readonly [value]="devMeta.sede" class="field-readonly"></td>
-                <td><input readonly [value]="devMeta.orden_original" class="field-readonly"></td>
-                <td><input readonly [value]="devMeta.creado_por_nombre || '—'" class="field-readonly"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+  <!-- ══ PASO 2+: NOTA CRÉDITO CONFIRMADA ══════════════════════ -->
+  @if (notaCredito()) {
+    <div class="nc-confirmed-banner">
+      <span class="nc-confirmed-label">Nota crédito:</span>
+      <strong class="nc-confirmed-code">{{ notaCredito() }}</strong>
+      <span class="nc-step-hint">Ahora selecciona el ingreso a devolver</span>
+      <button class="nc-change-btn" (click)="cambiarNotaCredito()">&larr; Cambiar</button>
+    </div>
+
+    <!-- ── BUSCADOR DE INGRESOS ──────────────────────────────── -->
+    <div class="card">
+      <div class="section-header-row">
+        <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Buscar ingreso Sebas</div>
+        <button class="toggle-todos-btn" [class.active]="mostrarTodos()" (click)="toggleMostrarTodos()">
+          {{ mostrarTodos() ? 'Solo elegibles' : 'Ver todos' }}
+        </button>
       </div>
 
-      <!-- 3. DETALLE A DEVOLVER -->
-      <div class="po-section">
-        <div class="po-section-title-row">
-          <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Detalle — cantidades a devolver</div>
-          <div style="display:flex;gap:0.5rem">
-            <button class="btn-action" (click)="seleccionarTodas()">Devolver todo</button>
-            <button class="btn-action secondary" (click)="limpiarTodas()">Limpiar</button>
+      <div class="filter-type-row">
+        <button class="filter-pill" [class.active]="filterType() === 'numero'"
+          (click)="setFilterType('numero')">N° de ingreso</button>
+        <button class="filter-pill" [class.active]="filterType() === 'proveedor'"
+          (click)="setFilterType('proveedor')">Proveedor</button>
+        <button class="filter-pill" [class.active]="filterType() === 'fecha'"
+          (click)="setFilterType('fecha')">Fecha</button>
+        <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
+          (click)="setFilterType('laboratorio')">Laboratorio</button>
+      </div>
+
+      <div class="filter-input-row">
+        @if (filterType() === 'numero') {
+          <label>Número / Referencia
+            <input [(ngModel)]="filter.numero_oc" placeholder="ING-SEBAS-..." (ngModelChange)="applyFilter()">
+          </label>
+        }
+        @if (filterType() === 'proveedor') {
+          <label>Proveedor / Laboratorio
+            <input [(ngModel)]="filter.proveedor" placeholder="Nombre del proveedor" (ngModelChange)="applyFilter()">
+          </label>
+        }
+        @if (filterType() === 'fecha') {
+          <label>Desde<input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="applyFilter()"></label>
+          <label>Hasta<input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="applyFilter()"></label>
+        }
+        @if (filterType() === 'laboratorio') {
+          <label>Laboratorio
+            <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="applyFilter()">
+          </label>
+        }
+        <button class="btn secondary" style="align-self:flex-end;padding:0.45rem 1rem;font-size:0.85rem" (click)="clearFilter()">Limpiar</button>
+      </div>
+
+      @if (ingresoSeleccionado()) {
+        <div class="selected-banner" style="margin-top:1rem">
+          <span>
+            Ingreso: <strong>{{ ingresoSeleccionado()!.referencia }}</strong>
+            &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!.fecha_ingreso | date:'dd/MM/yyyy' }}
+            @if (ingresoSeleccionado()!._proveedor) {
+              &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!._proveedor }}
+            }
+            &nbsp;&mdash;&nbsp;{{ ingresoSeleccionado()!._items_count }} item(s)
+          </span>
+          <button class="btn-deselect" (click)="deseleccionarIngreso()" title="Cambiar ingreso">&times; Cambiar</button>
+        </div>
+      } @else {
+        @if (loading()) {
+          <p class="empty-msg">Cargando ingresos...</p>
+        } @else if (filteredIngresos().length === 0) {
+          <p class="empty-msg">
+            No hay ingresos
+            {{ mostrarTodos() ? '' : 'recibidos' }}
+            con los criterios actuales.
+          </p>
+        } @else {
+          <div class="ing-list">
+            @for (ing of filteredIngresos(); track ing.id_ingreso) {
+              <div class="ing-card" [class.expanded]="expandedId() === ing.id_ingreso">
+                <!-- fila principal clickeable para seleccionar -->
+                <div class="ing-card-main" (click)="seleccionarIngreso(ing)">
+                  <div class="ing-card-left">
+                    <span class="ing-ref">{{ ing.referencia }}</span>
+                    <span class="ing-meta">
+                      {{ ing.fecha_ingreso | date:'dd/MM/yyyy' }}
+                      @if (ing._proveedor) { &nbsp;·&nbsp; <span class="tag-proveedor">{{ ing._proveedor }}</span> }
+                      @if (ing._sede) { &nbsp;·&nbsp; {{ ing._sede }} }
+                    </span>
+                    @if (ing._primer_producto) {
+                      <span class="ing-preview-prod">
+                        {{ ing._items_count > 1 ? ing._items_count + ' items: ' : '' }}{{ ing._primer_producto }}
+                        @if (ing._items_count > 1) { <span class="etc">…</span> }
+                      </span>
+                    }
+                    @if (ing.creado_por_nombre) {
+                      <span class="ing-creador">Registrado por: {{ ing.creado_por_nombre }}</span>
+                    }
+                  </div>
+                  <div class="ing-card-right">
+                    <span class="ing-badge badge-recibido">
+                      {{ ing.estado }}
+                    </span>
+                    <span class="ing-qty">{{ ing.cantidad }} uds.</span>
+                  </div>
+                </div>
+                <!-- botón expandir -->
+                <button class="expand-btn" (click)="toggleExpand(ing.id_ingreso, $event)"
+                  [title]="expandedId() === ing.id_ingreso ? 'Ocultar detalle' : 'Ver productos'">
+                  {{ expandedId() === ing.id_ingreso ? '▲' : '▼' }}
+                </button>
+                <!-- panel expandido con preview de items -->
+                @if (expandedId() === ing.id_ingreso) {
+                  <div class="ing-expand-panel" (click)="$event.stopPropagation()">
+                    @let previewItems = getPreviewItems(ing);
+                    @if (previewItems.length > 0) {
+                      <table class="preview-table">
+                        <thead>
+                          <tr>
+                            <th>Código</th><th>Nombre</th><th>Laboratorio</th><th>Lote</th><th style="text-align:right">Cantidad</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (it of previewItems; track $index) {
+                            <tr>
+                              <td>{{ it['codigo'] || '—' }}</td>
+                              <td>{{ it['nombre'] || '—' }}</td>
+                              <td>{{ it['laboratorio'] || '—' }}</td>
+                              <td>{{ it['lote'] || '—' }}</td>
+                              <td style="text-align:right">{{ it['cantidad'] || '—' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    } @else {
+                      <p style="font-size:0.82rem;color:#9ca3af;padding:0.5rem 0">Sin detalle de items en este ingreso.</p>
+                    }
+                    <button class="btn" style="margin-top:0.6rem;font-size:0.82rem;padding:0.4rem 1.1rem" (click)="seleccionarIngreso(ing)">
+                      Seleccionar para devolver
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div style="font-size:0.8rem;color:#9ca3af;margin-top:0.5rem">
+            {{ filteredIngresos().length }} de {{ allIngresos().length }} ingresos
+            @if (!mostrarTodos()) { &nbsp;(solo recibidos) }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- ── FORMULARIO DE DEVOLUCIÓN ──────────────────────────── -->
+    @if (ingresoSeleccionado()) {
+      <div class="card">
+
+        <!-- 1. ENCABEZADO -->
+        <div class="po-section">
+          <div class="po-section-title">Encabezado</div>
+          <div class="form-grid">
+            <label>
+              Nota crédito
+              <input [value]="notaCredito()" readonly class="field-readonly nc-ref-display">
+            </label>
+            <label>
+              Ingreso relacionado
+              <input [value]="ingresoSeleccionado()!.referencia" readonly class="field-readonly">
+            </label>
+            <label>
+              Fecha devolución
+              <input type="date" [(ngModel)]="devMeta.fecha">
+            </label>
+            <label>
+              Motivo <span style="color:#ef4444">*</span>
+              <select [(ngModel)]="devMeta.motivo">
+                <option value="">-- Seleccionar motivo --</option>
+                @for (m of motivosDevolucion; track m.valor) {
+                  <option [value]="m.valor">{{ m.etiqueta }}</option>
+                }
+              </select>
+            </label>
           </div>
         </div>
-        <div style="overflow-x:auto;margin-top:0.75rem">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Laboratorio</th>
-                <th>Lote</th>
-                <th>Vencimiento</th>
-                <th style="text-align:right">V. Unitario</th>
-                <th style="text-align:right">Cant. original</th>
-                <th style="text-align:right;color:#c2410c">Cant. a devolver</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of devItems; track $index) {
-                <tr [class.row-con-devolucion]="item.cantidad_devolver > 0">
-                  <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
-                  <td><input readonly [value]="item.codigo" class="field-readonly"></td>
-                  <td><input readonly [value]="item.nombre" class="field-readonly" style="min-width:160px"></td>
-                  <td><input readonly [value]="item.laboratorio" class="field-readonly"></td>
-                  <td><input readonly [value]="item.lote" class="field-readonly"></td>
-                  <td><input readonly [value]="item.fecha_vencimiento" class="field-readonly"></td>
-                  <td style="text-align:right">
-                    <input readonly [value]="item.valor_unitario | number:'1.0-2'" class="field-readonly" style="text-align:right;width:80px">
-                  </td>
-                  <td style="text-align:right">
-                    <input readonly [value]="item.cantidad_original" class="field-readonly" style="text-align:right;width:80px">
-                  </td>
-                  <td>
-                    <input
-                      type="number" min="0" [attr.max]="item.cantidad_original"
-                      [(ngModel)]="item.cantidad_devolver"
-                      class="dev-input"
-                      style="text-align:right;width:90px"
-                      (change)="clampDevolver(item)"
-                    >
-                  </td>
+
+        <!-- 2. DATOS DEL INGRESO ORIGINAL -->
+        <div class="po-section">
+          <div class="po-section-title">Datos del ingreso original</div>
+          <div style="overflow-x:auto;">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Referencia ingreso</th>
+                  <th>Proveedor</th>
+                  <th>Sede</th>
+                  <th>Orden de compra</th>
+                  <th>Registrado por</th>
                 </tr>
-              }
-            </tbody>
-            <tfoot>
-              <tr class="tfoot-total">
-                <td colspan="7" style="padding:0.5rem 0.6rem;text-align:right">Total</td>
-                <td style="padding:0.5rem 0.6rem;text-align:right">{{ totalOriginal() }}</td>
-                <td style="padding:0.5rem 0.6rem;text-align:right;color:#c2410c;font-weight:700">{{ totalDevolver() }}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input readonly [value]="ingresoSeleccionado()!.referencia" class="field-readonly"></td>
+                  <td><input readonly [value]="devMeta.proveedor" class="field-readonly"></td>
+                  <td><input readonly [value]="devMeta.sede" class="field-readonly"></td>
+                  <td><input readonly [value]="devMeta.orden_original" class="field-readonly"></td>
+                  <td><input readonly [value]="devMeta.creado_por_nombre || '—'" class="field-readonly"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <!-- 4. OBSERVACIONES -->
-      <div class="po-section">
-        <div class="po-section-title">Observaciones</div>
-        <textarea [(ngModel)]="devMeta.observaciones"
-          placeholder="Describe el estado del producto, novedades o instrucciones de reenvío"
-          class="obs-textarea">
-        </textarea>
-      </div>
+        <!-- 3. DETALLE A DEVOLVER -->
+        <div class="po-section">
+          <div class="po-section-title-row">
+            <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Detalle — cantidades a devolver</div>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn-action" (click)="seleccionarTodas()">Devolver todo</button>
+              <button class="btn-action secondary" (click)="limpiarTodas()">Limpiar</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;margin-top:0.75rem">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Código</th>
+                  <th>Nombre</th>
+                  <th>Laboratorio</th>
+                  <th>Lote</th>
+                  <th>Vencimiento</th>
+                  <th style="text-align:right">V. Unitario</th>
+                  <th style="text-align:right">Cant. original</th>
+                  <th style="text-align:right;color:#c2410c">Cant. a devolver</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of devItems; track $index) {
+                  <tr [class.row-con-devolucion]="item.cantidad_devolver > 0">
+                    <td style="color:#9ca3af;font-size:0.8rem">{{ $index + 1 }}</td>
+                    <td><input readonly [value]="item.codigo" class="field-readonly"></td>
+                    <td><input readonly [value]="item.nombre" class="field-readonly" style="min-width:160px"></td>
+                    <td><input readonly [value]="item.laboratorio" class="field-readonly"></td>
+                    <td><input readonly [value]="item.lote" class="field-readonly"></td>
+                    <td><input readonly [value]="item.fecha_vencimiento" class="field-readonly"></td>
+                    <td style="text-align:right">
+                      <input readonly [value]="item.valor_unitario | number:'1.0-2'" class="field-readonly" style="text-align:right;width:80px">
+                    </td>
+                    <td style="text-align:right">
+                      <input readonly [value]="item.cantidad_original" class="field-readonly" style="text-align:right;width:80px">
+                    </td>
+                    <td>
+                      <input
+                        type="number" min="0" [attr.max]="item.cantidad_original"
+                        [(ngModel)]="item.cantidad_devolver"
+                        class="dev-input"
+                        style="text-align:right;width:90px"
+                        (change)="clampDevolver(item)"
+                      >
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="tfoot-total">
+                  <td colspan="7" style="padding:0.5rem 0.6rem;text-align:right">Total</td>
+                  <td style="padding:0.5rem 0.6rem;text-align:right">{{ totalOriginal() }}</td>
+                  <td style="padding:0.5rem 0.6rem;text-align:right;color:#c2410c;font-weight:700">{{ totalDevolver() }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
 
-      <div class="toolbar" style="margin-top:1rem">
-        <button class="btn btn-danger" (click)="crearDevolucion()" [disabled]="saving()">
-          {{ saving() ? 'Registrando...' : 'Registrar devolución' }}
-        </button>
-        <button class="btn secondary" (click)="deseleccionarIngreso()">Cancelar</button>
-      </div>
+        <!-- 4. OBSERVACIONES -->
+        <div class="po-section">
+          <div class="po-section-title">Observaciones</div>
+          <textarea [(ngModel)]="devMeta.observaciones"
+            placeholder="Describe el estado del producto, novedades o instrucciones de reenvío"
+            class="obs-textarea">
+          </textarea>
+        </div>
 
-    </div>
+        <div class="toolbar" style="margin-top:1rem">
+          <button class="btn btn-danger" (click)="crearDevolucion()" [disabled]="saving()">
+            {{ saving() ? 'Registrando...' : 'Registrar devolución' }}
+          </button>
+          <button class="btn secondary" (click)="deseleccionarIngreso()">Cancelar</button>
+        </div>
+
+      </div>
+    }
   }
 </section>

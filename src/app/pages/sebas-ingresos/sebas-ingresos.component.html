@@ -70,11 +70,7 @@
                     }
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.05rem;flex-shrink:0">
-                    <span class="ing-badge"
-                      [class.badge-recibido]="ing.estado==='recibido'"
-                      [class.badge-pendiente]="ing.estado==='pendiente'"
-                      [class.badge-almacenado]="ing.estado==='almacenado'"
-                      [class.badge-cancelado]="ing.estado==='cancelado'">
+                    <span class="ing-badge badge-recibido">
                       {{ ing.estado }}
                     </span>
                     <span style="font-size:0.8rem;font-weight:600">{{ ing.cantidad }} uds.</span>
@@ -256,8 +252,9 @@
                                 <label>Consecutivo CUM<input [(ngModel)]="item.consecutivo_cum"></label>
                                 <label>Presentacion<input [(ngModel)]="item.presentacion" placeholder="Ej: Tabletas x 20"></label>
                                 <label>IVA (%)<input type="number" min="0" [(ngModel)]="item.iva" style="width:70px"></label>
+                                <label>Descuento (%)<input type="number" min="0" max="100" step="0.01" [(ngModel)]="item.descuento_pct" (ngModelChange)="onDescuentoPctChange(item)" style="width:80px"></label>
+                                <label>Descuento ($)<input type="number" min="0" step="0.01" [(ngModel)]="item.descuento_valor" (ngModelChange)="onDescuentoValorChange(item)" style="width:110px"></label>
                                 <label>Temperatura<input [(ngModel)]="item.temperatura" placeholder="Ej: 2-8°C"></label>
-                                <label>Criterio de empleo<input [(ngModel)]="item.criterio_empleo" placeholder="Condicion de uso"></label>
                                 <label class="cumple-label">
                                   Cumplimiento
                                   <span class="cumple-toggle"
@@ -286,13 +283,54 @@
                 </tfoot>
               </table>
             </div>
+            <div class="po-items-footer">
+              <table class="po-totals-table">
+                <tr>
+                  <td>Total Items:</td>
+                  <td class="po-total-val">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Total Descuento:</td>
+                  <td class="po-total-val">{{ totalDescuentoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Sub-Total:</td>
+                  <td class="po-total-val">{{ subtotalNetoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>IVA:</td>
+                  <td class="po-total-val">{{ totalIvaOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>INC:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Impuestos Aplicados:</td>
+                  <td class="po-total-val">{{ totalIvaOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Otros Costos:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Total Otros Conceptos:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr class="po-total-final">
+                  <td>TOTAL INGRESO:</td>
+                  <td class="po-total-val">{{ totalIngresoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+              </table>
+            </div>
           </div>
 
           <!-- 5. DATOS DEL INGRESO -->
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
             <div class="form-grid" style="margin-bottom:0.75rem">
-              <label>Numero factura<input [(ngModel)]="ingresoExtra.numero_factura"></label>
+              <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+              <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
             </div>
             <label class="obs-label">
               Observaciones
@@ -397,8 +435,9 @@
                                 <label>Consecutivo CUM<input [(ngModel)]="item.consecutivo_cum"></label>
                                 <label>Presentacion<input [(ngModel)]="item.presentacion" placeholder="Ej: Tabletas x 20"></label>
                                 <label>IVA (%)<input type="number" min="0" [(ngModel)]="item.iva" style="width:70px"></label>
+                                <label>Descuento (%)<input type="number" min="0" max="100" step="0.01" [(ngModel)]="item.descuento_pct" (ngModelChange)="onDescuentoPctChange(item)" style="width:80px"></label>
+                                <label>Descuento ($)<input type="number" min="0" step="0.01" [(ngModel)]="item.descuento_valor" (ngModelChange)="onDescuentoValorChange(item)" style="width:110px"></label>
                                 <label>Temperatura<input [(ngModel)]="item.temperatura" placeholder="Ej: 2-8°C"></label>
-                                <label>Criterio de empleo<input [(ngModel)]="item.criterio_empleo" placeholder="Condicion de uso"></label>
                                 <label class="cumple-label">
                                   Cumplimiento
                                   <span class="cumple-toggle"
@@ -427,7 +466,47 @@
                 </tfoot>
               </table>
             </div>
-            <button class="btn btn-outline" style="margin-top:0.6rem" (click)="agregarItem()">+ Agregar item</button>
+            <div class="po-items-footer">
+              <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
+              <table class="po-totals-table">
+                <tr>
+                  <td>Total Items:</td>
+                  <td class="po-total-val">{{ grandTotalOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Total Descuento:</td>
+                  <td class="po-total-val">{{ totalDescuentoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Sub-Total:</td>
+                  <td class="po-total-val">{{ subtotalNetoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>IVA:</td>
+                  <td class="po-total-val">{{ totalIvaOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>INC:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Impuestos Aplicados:</td>
+                  <td class="po-total-val">{{ totalIvaOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Otros Costos:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr>
+                  <td>Total Otros Conceptos:</td>
+                  <td class="po-total-val">{{ 0 | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+                <tr class="po-total-final">
+                  <td>TOTAL INGRESO:</td>
+                  <td class="po-total-val">{{ totalIngresoOc() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                </tr>
+              </table>
+            </div>
           </div>
 
           <!-- 5. DATOS DEL MEDICAMENTO -->
@@ -435,7 +514,8 @@
           <div class="po-section">
             <div class="po-section-title">Datos del ingreso</div>
             <div class="form-grid" style="margin-bottom:0.75rem">
-              <label>Numero factura<input [(ngModel)]="ingresoExtra.numero_factura"></label>
+              <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+              <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
             </div>
             <label class="obs-label">
               Observaciones

@@ -276,7 +276,6 @@ export class SebasIngresosComponent implements OnInit {
       item.consecutivo_cum?.trim() &&
       item.presentacion?.trim() &&
       item.temperatura?.trim() &&
-      item.criterio_empleo?.trim() &&
       item.iva !== null && item.iva !== undefined && item.iva !== ''
     );
   }
@@ -323,8 +322,44 @@ export class SebasIngresosComponent implements OnInit {
     return (Number(item.cantidad) || 0) * (Number(item.valor_unitario) || 0);
   }
 
+  itemNeto(item: any): number {
+    return Math.max(0, this.itemTotal(item) - (Number(item.descuento_valor) || 0));
+  }
+
+  onDescuentoPctChange(item: any): void {
+    const pct = Math.min(100, Math.max(0, Number(item.descuento_pct) || 0));
+    item.descuento_pct = pct;
+    item.descuento_valor = +(this.itemTotal(item) * pct / 100).toFixed(2);
+  }
+
+  onDescuentoValorChange(item: any): void {
+    const subtotal = this.itemTotal(item);
+    const val = Math.max(0, Number(item.descuento_valor) || 0);
+    item.descuento_valor = val;
+    item.descuento_pct = subtotal > 0 ? +(val / subtotal * 100).toFixed(4) : 0;
+  }
+
   grandTotalOc(): number {
     return this.ocItems.reduce((sum, item) => sum + this.itemTotal(item), 0);
+  }
+
+  totalDescuentoOc(): number {
+    return this.ocItems.reduce((sum, item) => sum + (Number(item.descuento_valor) || 0), 0);
+  }
+
+  subtotalNetoOc(): number {
+    return this.grandTotalOc() - this.totalDescuentoOc();
+  }
+
+  totalIvaOc(): number {
+    return this.ocItems.reduce((sum, item) => {
+      const rate = Number(item.iva) >= 1 ? Number(item.iva) : 0;
+      return sum + (this.itemNeto(item) * rate / 100);
+    }, 0);
+  }
+
+  totalIngresoOc(): number {
+    return this.subtotalNetoOc() + this.totalIvaOc();
   }
 
   setFilterType(type: 'numero' | 'fecha' | 'laboratorio') {
@@ -373,34 +408,55 @@ export class SebasIngresosComponent implements OnInit {
 
   private ingresoConOrdenPayload() {
     const items = this.ocItems.filter(i => Number(i.cantidad) > 0);
-    const itemLines = items.map((i, idx) => {
-      const base = `Item ${idx + 1}: codigo=${i.codigo} | nombre=${i.nombre} | laboratorio=${i.laboratorio} | cantidad=${i.cantidad} | valor_unitario=${i.valor_unitario} | lote=${i.lote} | vencimiento=${i.fecha_vencimiento}`;
-      const med = [
-        i.registro_invima ? `invima=${i.registro_invima}` : '',
-        i.cum ? `cum=${i.cum}` : '',
-        i.consecutivo_cum ? `consec_cum=${i.consecutivo_cum}` : '',
-        i.presentacion ? `presentacion=${i.presentacion}` : '',
-        i.iva ? `iva=${i.iva}%` : '',
-        i.temperatura ? `temp=${i.temperatura}` : '',
-        i.criterio_empleo ? `criterio=${i.criterio_empleo}` : '',
-      ].filter(Boolean).join(' | ');
-      return med ? `${base}\n   [MX: ${med}]` : base;
-    }).join('\n');
-    const metaLines = [
-      `Orden: ${this.ocMeta.consecutivo}`,
-      `Sede: ${this.ocMeta.sede}`,
-      `Bodega: ${this.ocMeta.bodega}`,
-      `Proveedor: ${this.ocMeta.proveedor_nombre}`,
-      `NIT: ${this.ocMeta.proveedor_nit}`,
-      `Factura: ${this.ingresoExtra.numero_factura}`,
-    ].filter(l => !l.endsWith(': ')).join('\n');
+    const facturaStr = [this.ingresoExtra.prefijo_factura, this.ingresoExtra.numero_factura].filter(Boolean).join('');
+
     return {
-      referencia: [this.ocMeta.consecutivo, this.ingresoExtra.numero_factura ? `Factura ${this.ingresoExtra.numero_factura}` : ''].filter(Boolean).join(' - '),
-      producto: [items[0]?.nombre ?? 'Ingreso', metaLines, itemLines].filter(Boolean).join('\n'),
+      referencia: [this.ocMeta.consecutivo, facturaStr ? `Factura ${facturaStr}` : ''].filter(Boolean).join(' - '),
       cantidad: items.reduce((sum, i) => sum + Number(i.cantidad), 0),
       lote: items[0]?.lote || null,
       fecha_vencimiento: items[0]?.fecha_vencimiento || null,
-      estado: 'recibido'
+      estado: 'recibido',
+      // Factura
+      prefijo_factura:     this.ingresoExtra.prefijo_factura || null,
+      numero_factura:      this.ingresoExtra.numero_factura != null ? String(this.ingresoExtra.numero_factura) : null,
+      cufe:                this.ingresoExtra.cufe || null,
+      fecha_recepcion:     this.ingresoExtra.fecha_recepcion || null,
+      observaciones:       this.ingresoExtra.observaciones || null,
+      // Orden / sede
+      numero_orden_compra: this.ocMeta.consecutivo || null,
+      sede:                this.ocMeta.sede || null,
+      bodega:              this.ocMeta.bodega || null,
+      // Proveedor
+      proveedor_nombre:    this.ocMeta.proveedor_nombre || null,
+      proveedor_nit:       this.ocMeta.proveedor_nit || null,
+      proveedor_contacto:  this.ocMeta.proveedor_contacto || null,
+      proveedor_telefono:  this.ocMeta.proveedor_telefono || null,
+      proveedor_direccion: this.ocMeta.proveedor_direccion || null,
+      // Totales
+      total_bruto:     this.grandTotalOc(),
+      total_descuento: this.totalDescuentoOc(),
+      subtotal_neto:   this.subtotalNetoOc(),
+      total_iva:       this.totalIvaOc(),
+      total_ingreso:   this.totalIngresoOc(),
+      // Items estructurados
+      items: items.map(i => ({
+        codigo:          i.codigo || null,
+        nombre:          i.nombre || null,
+        laboratorio:     i.laboratorio || null,
+        cantidad:        Number(i.cantidad) || 0,
+        valor_unitario:  Number(i.valor_unitario) || 0,
+        descuento_pct:   Number(i.descuento_pct) || 0,
+        descuento_valor: Number(i.descuento_valor) || 0,
+        iva:             Number(i.iva) || 0,
+        lote:            i.lote || null,
+        fecha_vencimiento: i.fecha_vencimiento || null,
+        registro_invima: i.registro_invima || null,
+        cum:             i.cum || null,
+        consecutivo_cum: i.consecutivo_cum || null,
+        presentacion:    i.presentacion || null,
+        temperatura:     i.temperatura || null,
+        cumple:          i.cumple ?? null,
+      })),
     };
   }
 
@@ -427,13 +483,15 @@ export class SebasIngresosComponent implements OnInit {
       lote: '', fecha_vencimiento: '',
       _showMed: false,
       registro_invima: '', cum: '', consecutivo_cum: '',
-      presentacion: '', iva: 0, temperatura: '', criterio_empleo: '', cumple: null as (boolean | null),
+      presentacion: '', iva: 0, temperatura: '', cumple: null as (boolean | null),
+      descuento_pct: 0 as number, descuento_valor: 0 as number,
     };
   }
 
   private emptyIngresoExtra() {
     return {
-      numero_factura: '',
+      prefijo_factura: '',
+      numero_factura: null as number | null,
       cufe: '',
       fecha_recepcion: new Date().toISOString().slice(0, 10),
       observaciones: '',

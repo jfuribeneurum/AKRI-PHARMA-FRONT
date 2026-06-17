@@ -24,15 +24,28 @@ import { ThemeService } from '../core/theme.service';
           (pointerleave)="stopNavDrag($event)"
         >
           <ng-container *ngFor="let item of visibleItems">
-            <a *ngIf="!item.children" [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
-            
+            <a *ngIf="!item.children && !item.comingSoon" [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+            <button *ngIf="!item.children && item.comingSoon" class="nav-soon-btn" type="button" (click)="openComingSoon()">
+              {{ item.label }}
+              <span class="badge-soon">Próximamente</span>
+            </button>
+
             <div class="nav-group" *ngIf="item.children">
-              <a class="nav-group-toggle" (click)="toggleGroup(item)" [class.expanded]="item.expanded">
+              <a class="nav-group-toggle"
+                 (click)="item.pinProtected && !item.unlocked ? openPin(item) : toggleGroup(item)"
+                 [class.expanded]="item.expanded">
                 {{ item.label }}
-                <span class="chevron" [class.rotated]="item.expanded">▼</span>
+                <span *ngIf="item.pinProtected && !item.unlocked" class="nav-lock">🔒</span>
+                <span *ngIf="!item.pinProtected || item.unlocked" class="chevron" [class.rotated]="item.expanded">▼</span>
               </a>
-              <div class="nav-group-items" *ngIf="item.expanded">
-                <a *ngFor="let child of item.children" [routerLink]="child.path" routerLinkActive="active">{{ child.label }}</a>
+              <div class="nav-group-items" *ngIf="item.expanded && (!item.pinProtected || item.unlocked)">
+                <ng-container *ngFor="let child of item.children">
+                  <a *ngIf="!child.comingSoon" [routerLink]="child.path" routerLinkActive="active">{{ child.label }}</a>
+                  <button *ngIf="child.comingSoon" class="nav-soon-btn" type="button" (click)="openComingSoon()">
+                    {{ child.label }}
+                    <span class="badge-soon">Próximamente</span>
+                  </button>
+                </ng-container>
               </div>
             </div>
           </ng-container>
@@ -75,6 +88,45 @@ import { ThemeService } from '../core/theme.service';
         <router-outlet />
       </main>
     </div>
+
+    <!-- PIN Modal -->
+    <div class="pin-overlay" *ngIf="pinVisible" (click)="closePin()">
+      <div class="pin-modal" (click)="$event.stopPropagation()">
+        <span class="pin-icon">🔒</span>
+        <h3 class="pin-title">Acceso restringido</h3>
+        <p class="pin-body">Ingresa la clave para ver <strong>{{ pendingPinGroup?.label }}</strong></p>
+        <input
+          #pinInput
+          type="password"
+          class="pin-input"
+          maxlength="4"
+          placeholder="••••"
+          (keydown.enter)="submitPin(pinInput.value)"
+          (input)="pinError = false"
+        >
+        <p class="pin-error-msg" *ngIf="pinError">Clave incorrecta. Intenta de nuevo.</p>
+        <div class="pin-actions">
+          <button class="pin-btn-cancel" (click)="closePin()">Cancelar</button>
+          <button class="pin-btn-ok" (click)="submitPin(pinInput.value)">Ingresar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coming Soon Modal -->
+    <div class="coming-soon-overlay" *ngIf="comingSoonVisible" (click)="closeComingSoon()">
+      <div class="coming-soon-modal" (click)="$event.stopPropagation()">
+        <span class="cs-icon">🚀</span>
+        <h2 class="cs-title">¡Próximamente!</h2>
+        <p class="cs-body">
+          Estamos construyendo algo increíble para ti.<br>
+          El módulo de <strong>Inventario y Escaneo</strong> estará
+          completamente funcional muy pronto, con control de stock,
+          ingresos, movimientos y trazabilidad integrada.
+        </p>
+        <p class="cs-sub">Gracias por tu paciencia. ¡Grandes cosas vienen en camino!</p>
+        <button class="cs-btn" (click)="closeComingSoon()">Entendido</button>
+      </div>
+    </div>
   `
 })
 export class ShellComponent {
@@ -85,6 +137,11 @@ export class ShellComponent {
   private dragStartScroll = 0;
 
   visibleItems: any[] = [];
+  comingSoonVisible = false;
+
+  pinVisible = false;
+  pendingPinGroup: any = null;
+  pinError = false;
 
   isDark = false;
 
@@ -132,19 +189,28 @@ export class ShellComponent {
       ]
     },
     { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
-    { path: '/products', label: 'Productos e imágenes', any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
-    { path: '/ingresos', label: 'Ingreso pedido', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
-    { path: '/inventory', label: 'Inventario y escaneo', any: ['perm_inventario_consulta'] },
-    { path: '/purchases', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
-    { path: '/sales', label: 'Ventas', any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
-    { path: '/dispensing', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
-    { path: '/cold-chain', label: 'Cadena de frío', any: ['perm_cadena_frio_consulta', 'perm_cadena_frio_registro'] },
-    { path: '/billing', label: 'Facturación', any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
-    { path: '/reports', label: 'Reportes y exportación', any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },
-    { path: '/admin', label: 'Administración', any: ['perm_usuarios_gestionar', 'perm_configuracion'] },
-    { path: '/settings', label: 'SIESA / Config', any: ['perm_configuracion'] },
-    { path: '/trazabilidad', label: 'Trazabilidad', any: ['perm_usuarios_gestionar', 'perm_configuracion', 'perm_reportes_operativos'] },
-    { path: '/pacientes', label: 'Pacientes HealthSphere', any: [] }
+    {
+      label: 'Otros',
+      any: [],
+      expanded: false,
+      pinProtected: true,
+      unlocked: false,
+      children: [
+        { path: '/products',    label: 'Productos e imágenes',       any: ['perm_inventario_consulta', 'perm_inventario_movimiento'] },
+        { path: '/ingresos',    label: 'Ingreso pedido',             any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+        { path: '/inventory',   label: 'Inventario y escaneo',       any: ['perm_inventario_consulta'], comingSoon: true },
+        { path: '/purchases',   label: 'Orden de compra',            any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
+        { path: '/sales',       label: 'Ventas',                     any: ['perm_ventas_dispensar', 'perm_ventas_facturar'] },
+        { path: '/dispensing',  label: 'Dispensación',               any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+        { path: '/cold-chain',  label: 'Cadena de frío',             any: ['perm_cadena_frio_consulta', 'perm_cadena_frio_registro'] },
+        { path: '/billing',     label: 'Facturación',                any: ['perm_ventas_facturar', 'perm_reportes_financieros'] },
+        { path: '/reports',     label: 'Reportes y exportación',     any: ['perm_reportes_operativos', 'perm_reportes_financieros'] },
+        { path: '/admin',       label: 'Administración',             any: ['perm_usuarios_gestionar', 'perm_configuracion'] },
+        { path: '/settings',    label: 'SIESA / Config',             any: ['perm_configuracion'] },
+        { path: '/trazabilidad',label: 'Trazabilidad',               any: ['perm_usuarios_gestionar', 'perm_configuracion', 'perm_reportes_operativos'] },
+        { path: '/pacientes',   label: 'Pacientes HealthSphere',     any: [] },
+      ]
+    },
   ];
 
   computeVisibleNavItems() {
@@ -162,6 +228,36 @@ export class ShellComponent {
       if (item.children) return item.children.length > 0;
       return isAdmin || !item.any.length || item.any.some((key: string) => Boolean(permissions[key]));
     });
+  }
+
+  openComingSoon() {
+    this.comingSoonVisible = true;
+  }
+
+  closeComingSoon() {
+    this.comingSoonVisible = false;
+  }
+
+  openPin(group: any) {
+    this.pendingPinGroup = group;
+    this.pinVisible = true;
+    this.pinError = false;
+  }
+
+  closePin() {
+    this.pinVisible = false;
+    this.pendingPinGroup = null;
+    this.pinError = false;
+  }
+
+  submitPin(value: string) {
+    if (value === '8888') {
+      this.pendingPinGroup.unlocked = true;
+      this.pendingPinGroup.expanded = true;
+      this.closePin();
+    } else {
+      this.pinError = true;
+    }
   }
 
   toggleGroup(item: any) {

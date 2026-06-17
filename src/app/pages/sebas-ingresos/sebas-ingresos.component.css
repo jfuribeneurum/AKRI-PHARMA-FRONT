@@ -1,3 +1,32 @@
+/* ── tabla de totales ingreso ───────────────────────────── */
+    .po-items-footer {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-top: 0.6rem; gap: 1rem; flex-wrap: wrap;
+    }
+    .po-totals-table {
+      border-collapse: collapse; font-size: 0.78rem; width: 280px; margin-left: auto;
+    }
+    .po-totals-table td {
+      padding: 0.22rem 0.6rem;
+      border: 1px solid var(--color-border, #e5e7eb);
+    }
+    .po-totals-table td:first-child { font-weight: 600; }
+    .po-total-val {
+      text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .po-total-final td {
+      font-weight: 700; font-size: 0.8rem;
+      background: var(--color-surface-2, #f3f4f6);
+      border-top: 2px solid var(--color-border, #d1d5db);
+    }
+    :host-context([data-theme="dark"]) .po-totals-table td {
+      border-color: rgba(255,255,255,0.1);
+    }
+    :host-context([data-theme="dark"]) .po-total-final td {
+      background: rgba(255,255,255,0.05);
+      border-top-color: rgba(255,255,255,0.15);
+    }
+
 /* filtros */
     .filter-type-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
     .filter-pill {

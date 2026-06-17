@@ -85,14 +85,6 @@
           <label>Fecha de vencimiento</label>
           <input [(ngModel)]="nuevoIngreso.fecha_vencimiento" type="date" class="form-input">
         </div>
-        <div>
-          <label>Estado</label>
-          <select [(ngModel)]="nuevoIngreso.estado" class="form-input">
-            @for (e of estadosIngreso; track e.valor) {
-              <option [value]="e.valor">{{ e.etiqueta }}</option>
-            }
-          </select>
-        </div>
         <div class="toolbar" style="gap: 0.5rem; margin-top: 1rem;">
           <button class="btn" (click)="crearIngreso()">Crear ingreso</button>
           <button class="btn secondary" (click)="limpiarFormulario()">Limpiar</button>
@@ -120,14 +112,14 @@
           <div class="meta">Unidades recibidas</div>
         </div>
         <div class="stat">
-          <small>Pendientes</small>
-          <strong>{{ contarPorEstado('pendiente') }}</strong>
-          <div class="meta">Ingresos sin procesar</div>
+          <small>Recibidos</small>
+          <strong>{{ contarPorEstado('recibido') }}</strong>
+          <div class="meta">Mercancía en inventario</div>
         </div>
         <div class="stat">
-          <small>Almacenados</small>
-          <strong>{{ contarPorEstado('almacenado') }}</strong>
-          <div class="meta">Mercancía disponible</div>
+          <small>Devoluciones</small>
+          <strong>{{ contarPorEstado('cancelado') }}</strong>
+          <div class="meta">Ingresos anulados / devueltos</div>
         </div>
       </div>
     </div>

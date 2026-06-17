@@ -43,6 +43,9 @@ export class DevolucionPedidoComponent implements OnInit {
   readonly mostrarTodos = signal(false);
   readonly expandedId = signal<number | null>(null);
 
+  readonly notaCredito = signal('');
+  notaCreditoInput = '';
+
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '', proveedor: '' };
 
   devMeta: any = this.emptyDevMeta();
@@ -109,7 +112,7 @@ export class DevolucionPedidoComponent implements OnInit {
         // Filtrar ingresos elegibles para devolución (no DEV-, solo recibido/almacenado)
         if (soloElegibles) {
           if (row.referencia.startsWith('DEV-')) return false;
-          if (row.estado !== 'recibido' && row.estado !== 'almacenado') return false;
+          if (row.estado !== 'recibido') return false;
         }
         if (num && !row.referencia.toLowerCase().includes(num)) return false;
         const fecha = String(row.fecha_ingreso ?? '').slice(0, 10);
@@ -222,6 +225,8 @@ export class DevolucionPedidoComponent implements OnInit {
         lote: itemsADevolver[0]?.lote || null,
         fecha_vencimiento: itemsADevolver[0]?.fecha_vencimiento || null,
         estado: 'cancelado',
+        es_devolucion: true,
+        ingreso_original_ref: this.ingresoSeleccionado()?.referencia ?? null,
       });
 
       this.message.set(`Devolución ${this.devMeta.referencia} registrada exitosamente.`);
@@ -235,12 +240,30 @@ export class DevolucionPedidoComponent implements OnInit {
     }
   }
 
+  confirmarNotaCredito() {
+    const val = this.notaCreditoInput.trim();
+    if (!val) {
+      this.error.set('El código de la nota crédito es obligatorio.');
+      return;
+    }
+    this.error.set('');
+    this.notaCredito.set(val);
+  }
+
+  cambiarNotaCredito() {
+    this.notaCredito.set('');
+    this.notaCreditoInput = '';
+    this.deseleccionarIngreso();
+    this.error.set('');
+    this.message.set('');
+  }
+
   private precargarDevolucion(ing: IngresoRow) {
     const producto = String(ing.producto ?? '');
     const meta = this.parseMeta(producto);
 
     this.devMeta = {
-      referencia: `DEV-${ing.referencia}`,
+      referencia: this.notaCredito(),
       fecha: new Date().toISOString().slice(0, 10),
       motivo: '',
       observaciones: '',

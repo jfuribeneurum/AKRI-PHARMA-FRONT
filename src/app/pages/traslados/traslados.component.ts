@@ -58,7 +58,7 @@ export class TrasladosComponent implements OnInit {
   accionMap: Record<number, { obs: string; rechazando: boolean }> = {};
 
   async ngOnInit() {
-    await Promise.all([this.cargarStock(), this.cargarLookups()]);
+    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarPendientes()]);
   }
 
   setTab(tab: Tab) {
@@ -177,18 +177,21 @@ export class TrasladosComponent implements OnInit {
 
     this.saving.set(true);
     try {
+      const cantidadEnviada = Number(this.form.cantidad);
+      const destino = `${this.nombreBodegaDestino()} › ${this.nombreUbicacionDestino()}`;
       await this.api.post('/traslados', {
         id_lote:              lote.id_lote,
         id_almacen_origen:    lote.id_almacen,
         id_ubicacion_origen:  lote.id_ubicacion,
         id_almacen_destino:   this.idAlmacenDestino(),
         id_ubicacion_destino: this.idUbicacionDestino(),
-        cantidad:             Number(this.form.cantidad),
+        cantidad:             cantidadEnviada,
         motivo:               this.form.motivo || null
       });
-      const destino = `${this.nombreBodegaDestino()} › ${this.nombreUbicacionDestino()}`;
-      this.message.set(`Traslado enviado: ${this.form.cantidad} ud(s) de "${lote.nombre_comercial}" → ${destino}. Pendiente de recepción.`);
       this.deseleccionar();
+      this.activeTab.set('recibir');
+      await this.cargarPendientes();
+      this.message.set(`Traslado enviado: ${cantidadEnviada} ud(s) de "${lote.nombre_comercial}" → ${destino}. Pendiente de recepción.`);
     } catch (err: any) {
       this.error.set(err?.error?.message || 'No fue posible registrar el traslado.');
     } finally {
