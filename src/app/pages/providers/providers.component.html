@@ -115,6 +115,17 @@
             }
           </select>
         </label>
+        <label>
+          Régimen
+          <select [(ngModel)]="form.regimen">
+            <option value="">— Seleccionar —</option>
+            <option value="regimen_tributario">Régimen tributario</option>
+            <option value="autorretenedor">Régimen autorretenedor</option>
+            <option value="regimen_ordinario">Régimen ordinario</option>
+            <option value="regimen_simple">Régimen simple</option>
+            <option value="regimen_especial">Régimen especial</option>
+          </select>
+        </label>
         <label style="grid-column: span 2">
           Observaciones
           <textarea [(ngModel)]="form.observaciones" placeholder="Notas adicionales sobre el proveedor" rows="3" style="resize:vertical"></textarea>

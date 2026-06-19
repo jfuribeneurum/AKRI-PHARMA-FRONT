@@ -19,6 +19,7 @@ type ProviderForm = {
   pais: string;
   direccion: string;
   observaciones: string;
+  regimen: string;
   activo: boolean;
 };
 
@@ -157,6 +158,7 @@ export class ProvidersComponent implements OnInit {
         pais: p.pais ?? '',
         direccion: p.direccion ?? '',
         observaciones: p.observaciones ?? '',
+        regimen: p.regimen ?? '',
         activo: !!p.activo
       })));
     } catch {
@@ -180,6 +182,7 @@ export class ProvidersComponent implements OnInit {
       pais: '',
       direccion: '',
       observaciones: '',
+      regimen: '',
       activo: true
     };
   }
