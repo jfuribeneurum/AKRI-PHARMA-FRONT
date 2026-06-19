@@ -284,6 +284,17 @@
               </table>
             </div>
             <div class="po-items-footer">
+              <div class="po-footer-left">
+                <div class="po-section-title" style="margin-bottom:0.6rem">Datos del ingreso</div>
+                <div class="ing-footer-grid">
+                  <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+                  <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
+                </div>
+                <label class="obs-label" style="margin-top:0.6rem">
+                  Observaciones
+                  <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
+                </label>
+              </div>
               <table class="po-totals-table">
                 <tr>
                   <td>Total Items:</td>
@@ -323,19 +334,6 @@
                 </tr>
               </table>
             </div>
-          </div>
-
-          <!-- 5. DATOS DEL INGRESO -->
-          <div class="po-section">
-            <div class="po-section-title">Datos del ingreso</div>
-            <div class="form-grid" style="margin-bottom:0.75rem">
-              <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
-              <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
-            </div>
-            <label class="obs-label">
-              Observaciones
-              <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
-            </label>
           </div>
 
           @if (!allItemsValidated()) {
@@ -467,7 +465,18 @@
               </table>
             </div>
             <div class="po-items-footer">
-              <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
+              <div class="po-footer-left">
+                <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
+                <div class="po-section-title" style="margin-bottom:0.6rem; margin-top:0.85rem">Datos del ingreso</div>
+                <div class="ing-footer-grid">
+                  <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+                  <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
+                </div>
+                <label class="obs-label" style="margin-top:0.6rem">
+                  Observaciones
+                  <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
+                </label>
+              </div>
               <table class="po-totals-table">
                 <tr>
                   <td>Total Items:</td>
@@ -507,20 +516,6 @@
                 </tr>
               </table>
             </div>
-          </div>
-
-          <!-- 5. DATOS DEL MEDICAMENTO -->
-          <!-- 5. DATOS DEL INGRESO -->
-          <div class="po-section">
-            <div class="po-section-title">Datos del ingreso</div>
-            <div class="form-grid" style="margin-bottom:0.75rem">
-              <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
-              <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
-            </div>
-            <label class="obs-label">
-              Observaciones
-              <textarea [(ngModel)]="ingresoExtra.observaciones" placeholder="Notas del ingreso o diferencias contra factura" rows="4"></textarea>
-            </label>
           </div>
 
           @if (!allItemsValidated()) {

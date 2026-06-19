@@ -13,6 +13,7 @@
       @if (error()) { <div class="error-box">{{ error() }}</div> }
 
       <!-- Buscar lote -->
+      @if (!loteSeleccionado()) {
       <div class="card">
         <div class="po-section-title">Buscar lote con stock disponible</div>
         <div class="search-row">
@@ -68,6 +69,7 @@
           </table>
         </div>
       </div>
+      }
 
       <!-- Formulario de salida -->
       @if (loteSeleccionado()) {

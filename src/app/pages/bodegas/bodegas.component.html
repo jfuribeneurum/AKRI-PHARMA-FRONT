@@ -20,7 +20,7 @@
           <div class="form-grid">
             <label>
               Código de la bodega
-              <input [(ngModel)]="form.codigo" placeholder="BOG-01">
+              <input [(ngModel)]="form.codigo" [readonly]="!form.id_sede">
             </label>
             <label>
               Nombre de la bodega
@@ -50,7 +50,6 @@
           </label>
 
           <div class="switch-row" style="margin-top: 1rem;">
-            <label><input type="checkbox" [(ngModel)]="form.es_principal"> Bodega principal (Sede matriz)</label>
             <label><input type="checkbox" [(ngModel)]="form.activo"> Bodega activa (Habilitada)</label>
           </div>
 
@@ -103,12 +102,7 @@
               @for (row of bodegas(); track row.id_sede) {
                 <tr [class.inactive]="!row.activo">
                   <td><strong>{{ row.codigo }}</strong></td>
-                  <td>
-                    <div>{{ row.nombre }}</div>
-                    @if (row.es_principal) {
-                      <span class="chip info">Sede principal</span>
-                    }
-                  </td>
+                  <td>{{ row.nombre }}</td>
                   <td>{{ row.ciudad || '—' }}</td>
                   <td>{{ row.responsable || '—' }}</td>
                   <td>{{ row.usuarios }}</td>

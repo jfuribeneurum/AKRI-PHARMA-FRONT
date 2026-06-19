@@ -30,9 +30,22 @@ export class BodegasComponent implements OnInit {
 
   openModal() {
     this.form = this.blankForm();
+    this.form.codigo = this.nextCode();
     this.formMessage.set('');
     this.formError.set('');
     this.showModal.set(true);
+  }
+
+  private nextCode(): string {
+    let max = 0;
+    for (const b of this.bodegas()) {
+      const match = (b.codigo ?? '').match(/(\d+)$/);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > max) max = n;
+      }
+    }
+    return `BOD-${String(max + 1).padStart(2, '0')}`;
   }
 
   closeModal() {
@@ -88,7 +101,6 @@ export class BodegasComponent implements OnInit {
       telefono: '',
       email: '',
       responsable: '',
-      es_principal: false,
       activo: true
     };
   }

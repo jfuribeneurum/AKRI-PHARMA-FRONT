@@ -317,7 +317,13 @@
                 </table>
               </div>
               <div class="po-items-footer">
-                <button class="btn btn-outline" (click)="addItem()">+ Agregar item</button>
+                <div class="po-footer-left">
+                  <button class="btn btn-outline" (click)="addItem()">+ Agregar item</button>
+                  <label class="po-obs-label">
+                    <strong>Observaciones</strong>
+                    <textarea [(ngModel)]="order.observaciones" placeholder="Condiciones, notas o instrucciones especiales" class="po-obs-textarea"></textarea>
+                  </label>
+                </div>
 
                 <!-- TABLA DE TOTALES -->
                 <table class="po-totals-table">
@@ -360,16 +366,6 @@
                 </table>
               </div>
             }
-          </div>
-
-          <!-- OBSERVACIONES -->
-          <div class="po-section">
-            <div class="form-grid">
-              <label class="full">
-                Observaciones
-                <textarea [(ngModel)]="order.observaciones" placeholder="Condiciones, notas o instrucciones especiales"></textarea>
-              </label>
-            </div>
           </div>
 
           <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap">
