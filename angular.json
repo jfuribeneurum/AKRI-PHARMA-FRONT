@@ -35,6 +35,30 @@
                   "maximumWarning": "1mb",
                   "maximumError": "2mb"
                 }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.production.ts"
+                }
+              ]
+            },
+            "pruebas": {
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": true,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "2mb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.pruebas.ts"
+                }
               ]
             },
             "development": {
@@ -50,11 +74,22 @@
             "production": {
               "buildTarget": "akripharmacy:build:production"
             },
+            "pruebas": {
+              "buildTarget": "akripharmacy:build:pruebas"
+            },
             "development": {
               "buildTarget": "akripharmacy:build:development"
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "akripharmacy:build:development",
+            "runner": "vitest"
+          }
         }
       }
     }
