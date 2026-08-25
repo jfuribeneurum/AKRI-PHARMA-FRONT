@@ -13,6 +13,20 @@
             <button class="disp-modal__close" (click)="closeModal()" title="Cerrar">✕</button>
           </div>
 
+          @if (showSoporteConfirm()) {
+            <div class="disp-modal__soporte-overlay">
+              <div class="disp-modal__soporte-card">
+                <div class="disp-modal__soporte-icon">✅</div>
+                <h3>Dispensación registrada</h3>
+                <p>¿Deseas descargar el soporte de entrega de este medicamento?</p>
+                <div class="disp-modal__soporte-actions">
+                  <button class="disp-modal__btn-cancel" (click)="omitirSoporte()">No, gracias</button>
+                  <button class="disp-modal__btn-confirm" (click)="descargarSoporte()">Sí, descargar</button>
+                </div>
+              </div>
+            </div>
+          }
+
           <!-- Body scrollable -->
           <div class="disp-modal__body">
 
@@ -28,6 +42,28 @@
               <span class="disp-modal__patient-icon">👤</span>
               <span class="disp-modal__patient-name">{{ selectedDetail()?.nombre_paciente }}</span>
               <span class="disp-modal__patient-doc">{{ selectedDetail()?.documento_paciente }}</span>
+            </div>
+
+            <!-- Contrato / Régimen (aplica a toda la dispensación) -->
+            <div class="disp-modal__patient-fields">
+              <label class="disp-modal__field">
+                <span>Contrato</span>
+                <select [(ngModel)]="modalContrato">
+                  <option value="">-- Seleccionar --</option>
+                  @for (o of contratoOptions; track o.valor) {
+                    <option [value]="o.valor">{{ o.etiqueta }}</option>
+                  }
+                </select>
+              </label>
+              <label class="disp-modal__field">
+                <span>Régimen</span>
+                <select [(ngModel)]="modalRegimen">
+                  <option value="">-- Seleccionar --</option>
+                  @for (o of regimenOptions; track o.valor) {
+                    <option [value]="o.valor">{{ o.etiqueta }}</option>
+                  }
+                </select>
+              </label>
             </div>
 
             <!-- Lista de medicamentos -->
@@ -172,7 +208,7 @@
         <input
           [(ngModel)]="search"
           (ngModelChange)="onSearchChange()"
-          placeholder="Buscar por paciente, documento…"
+          placeholder="Buscar por paciente, documento o #historia…"
           style="flex:1; min-width:180px; max-width:300px;">
 
         <select [(ngModel)]="filterEstado" (ngModelChange)="resetAndLoad()" style="min-width:140px;">
@@ -240,6 +276,13 @@
                   </td>
                   <td>
                     <span class="chip" [class]="getResumenClass(f)">{{ getResumenLabel(f) }}</span>
+                    @if (getResumenLabel(f) !== 'Pendiente' && f.control?.ultima_fecha_dispensacion) {
+                      <div class="acciones-fecha">
+                        {{ f.control!.ultima_fecha_dispensacion | date:'dd/MM/yyyy HH:mm' }}
+                        <button class="btn-icon btn-icon--soporte" title="Ver soporte de entrega"
+                                (click)="verSoporteGuardado(f)">📄</button>
+                      </div>
+                    }
                   </td>
                   <td>
                     <button class="btn btn-small" (click)="toggleExpand(f.id_formulacion)">

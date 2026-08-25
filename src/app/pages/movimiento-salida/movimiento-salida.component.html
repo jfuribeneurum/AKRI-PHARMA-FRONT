@@ -12,145 +12,97 @@
       @if (message()) { <div class="success-box">{{ message() }}</div> }
       @if (error()) { <div class="error-box">{{ error() }}</div> }
 
-      <!-- Buscar lote -->
-      @if (!loteSeleccionado()) {
+      <!-- Encabezado -->
       <div class="card">
-        <div class="po-section-title">Buscar lote con stock disponible</div>
-        <div class="search-row">
-          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
-        </div>
+        <div class="po-section-title">Encabezado</div>
         <div style="overflow-x:auto">
           <table class="items-table">
             <thead>
               <tr>
-                <th>Producto</th>
-                <th>SKU</th>
-                <th>Lote</th>
-                <th>Vencimiento</th>
-                <th>Almacén</th>
-                <th>Ubicación</th>
-                <th>Disponible</th>
-                <th></th>
+                <th>Tipo de movimiento</th>
+                <th>Motivo / Referencia</th>
               </tr>
             </thead>
             <tbody>
-              @if (loading()) {
-                <tr><td colspan="8" class="empty-msg">Cargando...</td></tr>
-              } @else if (filteredStock().length === 0) {
-                <tr><td colspan="8" class="empty-msg">No se encontraron lotes con stock disponible.</td></tr>
-              } @else {
-                @for (item of filteredStock(); track item.id_lote) {
-                  <tr class="row-selectable" [class.row-selected]="loteSeleccionado()?.id_lote === item.id_lote" (click)="seleccionar(item)">
-                    <td><strong>{{ item.nombre_comercial }}</strong></td>
-                    <td class="text-muted">{{ item.sku }}</td>
-                    <td>{{ item.numero_lote }}</td>
-                    <td>
-                      <span [class]="vencClass(item.dias_para_vencer)">
-                        {{ item.fecha_vencimiento | date:'dd/MM/yyyy' }}
-                      </span>
-                    </td>
-                    <td>{{ item.almacen }}</td>
-                    <td>{{ item.ubicacion }}</td>
-                    <td>
-                      <span [class.cant-warn]="item.cantidad_disponible <= 10">
-                        {{ item.cantidad_disponible }}
-                      </span>
-                    </td>
-                    <td>
-                      <button class="btn btn-accent" style="padding:0.2rem 0.55rem;font-size:0.78rem"
-                        (click)="$event.stopPropagation(); seleccionar(item)">
-                        Seleccionar
-                      </button>
-                    </td>
-                  </tr>
-                }
-              }
+              <tr>
+                <td style="min-width:200px">
+                  <select [(ngModel)]="form.tipo">
+                    @for (t of tiposMovimiento; track t.valor) {
+                      <option [value]="t.valor">{{ t.etiqueta }}</option>
+                    }
+                  </select>
+                </td>
+                <td style="min-width:250px">
+                  <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Venta al mostrador, merma por deterioro...">
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
-      }
 
-      <!-- Formulario de salida -->
-      @if (loteSeleccionado()) {
-        <div class="selected-banner">
-          <span>
-            <strong>{{ loteSeleccionado().nombre_comercial }}</strong>
-            &nbsp;—&nbsp;Lote: {{ loteSeleccionado().numero_lote }}
-            &nbsp;|&nbsp;Disponible: <strong>{{ loteSeleccionado().cantidad_disponible }}</strong>
-            &nbsp;|&nbsp;{{ loteSeleccionado().almacen }} › {{ loteSeleccionado().ubicacion }}
-          </span>
-          <button class="btn-deselect" (click)="deseleccionar()">✕</button>
+      <!-- Detalle -->
+      <div class="card">
+        <div class="po-section-title">Detalle</div>
+
+        <div class="search-row">
+          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
         </div>
 
-        <div class="card">
-          <div class="po-section-title">Detalle del movimiento de salida</div>
-
-          <!-- Origen (readonly info) -->
-          <div style="overflow-x:auto; margin-bottom:1rem">
-            <table class="items-table">
-              <thead>
+        <div style="overflow-x:auto">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Producto / Lote</th>
+                <th>Disponible</th>
+                <th>Cantidad a retirar</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items; track $index) {
                 <tr>
-                  <th>Producto</th>
-                  <th>Lote</th>
-                  <th>Vencimiento</th>
-                  <th>Almacén origen</th>
-                  <th>Ubicación origen</th>
-                  <th>Stock disponible</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{{ loteSeleccionado().nombre_comercial }}</td>
-                  <td>{{ loteSeleccionado().numero_lote }}</td>
-                  <td>{{ loteSeleccionado().fecha_vencimiento | date:'dd/MM/yyyy' }}</td>
-                  <td><input [value]="loteSeleccionado().almacen" readonly></td>
-                  <td><input [value]="loteSeleccionado().ubicacion" readonly></td>
-                  <td><strong>{{ loteSeleccionado().cantidad_disponible }}</strong></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Configuración de salida -->
-          <div style="overflow-x:auto">
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Tipo de movimiento</th>
-                  <th>Cantidad a retirar</th>
-                  <th>Motivo / Referencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="min-width:200px">
-                    <select [(ngModel)]="form.tipo">
-                      @for (t of tiposMovimiento; track t.valor) {
-                        <option [value]="t.valor">{{ t.etiqueta }}</option>
+                  <td style="color:#9ca3af; font-size:0.8rem">{{ $index + 1 }}</td>
+                  <td style="min-width:280px">
+                    <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
+                      <option [ngValue]="null">-- Seleccionar producto/lote --</option>
+                      @for (i of filteredStock(); track i.id_lote) {
+                        <option [ngValue]="i.id_lote">
+                          {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (disp: {{ i.cantidad_disponible }})
+                        </option>
                       }
                     </select>
                   </td>
-                  <td style="min-width:150px">
-                    <input type="number" [(ngModel)]="form.cantidad" min="0.001" step="1"
-                      [max]="loteSeleccionado().cantidad_disponible"
-                      (ngModelChange)="clampCantidad()">
-                    <span class="text-hint">Máx: {{ loteSeleccionado().cantidad_disponible }}</span>
+                  <td>
+                    @if (loteFor(item.id_lote); as lote) {
+                      <span [class.cant-warn]="lote.cantidad_disponible <= 10">{{ lote.cantidad_disponible }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
                   </td>
-                  <td style="min-width:250px">
-                    <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Venta al mostrador, merma por deterioro...">
+                  <td style="min-width:120px">
+                    <input type="number" [(ngModel)]="item.cantidad" min="0.001" step="1"
+                      [disabled]="!item.id_lote"
+                      (ngModelChange)="clampCantidad(item)">
+                  </td>
+                  <td>
+                    <button class="btn-deselect" (click)="removeItem($index)" title="Quitar línea">✕</button>
                   </td>
                 </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="toolbar" style="margin-top:1rem">
-            <button class="btn btn-accent" [disabled]="saving()" (click)="registrar()">
-              {{ saving() ? 'Registrando...' : 'Registrar salida' }}
-            </button>
-            <button class="btn secondary" (click)="deseleccionar()">Cancelar</button>
-          </div>
+              }
+            </tbody>
+          </table>
         </div>
-      }
+
+        <div class="toolbar" style="margin-top:0.75rem">
+          <button class="btn secondary" (click)="addItem()">+ Agregar línea</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn-accent" [disabled]="saving()" (click)="registrar()">
+          {{ saving() ? 'Registrando...' : 'Registrar salida' }}
+        </button>
+      </div>
     </section>

@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef }
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { SiteContextService } from '../../core/site-context.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
@@ -38,7 +39,11 @@ export class SebasIngresosComponent implements OnInit {
   ingreso: any = this.emptyIngreso();
   factura: any = this.emptyFactura();
 
-  constructor(private readonly api: ApiService, private readonly cdr: ChangeDetectorRef) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly siteContext: SiteContextService
+  ) {}
 
   ngOnInit() {
     this.cargarIngresos();
@@ -426,6 +431,7 @@ export class SebasIngresosComponent implements OnInit {
       numero_orden_compra: this.ocMeta.consecutivo || null,
       sede:                this.ocMeta.sede || null,
       bodega:              this.ocMeta.bodega || null,
+      id_almacen:          this.siteContext.activeAlmacenId(),
       // Proveedor
       proveedor_nombre:    this.ocMeta.proveedor_nombre || null,
       proveedor_nit:       this.ocMeta.proveedor_nit || null,

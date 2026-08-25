@@ -425,6 +425,21 @@ textarea {
   border-color: #DDD6FE;
 }
 
+.chip-select {
+  width: auto;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.chip-select:focus {
+  box-shadow: none;
+}
+
 .muted {
   color: var(--muted);
 }

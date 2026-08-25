@@ -8,6 +8,8 @@
     .btn-icon { background:none; border:none; cursor:pointer; font-size:0.9rem; color:#64748b; padding:2px 6px; border-radius:4px; }
     .btn-icon:hover { background:#e2e8f0; }
     .btn-small { padding:0.25rem 0.65rem; font-size:0.8rem; }
+    .acciones-fecha { margin-top:0.3rem; font-size:0.72rem; color:#94a3b8; white-space:nowrap; display:flex; align-items:center; gap:0.3rem; }
+    .btn-icon--soporte { font-size:0.85rem; padding:0 2px; line-height:1; }
     .loading-state, .empty-state { padding:3rem; text-align:center; color:#94a3b8; }
 
     /* ── Modal dispensación ── */
@@ -25,6 +27,7 @@
     }
 
     .disp-modal {
+      position: relative;
       background: #fff;
       border-radius: 20px;
       box-shadow: 0 32px 80px rgba(0,0,0,0.22);
@@ -37,6 +40,34 @@
       flex-direction: column;
       margin: auto;
     }
+
+    .disp-modal__soporte-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .disp-modal__soporte-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+    }
+    .disp-modal__soporte-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .disp-modal__soporte-card h3 { margin: 0 0 0.4rem; font-size: 1.15rem; color: #1e293b; }
+    .disp-modal__soporte-card p { margin: 0 0 1.25rem; color: #64748b; font-size: 0.9rem; }
+    .disp-modal__soporte-actions { display: flex; gap: 0.75rem; justify-content: center; }
+    :host-context([data-theme="dark"]) .disp-modal__soporte-card { background: var(--surface); }
+    :host-context([data-theme="dark"]) .disp-modal__soporte-card h3 { color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-modal__soporte-card p { color: var(--muted); }
 
     /* Header */
     .disp-modal__header {
@@ -89,6 +120,23 @@
     .disp-modal__patient-icon { font-size: 1.1rem; }
     .disp-modal__patient-name { font-weight: 600; font-size: 0.92rem; color: #1e293b; flex: 1; }
     .disp-modal__patient-doc { font-size: 0.8rem; color: #94a3b8; }
+
+    .disp-modal__patient-fields {
+      display: flex; gap: 0.75rem; flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .disp-modal__field {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.75rem; color: #64748b; flex: 1; min-width: 160px;
+    }
+    .disp-modal__field select {
+      font-size: 0.85rem; padding: 0.4rem 0.5rem;
+      border-radius: 8px; border: 1px solid #e2e8f0;
+    }
+    :host-context([data-theme="dark"]) .disp-modal__field { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-modal__field select {
+      background: var(--surface-muted); border-color: var(--line); color: var(--text);
+    }
 
     /* Lista de medicamentos */
     .disp-med-list { display: flex; flex-direction: column; gap: 0.6rem; }

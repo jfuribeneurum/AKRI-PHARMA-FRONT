@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { SiteContextService } from '../../core/site-context.service';
 
 @Component({
   selector: 'akri-login',
@@ -20,7 +21,8 @@ export class LoginComponent {
 
   constructor(
     private readonly api: ApiService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly siteContext: SiteContextService
   ) {}
 
   async submit() {
@@ -34,7 +36,7 @@ export class LoginComponent {
       );
 
       localStorage.setItem('akri_token', response.data.token);
-      localStorage.setItem('akri_user', JSON.stringify(response.data.user));
+      this.siteContext.hydrateFromUser(response.data.user);
       await this.router.navigate(['/module-select']);
     } catch (error: any) {
       this.error.set(error?.error?.message ?? 'No fue posible iniciar sesión');

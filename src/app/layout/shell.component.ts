@@ -1,17 +1,18 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
 import { ThemeService } from '../core/theme.service';
+import { SiteContextService } from '../core/site-context.service';
 
 @Component({
   selector: 'akri-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <div class="layout">
       <aside class="sidebar">
         <div class="brand">AkriPharmacy</div>
-        <div class="brand-subtitle">ERP farmacéutico multisede · multiusuario · cadena de frío automática · dispensación con firma</div>
 
         <nav
           #sidebarNav
@@ -54,12 +55,20 @@ import { ThemeService } from '../core/theme.service';
 
       <main class="content">
         <header class="topbar">
-          <div>
-            <strong>ERP Gestión de Inventario Farmacéutico</strong>
-            <div class="muted">Paleta violeta/naranja, operación por lotes, multisede, multiusuario, cadena de frío e integración SIESA.</div>
-          </div>
+          <div></div>
           <div class="topbar-actions">
-            <span class="chip primary">Multisede</span>
+            @if (siteContext.almacenes().length > 1) {
+              <select class="chip primary chip-select"
+                      [ngModel]="siteContext.activeAlmacenId()"
+                      (ngModelChange)="onAlmacenChange($event)"
+                      title="Cambiar almacén activo">
+                @for (a of siteContext.almacenes(); track a.id_almacen) {
+                  <option [value]="a.id_almacen">{{ a.nombre }}</option>
+                }
+              </select>
+            } @else {
+              <span class="chip primary">{{ siteContext.almacenes().at(0)?.nombre ?? 'Multisede' }}</span>
+            }
             <span class="chip info">Termohigrómetros</span>
             <span class="chip accent">Dispensación</span>
             <button class="btn secondary" (click)="logout()">Salir</button>
@@ -145,9 +154,14 @@ export class ShellComponent {
 
   isDark = false;
 
-  constructor(private readonly router: Router, readonly theme: ThemeService) {
+  constructor(private readonly router: Router, readonly theme: ThemeService, readonly siteContext: SiteContextService) {
     this.visibleItems = this.computeVisibleNavItems();
     this.theme.isDark$.subscribe(v => this.isDark = v);
+    void this.siteContext.init();
+  }
+
+  onAlmacenChange(id: number | string) {
+    void this.siteContext.switchAlmacen(Number(id)).then(() => window.location.reload());
   }
 
   readonly navItems: any[] = [

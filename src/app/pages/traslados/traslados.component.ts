@@ -1,10 +1,16 @@
-import { Component, OnInit, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { SiteContextService } from '../../core/site-context.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type Tab = 'enviar' | 'recibir';
+
+interface TrasladoItem {
+  id_lote: number | null;
+  cantidad: number;
+}
 
 @Component({
   selector: 'akri-traslados',
@@ -16,6 +22,7 @@ type Tab = 'enviar' | 'recibir';
 })
 export class TrasladosComponent implements OnInit {
   private api = inject(ApiService);
+  readonly siteContext = inject(SiteContextService);
 
   activeTab = signal<Tab>('enviar');
 
@@ -25,31 +32,16 @@ export class TrasladosComponent implements OnInit {
   message  = signal('');
   error    = signal('');
 
-  // ── stock (pestaña enviar) ───────────────────────────────────
+  // ── stock y lookups (pestaña enviar) ─────────────────────────
   allStock      = signal<any[]>([]);
   filteredStock = signal<any[]>([]);
-  loteSeleccionado = signal<any>(null);
-
-  // ── lookups ──────────────────────────────────────────────────
   todasBodegas     = signal<any[]>([]);
   todasUbicaciones = signal<any[]>([]);
 
-  idAlmacenDestino   = signal(0);
-  idUbicacionDestino = signal(0);
-
-  ubicacionesDestino = computed(() => {
-    const idBodega = this.idAlmacenDestino();
-    if (!idBodega) return [];
-    const sel = this.loteSeleccionado();
-    return this.todasUbicaciones().filter(u => {
-      if (u.id_almacen !== idBodega) return false;
-      if (sel && u.id_ubicacion === sel.id_ubicacion && u.id_almacen === sel.id_almacen) return false;
-      return true;
-    });
-  });
-
   searchText = '';
-  form = { cantidad: 1, motivo: '' };
+  idAlmacenDestino = 0;
+  form = { motivo: '' };
+  items: TrasladoItem[] = [this.emptyItem()];
 
   // ── traslados pendientes (pestaña recibir) ───────────────────
   loadingPendientes = signal(false);
@@ -69,6 +61,10 @@ export class TrasladosComponent implements OnInit {
   }
 
   // ─── ENVIAR ────────────────────────────────────────────────────────────────
+
+  private emptyItem(): TrasladoItem {
+    return { id_lote: null, cantidad: 1 };
+  }
 
   async cargarStock() {
     this.loading.set(true);
@@ -102,101 +98,137 @@ export class TrasladosComponent implements OnInit {
     this.filteredStock.set(!q ? lista : lista.filter((i: any) =>
       (i.nombre_comercial || '').toLowerCase().includes(q) ||
       (i.sku || '').toLowerCase().includes(q) ||
-      (i.numero_lote || '').toLowerCase().includes(q) ||
-      (i.almacen || '').toLowerCase().includes(q)
+      (i.numero_lote || '').toLowerCase().includes(q)
     ));
   }
 
-  seleccionar(item: any) {
-    this.loteSeleccionado.set(item);
-    this.idAlmacenDestino.set(0);
-    this.idUbicacionDestino.set(0);
-    this.form = { cantidad: 1, motivo: '' };
-    this.message.set('');
-    this.error.set('');
+  loteFor(idLote: number | null): any | undefined {
+    if (!idLote) return undefined;
+    return this.allStock().find(i => i.id_lote === idLote);
   }
 
-  deseleccionar() {
-    this.loteSeleccionado.set(null);
-    this.idAlmacenDestino.set(0);
-    this.idUbicacionDestino.set(0);
-    this.form = { cantidad: 1, motivo: '' };
-  }
-
-  onBodegaChange(id: any) {
-    this.idAlmacenDestino.set(Number(id));
-    this.idUbicacionDestino.set(0);
-  }
-
-  onUbicacionChange(id: any) {
-    this.idUbicacionDestino.set(Number(id));
-  }
-
-  clampCantidad() {
-    const lote = this.loteSeleccionado();
-    if (!lote) return;
-    const max = Number(lote.cantidad_disponible);
-    if (Number(this.form.cantidad) > max) this.form.cantidad = max;
-    if (Number(this.form.cantidad) < 1)   this.form.cantidad = 1;
-  }
-
-  vencClass(dias: number) {
-    if (dias > 90) return 'badge-vence-ok';
-    if (dias > 30) return 'badge-vence-warn';
-    return 'badge-vence-bad';
+  nombreBodegaEmisora(): string {
+    const id = this.siteContext.activeAlmacenId();
+    const b = this.todasBodegas().find(x => x.id_almacen === id);
+    return b?.nombre ?? this.siteContext.almacenes().find(a => a.id_almacen === id)?.nombre ?? '—';
   }
 
   nombreBodegaDestino(): string {
-    const b = this.todasBodegas().find(x => x.id_almacen === this.idAlmacenDestino());
+    const b = this.todasBodegas().find(x => x.id_almacen === Number(this.idAlmacenDestino));
     return b?.nombre ?? '';
   }
 
-  nombreUbicacionDestino(): string {
-    const u = this.todasUbicaciones().find(x => x.id_ubicacion === this.idUbicacionDestino());
-    return u?.nombre ?? '';
+  addItem() {
+    this.items.push(this.emptyItem());
   }
 
-  resumenCompleto(): boolean {
-    return !!(this.idAlmacenDestino() && this.idUbicacionDestino() && Number(this.form.cantidad) > 0);
+  removeItem(index: number) {
+    this.items.splice(index, 1);
+    if (!this.items.length) this.items.push(this.emptyItem());
+  }
+
+  onLoteChange(item: TrasladoItem, value: string) {
+    item.id_lote = Number(value) || null;
+    item.cantidad = 1;
+  }
+
+  clampCantidad(item: TrasladoItem) {
+    const lote = this.loteFor(item.id_lote);
+    if (!lote) return;
+    const max = Number(lote.cantidad_disponible);
+    if (Number(item.cantidad) > max) item.cantidad = max;
+    if (Number(item.cantidad) < 1) item.cantidad = 1;
+  }
+
+  private reset() {
+    this.items = [this.emptyItem()];
+    this.idAlmacenDestino = 0;
+    this.form = { motivo: '' };
+  }
+
+  private resolveUbicacionDestino(idAlmacen: number): number | null {
+    const ubicacion = this.todasUbicaciones().find(u => u.id_almacen === idAlmacen);
+    return ubicacion?.id_ubicacion ?? null;
   }
 
   async enviar() {
     this.error.set('');
     this.message.set('');
-    const lote = this.loteSeleccionado();
-    if (!lote) { this.error.set('Selecciona un lote de origen.'); return; }
-    if (!this.idAlmacenDestino())   { this.error.set('Selecciona la bodega receptora.'); return; }
-    if (!this.idUbicacionDestino()) { this.error.set('Selecciona la ubicación destino.'); return; }
-    if (this.idUbicacionDestino() === Number(lote.id_ubicacion) && this.idAlmacenDestino() === Number(lote.id_almacen)) {
-      this.error.set('La ubicación de destino debe ser diferente a la de origen.'); return;
+
+    const idAlmacenOrigen = this.siteContext.activeAlmacenId();
+    if (!idAlmacenOrigen) { this.error.set('No hay una bodega activa en la sesión.'); return; }
+
+    const idAlmacenDestino = Number(this.idAlmacenDestino);
+    if (!idAlmacenDestino) { this.error.set('Selecciona la bodega receptora.'); return; }
+    if (idAlmacenDestino === Number(idAlmacenOrigen)) {
+      this.error.set('La bodega receptora debe ser diferente a la bodega emisora.'); return;
     }
-    if (!this.form.cantidad || Number(this.form.cantidad) <= 0) { this.error.set('La cantidad debe ser mayor a 0.'); return; }
-    if (Number(this.form.cantidad) > Number(lote.cantidad_disponible)) {
-      this.error.set(`Stock insuficiente. Máximo disponible: ${lote.cantidad_disponible}.`); return;
+
+    const idUbicacionDestino = this.resolveUbicacionDestino(idAlmacenDestino);
+    if (!idUbicacionDestino) { this.error.set('La bodega receptora no tiene ubicaciones configuradas.'); return; }
+
+    const lineas = this.items.filter(i => i.id_lote != null);
+    if (!lineas.length) { this.error.set('Agrega al menos un producto.'); return; }
+
+    const vistos = new Set<number>();
+    for (const item of lineas) {
+      const lote = this.loteFor(item.id_lote);
+      if (!lote) { this.error.set('Selecciona un lote válido en cada línea.'); return; }
+      if (vistos.has(item.id_lote as number)) {
+        this.error.set(`Ya agregaste "${lote.nombre_comercial}" en otra línea; edita la cantidad en esa línea en su lugar.`);
+        return;
+      }
+      vistos.add(item.id_lote as number);
+      if (!item.cantidad || item.cantidad <= 0) {
+        this.error.set(`La cantidad de "${lote.nombre_comercial}" debe ser mayor a 0.`);
+        return;
+      }
+      if (item.cantidad > Number(lote.cantidad_disponible)) {
+        this.error.set(`Stock insuficiente para "${lote.nombre_comercial}". Máximo disponible: ${lote.cantidad_disponible}.`);
+        return;
+      }
     }
 
     this.saving.set(true);
-    try {
-      const cantidadEnviada = Number(this.form.cantidad);
-      const destino = `${this.nombreBodegaDestino()} › ${this.nombreUbicacionDestino()}`;
-      await this.api.post('/traslados', {
-        id_lote:              lote.id_lote,
-        id_almacen_origen:    lote.id_almacen,
-        id_ubicacion_origen:  lote.id_ubicacion,
-        id_almacen_destino:   this.idAlmacenDestino(),
-        id_ubicacion_destino: this.idUbicacionDestino(),
-        cantidad:             cantidadEnviada,
-        motivo:               this.form.motivo || null
-      });
-      this.deseleccionar();
+    const fallidas: TrasladoItem[] = [];
+    const fallos: string[] = [];
+    let exitos = 0;
+
+    for (const item of lineas) {
+      const lote = this.loteFor(item.id_lote);
+      try {
+        await this.api.post('/traslados', {
+          id_lote:              lote.id_lote,
+          id_almacen_origen:    lote.id_almacen,
+          id_ubicacion_origen:  lote.id_ubicacion,
+          id_almacen_destino:   idAlmacenDestino,
+          id_ubicacion_destino: idUbicacionDestino,
+          cantidad:             Number(item.cantidad),
+          motivo:               this.form.motivo || null
+        });
+        exitos++;
+      } catch (err: any) {
+        fallidas.push(item);
+        fallos.push(`${lote.nombre_comercial}: ${err?.error?.message || 'error desconocido'}`);
+      }
+    }
+
+    if (exitos) {
+      this.message.set(`${exitos} traslado(s) enviado(s) hacia ${this.nombreBodegaDestino()}. Pendiente(s) de recepción.`);
+    }
+    if (fallos.length) {
+      this.error.set(`No se pudieron enviar ${fallos.length} traslado(s): ${fallos.join(' | ')}`);
+    }
+
+    await this.cargarStock();
+    if (!fallidas.length) {
+      this.reset();
       this.activeTab.set('recibir');
       await this.cargarPendientes();
-      this.message.set(`Traslado enviado: ${cantidadEnviada} ud(s) de "${lote.nombre_comercial}" → ${destino}. Pendiente de recepción.`);
-    } catch (err: any) {
-      this.error.set(err?.error?.message || 'No fue posible registrar el traslado.');
-    } finally {
-      this.saving.set(false);
+    } else {
+      this.items = fallidas;
     }
+    this.saving.set(false);
   }
 
   // ─── RECIBIR ───────────────────────────────────────────────────────────────
