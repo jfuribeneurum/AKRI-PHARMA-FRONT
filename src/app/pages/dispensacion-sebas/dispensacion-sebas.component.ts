@@ -110,8 +110,11 @@ export class DispensacionSebasComponent implements OnInit {
   constructor(private api: ApiService) {}
 
   ngOnInit() {
-    this.load();
     this.cargarParametrosDispensacion();
+  }
+
+  hasActiveFilter(): boolean {
+    return !!(this.search.trim() || this.filterEstado || this.fechaDesde || this.fechaHasta);
   }
 
   private async cargarParametrosDispensacion() {
@@ -126,6 +129,12 @@ export class DispensacionSebasComponent implements OnInit {
   }
 
   async load() {
+    if (!this.hasActiveFilter()) {
+      this.formulaciones.set([]);
+      this.total.set(0);
+      this.error.set('');
+      return;
+    }
     this.loading.set(true);
     this.error.set('');
     try {

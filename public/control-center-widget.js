@@ -9,6 +9,7 @@
   let lastContext = null;
   let loading = false;
   let activeTab = null;
+  let scrolledForHash = '';
 
   const TAB_DEFS = {
     sites: { label: 'Sedes', badge: 'CRUD', path: '/ops/site-manager.html', description: 'Crear, editar, desactivar/reactivar y auditar sedes.' },
@@ -186,6 +187,11 @@
     });
     const iframe = widget.querySelector('[data-cc-iframe]');
     if (iframe) iframe.style.height = '1180px';
+    const hash = window.location.hash || '';
+    if (/^#control-center:/.test(hash) && scrolledForHash !== hash) {
+      scrolledForHash = hash;
+      setTimeout(() => widget.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
   }
   async function refresh(force) {
     const widget = ensureWidget();

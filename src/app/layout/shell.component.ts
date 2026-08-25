@@ -69,8 +69,6 @@ import { SiteContextService } from '../core/site-context.service';
             } @else {
               <span class="chip primary">{{ siteContext.almacenes().at(0)?.nombre ?? 'Multisede' }}</span>
             }
-            <span class="chip info">Termohigrómetros</span>
-            <span class="chip accent">Dispensación</span>
             <button class="btn secondary" (click)="logout()">Salir</button>
             <button
               class="theme-toggle"
@@ -171,7 +169,7 @@ export class ShellComponent {
       any: [],
       expanded: false,
       children: [
-        { path: '/maestro-mx', label: 'Maestro MX', any: [] },
+        { path: '/maestro-mx', label: 'Maestro', any: [] },
         { path: '/laboratorios', label: 'Laboratorios', any: [] },
         { path: '/providers', label: 'Proveedores', any: ['perm_compras_solicitar', 'perm_compras_aprobar', 'perm_compras_recibir'] },
         { path: '/pacientes', label: 'Pacientes', any: [] },
@@ -185,9 +183,9 @@ export class ShellComponent {
       any: [],
       expanded: false,
       children: [
-        { path: '/sebas-purchase-order', label: 'Orden de compra Sebas', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
-        { path: '/sebas-ingresos', label: 'Ingresos Sebas', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
-        { path: '/devolucion-pedido', label: 'Devolución pedido', any: [] },
+        { path: '/sebas-purchase-order', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
+        { path: '/sebas-ingresos', label: 'Ingreso', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+        { path: '/devolucion-pedido', label: 'Devolución', any: [] },
         { path: '/alertas-entrega', label: 'Alertas pendientes de entrega', any: [] }
       ]
     },
@@ -202,7 +200,7 @@ export class ShellComponent {
         { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] }
       ]
     },
-    { path: '/dispensing-sebas', label: 'Dispensación Sebas', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/dispensing-sebas', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     {
       label: 'Otros',
       any: [],

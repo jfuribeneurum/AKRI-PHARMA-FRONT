@@ -241,6 +241,8 @@
 
       @if (loading()) {
         <div class="loading-state">Cargando formulaciones…</div>
+      } @else if (!hasActiveFilter()) {
+        <div class="empty-state">Escribe un paciente, documento o #historia, o aplica un filtro de estado/fecha para ver formulaciones.</div>
       } @else if (formulaciones().length === 0) {
         <div class="empty-state">No se encontraron formulaciones.</div>
       } @else {

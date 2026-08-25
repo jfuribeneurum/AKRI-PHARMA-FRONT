@@ -177,7 +177,14 @@
                 </label>
                 <label>
                   Código DCI
-                  <input type="number" min="1" [(ngModel)]="form.codigo_dci" placeholder="Ej: 12345">
+                  <input type="number" min="1" [(ngModel)]="form.codigo_dci" placeholder="Ej: 12345"
+                    [readOnly]="!!form.id_medicamento_hs"
+                    [class.hs-filled]="form.id_medicamento_hs">
+                  @if (form.id_medicamento_hs && !form.codigo_dci) {
+                    <span class="field-hint" style="color:#f59e0b; font-weight:500;">
+                      ⚠ Este medicamento no tiene DCI asociado en HealthSphere.
+                    </span>
+                  }
                 </label>
                 <label>
                   Código de control
@@ -393,7 +400,7 @@
     <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Maestro MX</h1>
+          <h1 class="page-title">Maestro</h1>
           <p class="page-subtitle">Gestión del catálogo de medicamentos. Haz clic en un producto para ver su ficha y gestionar imágenes.</p>
         </div>
         <button class="btn" (click)="openModal()">+ Agregar producto</button>
@@ -405,7 +412,7 @@
 
       <div class="card">
         <div class="toolbar">
-          <input [(ngModel)]="search" placeholder="Buscar por nombre, SKU, principio activo o código de barras" (keyup.enter)="load()" style="flex:2;">
+          <input [(ngModel)]="search" placeholder="Buscar por nombre, SKU, principio activo, código de barras o ID medicamento HS" (keyup.enter)="load()" style="flex:2;">
           <select [(ngModel)]="filterLaboratorio" (ngModelChange)="load()" style="flex:1;min-width:0;">
             <option [ngValue]="null">Todos los laboratorios</option>
             @for (lab of laboratorios(); track lab.id_laboratorio) {
@@ -430,8 +437,12 @@
               @for (p of products(); track p.id_producto) {
                 <tr class="table-row-clickable" (click)="openDetail(p.id_producto)">
                   <td>
-                    <strong>{{ p.nombre_comercial }}</strong><br>
-                    <span class="muted">{{ p.codigo_control || p.sku }} · {{ p.principio_activo || 'Sin principio activo' }}</span>
+                    <strong>{{ p.nombre_medicamento_hs || p.nombre_comercial || 'Sin nombre' }}</strong>
+                    @if (p.nombre_medicamento_hs && p.nombre_comercial) {
+                      <span class="muted"> · {{ p.nombre_comercial }}</span>
+                    }
+                    <br>
+                    <span class="muted">{{ p.codigo_control || p.sku || 'Sin código' }} · {{ p.principio_activo || 'Sin principio activo' }}</span>
                   </td>
                   <td>{{ p.laboratorio_nombre || '—' }}</td>
                   <td>{{ p.stock_actual }}</td>

@@ -267,6 +267,7 @@ export class MaestroMxComponent implements OnInit {
     this.form.atc               = med.atc ?? '';
     this.form.unidad_medida     = med.unidad_dosificacion ?? '';
     this.form.id_forma          = this.matchForma(med.forma_farmaceutica);
+    this.form.codigo_dci        = med.codigo_dci ?? '';
     this.hsResults.set([]);
     this.hsSearch = '';
     this.hsNoResults.set(false);
@@ -277,11 +278,19 @@ export class MaestroMxComponent implements OnInit {
     const norm = (s: string) =>
       s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const hsNorm = norm(hsText);
-    const match = this.formas().find(f => {
+    // Se prefiere la coincidencia más larga (más específica) para evitar que
+    // un texto de HS como "polvo para reconstituir a suspensión inyectable"
+    // quede matcheado contra la forma corta "Suspensión inyectable".
+    let best: any = null;
+    let bestLen = -1;
+    for (const f of this.formas()) {
       const fNorm = norm(f.nombre);
-      return hsNorm.includes(fNorm) || fNorm.includes(hsNorm);
-    });
-    return match?.id_forma ?? null;
+      if ((hsNorm.includes(fNorm) || fNorm.includes(hsNorm)) && fNorm.length > bestLen) {
+        best = f;
+        bestLen = fNorm.length;
+      }
+    }
+    return best?.id_forma ?? null;
   }
 
   clearHsMed() {
@@ -291,6 +300,7 @@ export class MaestroMxComponent implements OnInit {
     this.form.concentracion      = '';
     this.form.atc               = '';
     this.form.id_forma          = null;
+    this.form.codigo_dci        = '';
     this.hsResults.set([]);
     this.hsSearch = '';
     this.hsNoResults.set(false);
