@@ -8,6 +8,7 @@ interface Formulacion {
   id_formulacion: number;
   idPaciente: number;
   fechaFormulacion: string;
+  consecutivo_atencion: number | string | null;
   nombre_paciente: string;
   documento_paciente: string;
   telefono_paciente: string;

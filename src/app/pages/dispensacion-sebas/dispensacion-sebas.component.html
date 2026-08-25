@@ -213,6 +213,7 @@
             <thead>
               <tr>
                 <th style="width:32px"></th>
+                <th>#Historia</th>
                 <th>Paciente</th>
                 <th>Documento</th>
                 <th>Fecha formulación</th>
@@ -230,6 +231,7 @@
                       {{ expandedId() === f.id_formulacion ? '▲' : '▼' }}
                     </button>
                   </td>
+                  <td class="muted">{{ f.consecutivo_atencion ?? '' }}</td>
                   <td><strong>{{ f.nombre_paciente }}</strong></td>
                   <td class="muted">{{ f.documento_paciente }}</td>
                   <td class="muted">{{ f.fechaFormulacion | date:'dd/MM/yyyy' }}</td>
@@ -249,7 +251,7 @@
                 <!-- Fila expandida con medicamentos -->
                 @if (expandedId() === f.id_formulacion) {
                   <tr class="detail-row">
-                    <td colspan="7" style="padding:0; background:#f8fafc;">
+                    <td colspan="8" style="padding:0; background:#f8fafc;">
                       @if (detailLoading()) {
                         <div style="padding:1.5rem; text-align:center; color:#64748b;">Cargando medicamentos…</div>
                       } @else if (selectedDetail()) {
@@ -257,6 +259,11 @@
 
                           <!-- Info paciente + botón dispensar -->
                           <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem;">
+                            @if (selectedDetail()!.consecutivo_atencion) {
+                              <h3 style="margin:0; width:100%; font-size:1rem; color:#1e293b;">
+                                #historia {{ selectedDetail()!.consecutivo_atencion }}
+                              </h3>
+                            }
                             <div style="display:flex; gap:2rem; flex-wrap:wrap; font-size:0.85rem; color:#475569; flex:1;">
                               <span><strong>Paciente:</strong> {{ selectedDetail()!.nombre_paciente }}</span>
                               <span><strong>Doc:</strong> {{ selectedDetail()!.documento_paciente }}</span>

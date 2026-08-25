@@ -24,6 +24,8 @@
           </div>
           <div class="toolbar" style="margin-bottom: 0; justify-content: flex-end;">
             <span class="chip" [ngClass]="statusKindClass(connectivity.overall_status)">{{ connectivity.overall_label }}</span>
+            <a class="btn" href="/dashboard#control-center:overview">Centro de control</a>
+            <a class="btn secondary" href="/downloads/GUIA_DEFINITIVA_AkriPharmacy_v19.pdf" target="_blank" rel="noopener">Guía PDF</a>
             <button class="btn secondary" (click)="loadStatus()">Actualizar conectividad</button>
           </div>
         </div>

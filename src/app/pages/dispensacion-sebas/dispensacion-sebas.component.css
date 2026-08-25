@@ -15,11 +15,13 @@
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: 1rem;
     }
 
     .disp-modal {
@@ -27,8 +29,9 @@
       border-radius: 20px;
       box-shadow: 0 32px 80px rgba(0,0,0,0.22);
       width: 100%;
-      max-width: 780px;
-      max-height: 90vh;
+      max-width: 1400px;
+      height: 94vh;
+      max-height: 94vh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
