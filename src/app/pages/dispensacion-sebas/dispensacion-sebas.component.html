@@ -69,7 +69,7 @@
             <!-- Lista de medicamentos -->
             <div class="disp-med-list">
               @for (item of modalFormItems(); track item.med.id_med_formulacion) {
-                <div class="disp-med-card" [class.disp-med-card--done]="getMedRestante(item.med) === 0">
+                <div class="disp-med-card" [class.disp-med-card--done]="getPendiente(item) === 0">
 
                   <!-- Fila superior: info + controles -->
                   <div class="disp-med-card__top">
@@ -95,30 +95,31 @@
                           <span class="dsm__v">{{ item.med.cantidad }}</span>
                           <span class="dsm__l">Form.</span>
                         </div>
-                        <div class="dsm dsm--blue">
-                          <span class="dsm__v">{{ item.med.control?.cantidad_dispensada ?? 0 }}</span>
-                          <span class="dsm__l">Disp.</span>
+                        <div class="dsm dsm--purple">
+                          <input class="dsm__input" type="number" min="0"
+                                 [(ngModel)]="item.cantidad"
+                                 [max]="getMedEntregaMax(item.med)">
+                          <span class="dsm__l">Control de entrega</span>
                         </div>
-                        <div class="dsm" [class]="getMedRestante(item.med) === 0 ? 'dsm--green' : 'dsm--red'">
-                          <span class="dsm__v">{{ getMedRestante(item.med) }}</span>
-                          <span class="dsm__l">Rest.</span>
+                        <div class="dsm dsm--blue">
+                          <input class="dsm__input" type="number" min="0"
+                                 [(ngModel)]="item.cantidadDispensadaOverride">
+                          <span class="dsm__l">Cant. dispensada</span>
+                        </div>
+                        <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
+                          <span class="dsm__v">{{ getPendiente(item) }}</span>
+                          <span class="dsm__l">Cant. pendiente</span>
+                        </div>
+                        <div class="dsm" [class]="getFaltante(item) === 0 ? 'dsm--green' : 'dsm--red'">
+                          <span class="dsm__v">{{ getFaltante(item) }}</span>
+                          <span class="dsm__l">Cant. faltante</span>
                         </div>
                       </div>
 
                       @if (!item.med.idMedicamento) {
                         <div class="disp-med-card__no-mx-badge">Sin MX</div>
-                      } @else if (getMedRestante(item.med) === 0) {
+                      } @else if (getPendiente(item) === 0) {
                         <div class="disp-med-card__done-badge">✅ Completado</div>
-                      } @else {
-                        <div class="disp-med-card__stepper">
-                          <button class="stp-btn" (click)="stepItem(item, -1)"
-                                  [disabled]="item.cantidad <= 1">−</button>
-                          <input class="stp-input" type="number"
-                                 [(ngModel)]="item.cantidad"
-                                 [min]="1" [max]="getMedRestante(item.med)">
-                          <button class="stp-btn" (click)="stepItem(item, 1)"
-                                  [disabled]="item.cantidad >= getMedRestante(item.med)">+</button>
-                        </div>
                       }
                     </div>
                   </div>

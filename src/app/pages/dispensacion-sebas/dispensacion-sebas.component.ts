@@ -59,6 +59,7 @@ interface FormulacionDetail extends Formulacion {
 interface ModalFormItem {
   med: MedicamentoFormulacion;
   cantidad: number;
+  cantidadDispensadaOverride: number;
 }
 
 @Component({
@@ -207,19 +208,35 @@ export class DispensacionSebasComponent implements OnInit {
     }
   }
 
+  // Valor inicial (servidor) de lo pendiente, usado solo para sembrar el
+  // formulario al abrir el modal — dentro del modal usar getPendiente(item),
+  // que reacciona en vivo si el usuario corrige "Cant. dispensada".
   getMedRestante(med: MedicamentoFormulacion): number {
     return Math.max(0, (med.cantidad ?? 0) - (med.control?.cantidad_dispensada ?? 0));
   }
 
-  stepItem(item: ModalFormItem, delta: number) {
-    const max = this.getMedRestante(item.med);
-    item.cantidad = Math.min(max, Math.max(1, Number(item.cantidad) + delta));
+  // Pendiente = cantidad formulada - Cant. dispensada (histórico acumulado,
+  // editable en vivo en el modal vía cantidadDispensadaOverride).
+  getPendiente(item: ModalFormItem): number {
+    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidadDispensadaOverride || 0));
+  }
+
+  // Faltante = cantidad formulada - lo que se entrega en ESTA acción
+  // (no descuenta el histórico previo, a diferencia de "Cant. pendiente").
+  getFaltante(item: ModalFormItem): number {
+    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidad || 0));
+  }
+
+  getMedEntregaMax(med: MedicamentoFormulacion): number {
+    const pendiente = this.getMedRestante(med);
+    const stock = med.idMedicamento ? this.getMedStockTotal(med.idMedicamento) : 0;
+    return Math.min(pendiente, stock);
   }
 
   hasItemsToDispense(): boolean {
     const items = this.modalFormItems();
     if (items.some(i => !i.med.idMedicamento)) return false;
-    const pendingItems = items.filter(i => this.getMedRestante(i.med) > 0);
+    const pendingItems = items.filter(i => this.getPendiente(i) > 0);
     if (!pendingItems.length) return false;
     const anyPendingWithNoStock = pendingItems.some(i =>
       !this.stockLoading().has(i.med.idMedicamento) &&
@@ -244,6 +261,13 @@ export class DispensacionSebasComponent implements OnInit {
       const res = await this.api.get<any>(`/inventory/stock/product/${idMedicamento}`);
       const lots = Array.isArray(res) ? res : (res?.data ?? []);
       this.stockByMed.update(m => ({ ...m, [idMedicamento]: lots }));
+      // El stock llega después de fijar la cantidad inicial (= pendiente);
+      // si hay menos stock que pendiente, hay que bajar la cantidad a entregar.
+      this.modalFormItems.update(items => items.map(item => {
+        if (item.med.idMedicamento !== idMedicamento) return item;
+        const entregaMax = this.getMedEntregaMax(item.med);
+        return entregaMax > 0 ? { ...item, cantidad: Math.min(item.cantidad, entregaMax) } : item;
+      }));
     } catch {
       this.stockByMed.update(m => ({ ...m, [idMedicamento]: [] }));
     } finally {
@@ -259,7 +283,8 @@ export class DispensacionSebasComponent implements OnInit {
       .filter(m => m.control?.estado !== 'cancelado')
       .map(m => ({
         med: m,
-        cantidad: this.getMedRestante(m)
+        cantidad: this.getMedRestante(m),
+        cantidadDispensadaOverride: m.control?.cantidad_dispensada ?? 0
       }));
 
     this.modalFormItems.set(items);
@@ -289,7 +314,7 @@ export class DispensacionSebasComponent implements OnInit {
     if (!detail) return;
 
     const toSave = this.modalFormItems().filter(
-      i => !!i.med.idMedicamento && this.getMedRestante(i.med) > 0 && Number(i.cantidad) > 0
+      i => !!i.med.idMedicamento && this.getPendiente(i) > 0 && Number(i.cantidad) > 0
     );
     if (!toSave.length) {
       this.modalError.set('No hay medicamentos pendientes por dispensar.');
@@ -301,13 +326,20 @@ export class DispensacionSebasComponent implements OnInit {
     this.modalSuccess.set('');
     try {
       for (const item of toSave) {
+        const dispensadaOriginal = item.med.control?.cantidad_dispensada ?? 0;
+        const overrideManual = Number(item.cantidadDispensadaOverride) !== dispensadaOriginal
+          ? Number(item.cantidadDispensadaOverride)
+          : null;
         await this.api.post<any>('/dispensacion-hs', {
-          id_formulacion_hs:     detail.id_formulacion,
-          id_med_formulacion_hs: item.med.id_med_formulacion,
-          cantidad_dispensada:   Number(item.cantidad),
-          observaciones:         this.modalObs || null,
-          contrato:              this.modalContrato || null,
-          regimen:               this.modalRegimen || null
+          id_formulacion_hs:                  detail.id_formulacion,
+          id_med_formulacion_hs:              item.med.id_med_formulacion,
+          cantidad_dispensada:                Number(item.cantidad),
+          cantidad_dispensada_total_override: overrideManual,
+          cantidad_pendiente_antes:           this.getPendiente(item),
+          cantidad_faltante:                  this.getFaltante(item),
+          observaciones:                      this.modalObs || null,
+          contrato:                           this.modalContrato || null,
+          regimen:                            this.modalRegimen || null
         });
       }
       this.modalSuccess.set(`Dispensación registrada (${toSave.length} medicamento${toSave.length > 1 ? 's' : ''}).`);
