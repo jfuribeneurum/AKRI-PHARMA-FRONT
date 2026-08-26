@@ -207,6 +207,10 @@
     .dsm__input::-webkit-outer-spin-button { -webkit-appearance: none; }
     .dsm--purple .dsm__input { color: #7c3aed; }
     .dsm--blue   .dsm__input { color: #2563eb; }
+    .disp-med-card__dispensada-hint {
+      font-size: 0.68rem; color: #64748b; text-align: right; margin-top: 0.15rem;
+    }
+    .disp-med-card__dispensada-hint strong { color: #2563eb; }
 
     /* Sin MX badge */
     .disp-med-card__no-mx-badge {
@@ -276,6 +280,12 @@
       font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em;
     }
     .disp-med-stock__total { font-weight: 700; color: #7c3aed; }
+    .disp-med-stock__asignado {
+      font-weight: 700; color: #dc2626;
+      background: #fff1f2; border: 1px solid #fecdd3;
+      border-radius: 999px; padding: 0.1rem 0.55rem; font-size: 0.75rem;
+    }
+    .disp-med-stock__asignado--ok { color: #16a34a; background: #f0fdf4; border-color: #bbf7d0; }
     .disp-med-stock__rows { display: flex; flex-direction: column; gap: 0.22rem; }
     .disp-med-stock__row {
       display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.6rem;
@@ -290,7 +300,24 @@
       font-weight: 700; color: #059669;
       background: #ecfdf5; padding: 0.1rem 0.4rem; border-radius: 4px;
     }
+    .disp-med-stock__pick {
+      width: 60px; text-align: center; font-weight: 700; color: #6d28d9;
+      border: 2px solid #c4b5fd; border-radius: 6px; padding: 0.15rem 0.3rem;
+      -moz-appearance: textfield;
+    }
+    .disp-med-stock__pick::-webkit-inner-spin-button,
+    .disp-med-stock__pick::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .disp-med-stock__check { width: 18px; height: 18px; accent-color: #6d28d9; cursor: pointer; }
+    .disp-med-stock__assigned {
+      font-weight: 700; color: #16a34a;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 999px; padding: 0.1rem 0.55rem; font-size: 0.78rem;
+    }
     :host-context([data-theme="dark"]) .disp-med-stock { border-top-color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-med-stock__asignado { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.25); color: var(--danger); }
+    :host-context([data-theme="dark"]) .disp-med-stock__asignado--ok { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.25); color: var(--success); }
+    :host-context([data-theme="dark"]) .disp-med-stock__pick { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+    :host-context([data-theme="dark"]) .disp-med-stock__assigned { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.25); color: var(--success); }
     :host-context([data-theme="dark"]) .disp-med-stock__label { color: var(--muted); }
     :host-context([data-theme="dark"]) .disp-med-stock__row { background: var(--surface-muted); }
     :host-context([data-theme="dark"]) .disp-med-stock__lab { color: var(--primary); }
@@ -370,6 +397,8 @@
     :host-context([data-theme="dark"]) .dsm--purple .dsm__input { color: var(--primary); }
     :host-context([data-theme="dark"]) .dsm--blue .dsm__input { color: var(--info); }
     :host-context([data-theme="dark"]) .dsm__l { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card__dispensada-hint { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-med-card__dispensada-hint strong { color: var(--info); }
     :host-context([data-theme="dark"]) .disp-med-card__no-mx-badge { color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.25); }
     :host-context([data-theme="dark"]) .disp-med-stock__msg--warn { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.2); }
     :host-context([data-theme="dark"]) .disp-med-card__done-badge { color: var(--success); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.22); }

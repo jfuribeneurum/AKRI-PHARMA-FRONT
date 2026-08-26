@@ -47,7 +47,7 @@
             <!-- Contrato / Régimen (aplica a toda la dispensación) -->
             <div class="disp-modal__patient-fields">
               <label class="disp-modal__field">
-                <span>Contrato</span>
+                <span>Contrato *</span>
                 <select [(ngModel)]="modalContrato">
                   <option value="">-- Seleccionar --</option>
                   @for (o of contratoOptions; track o.valor) {
@@ -56,7 +56,7 @@
                 </select>
               </label>
               <label class="disp-modal__field">
-                <span>Régimen</span>
+                <span>Régimen *</span>
                 <select [(ngModel)]="modalRegimen">
                   <option value="">-- Seleccionar --</option>
                   @for (o of regimenOptions; track o.valor) {
@@ -69,7 +69,7 @@
             <!-- Lista de medicamentos -->
             <div class="disp-med-list">
               @for (item of modalFormItems(); track item.med.id_med_formulacion) {
-                <div class="disp-med-card" [class.disp-med-card--done]="getPendiente(item) === 0">
+                <div class="disp-med-card" [class.disp-med-card--done]="!tienePendientePorFormular(item)">
 
                   <!-- Fila superior: info + controles -->
                   <div class="disp-med-card__top">
@@ -97,13 +97,15 @@
                         </div>
                         <div class="dsm dsm--purple">
                           <input class="dsm__input" type="number" min="0"
-                                 [(ngModel)]="item.cantidad"
+                                 [ngModel]="item.cantidad"
+                                 (ngModelChange)="updateControlDeEntrega(item, $event)"
                                  [max]="getMedEntregaMax(item.med)">
                           <span class="dsm__l">Control de entrega</span>
                         </div>
                         <div class="dsm dsm--blue">
                           <input class="dsm__input" type="number" min="0"
-                                 [(ngModel)]="item.cantidadDispensadaOverride">
+                                 [ngModel]="item.cantidadDispensadaOverride"
+                                 (ngModelChange)="setDispensadaOverride(item, $event)">
                           <span class="dsm__l">Cant. dispensada</span>
                         </div>
                         <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
@@ -115,10 +117,13 @@
                           <span class="dsm__l">Cant. faltante</span>
                         </div>
                       </div>
+                      <div class="disp-med-card__dispensada-hint">
+                        Antes de esta entrega ya iba en <strong>{{ item.dispensadaOriginal }}</strong> — si editas "Cant. dispensada", escribe el <strong>NUEVO TOTAL</strong> (no solo lo de hoy). Si no la tocas, se suma sola sin riesgo.
+                      </div>
 
-                      @if (!item.med.idMedicamento) {
+                      @if (!item.med.idProductoLocal) {
                         <div class="disp-med-card__no-mx-badge">Sin MX</div>
-                      } @else if (getPendiente(item) === 0) {
+                      } @else if (!tienePendientePorFormular(item)) {
                         <div class="disp-med-card__done-badge">✅ Completado</div>
                       }
                     </div>
@@ -126,21 +131,30 @@
 
                   <!-- Disponibilidad por laboratorio -->
                   <div class="disp-med-stock">
-                    @if (!item.med.idMedicamento) {
+                    @if (!item.med.idProductoLocal) {
                       <span class="disp-med-stock__msg disp-med-stock__msg--warn">
                         ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
                       </span>
-                    } @else if (stockLoading().has(item.med.idMedicamento)) {
+                    } @else if (item.cantidad === 0) {
+                      <span class="disp-med-stock__msg">Escribe una cantidad en "Control de entrega" para ver los lotes disponibles.</span>
+                    } @else if (stockLoading().has(item.med.idProductoLocal)) {
                       <span class="disp-med-stock__msg">Cargando stock…</span>
-                    } @else if (getMedStock(item.med.idMedicamento).length === 0) {
+                    } @else if (getMedStock(item.med.idProductoLocal).length === 0) {
                       <span class="disp-med-stock__msg disp-med-stock__msg--empty">Sin stock disponible en inventario</span>
                     } @else {
                       <div class="disp-med-stock__header">
                         <span class="disp-med-stock__label">Disponibilidad por laboratorio</span>
-                        <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idMedicamento) }} uds totales</span>
+                        <span class="disp-med-stock__asignado" [class.disp-med-stock__asignado--ok]="getAsignadoValido(item)">
+                          @if (getAsignadoValido(item)) {
+                            ✓ Unidades completas ({{ getAsignado(item) }}/{{ item.cantidad }})
+                          } @else {
+                            Asignado {{ getAsignado(item) }}/{{ item.cantidad }} — faltan {{ item.cantidad - getAsignado(item) }} por asignar
+                          }
+                        </span>
+                        <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idProductoLocal) }} uds totales</span>
                       </div>
                       <div class="disp-med-stock__rows">
-                        @for (lot of getMedStock(item.med.idMedicamento); track lot.id_lote) {
+                        @for (lot of getMedStock(item.med.idProductoLocal); track loteKey(lot)) {
                           <div class="disp-med-stock__row">
                             <span class="disp-med-stock__lab">{{ lot.laboratorio_nombre || '—' }}</span>
                             <span class="disp-med-stock__sep">·</span>
@@ -150,6 +164,19 @@
                             <span class="disp-med-stock__sep">·</span>
                             <span class="disp-med-stock__almacen">{{ lot.almacen }}</span>
                             <span class="disp-med-stock__qty">{{ lot.cantidad_disponible }} uds</span>
+                            <input class="disp-med-stock__check" type="checkbox"
+                                   [checked]="isLoteChecked(item, lot)"
+                                   (change)="toggleLote(item, lot, $any($event.target).checked)"
+                                   title="Usar este lote">
+                            @if (isLoteChecked(item, lot) && (!getAsignadoValido(item) || getLotesMarcados(item) > 1)) {
+                              <input class="disp-med-stock__pick" type="number" min="0"
+                                     [max]="lot.cantidad_disponible"
+                                     [ngModel]="item.loteSeleccion[loteKey(lot)] || 0"
+                                     (ngModelChange)="setLoteQty(item, lot, $event)"
+                                     title="Cantidad a tomar de este lote">
+                            } @else if (isLoteChecked(item, lot)) {
+                              <span class="disp-med-stock__assigned">{{ item.loteSeleccion[loteKey(lot)] }} uds asignadas</span>
+                            }
                           </div>
                         }
                       </div>
@@ -170,6 +197,12 @@
           </div>
 
           <!-- Footer -->
+          @if (modalError()) {
+            <div class="error-box" style="margin: 0 1.25rem;">{{ modalError() }}</div>
+          }
+          @if (modalSuccess()) {
+            <div class="success-box" style="margin: 0 1.25rem;">{{ modalSuccess() }}</div>
+          }
           <div class="disp-modal__footer">
             <button class="disp-modal__btn-cancel" (click)="closeModal()" [disabled]="modalSaving()">
               Cancelar
@@ -183,6 +216,104 @@
                 ✔ Confirmar dispensación
               }
             </button>
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- Modal: histórico de entregas ya realizadas -->
+    @if (showHistorial()) {
+      <div class="modal-backdrop" (click)="cerrarHistorial()">
+        <div class="disp-modal" (click)="$event.stopPropagation()" style="max-width: 720px;">
+
+          <div class="disp-modal__header">
+            <div class="disp-modal__header-icon">🕘</div>
+            <div class="disp-modal__header-text">
+              <span class="disp-modal__header-sup">Histórico de entregas</span>
+              <strong class="disp-modal__header-med">{{ selectedDetail()?.nombre_paciente }}</strong>
+            </div>
+            <button class="disp-modal__close" (click)="cerrarHistorial()" title="Cerrar">✕</button>
+          </div>
+
+          <div class="disp-modal__body">
+            @if (historialLoading()) {
+              <p style="text-align:center; color:#64748b;">Cargando histórico…</p>
+            } @else if (historial().length === 0) {
+              <p style="text-align:center; color:#64748b;">Aún no se ha registrado ninguna entrega para esta formulación.</p>
+            } @else {
+              <table class="inner-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Medicamento</th>
+                    <th>Lote</th>
+                    <th>Almacén</th>
+                    <th>Cantidad</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (h of historial(); track h.id_movimiento) {
+                    <tr>
+                      <td>{{ h.fecha_hora | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td>{{ h.nombre_medicamento }}</td>
+                      <td>{{ h.numero_lote || '—' }}</td>
+                      <td>{{ h.almacen || '—' }}</td>
+                      <td style="text-align:center; font-weight:700;">{{ h.cantidad }}</td>
+                      <td>{{ h.usuario || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+
+        </div>
+      </div>
+    }
+
+    <!-- Modal: lista de soportes (PDF) de cada entrega ya realizada -->
+    @if (showSoportesList()) {
+      <div class="modal-backdrop" (click)="cerrarSoportesLista()">
+        <div class="disp-modal" (click)="$event.stopPropagation()" style="max-width: 600px;">
+
+          <div class="disp-modal__header">
+            <div class="disp-modal__header-icon">📄</div>
+            <div class="disp-modal__header-text">
+              <span class="disp-modal__header-sup">Soportes de entrega</span>
+              <strong class="disp-modal__header-med">{{ soportesListDetail()?.nombre_paciente }}</strong>
+            </div>
+            <button class="disp-modal__close" (click)="cerrarSoportesLista()" title="Cerrar">✕</button>
+          </div>
+
+          <div class="disp-modal__body">
+            @if (soportesListLoading()) {
+              <p style="text-align:center; color:#64748b;">Cargando soportes…</p>
+            } @else if (soportesListGrupos().length === 0) {
+              <p style="text-align:center; color:#64748b;">Aún no se ha generado ningún soporte de entrega para esta formulación.</p>
+            } @else {
+              <table class="inner-table">
+                <thead>
+                  <tr>
+                    <th>Fecha de entrega</th>
+                    <th>Medicamento(s)</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (g of soportesListGrupos(); track g.fecha.getTime()) {
+                    <tr>
+                      <td>{{ g.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td>{{ g.items.length }} medicamento{{ g.items.length > 1 ? 's' : '' }}</td>
+                      <td style="text-align:right">
+                        <button class="btn btn-small btn-outline" (click)="verSoportePdf(g)">📄 Ver PDF</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
           </div>
 
         </div>
@@ -282,8 +413,8 @@
                     @if (getResumenLabel(f) !== 'Pendiente' && f.control?.ultima_fecha_dispensacion) {
                       <div class="acciones-fecha">
                         {{ f.control!.ultima_fecha_dispensacion | date:'dd/MM/yyyy HH:mm' }}
-                        <button class="btn-icon btn-icon--soporte" title="Ver soporte de entrega"
-                                (click)="verSoporteGuardado(f)">📄</button>
+                        <button class="btn-icon btn-icon--soporte" title="Ver soportes de entrega"
+                                (click)="abrirSoportesLista(f)">📄</button>
                       </div>
                     }
                   </td>
@@ -320,6 +451,9 @@
                                 <span><strong>Dir:</strong> {{ selectedDetail()!.direccion_paciente }}</span>
                               }
                             </div>
+                            <button class="btn btn-small btn-outline" (click)="abrirHistorial()">
+                              🕘 Histórico de entregas
+                            </button>
                             <button class="btn btn-small" (click)="openFormulacionModal()">
                               💊 Dispensar formulación
                             </button>

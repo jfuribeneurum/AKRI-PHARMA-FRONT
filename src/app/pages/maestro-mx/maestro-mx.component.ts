@@ -278,16 +278,28 @@ export class MaestroMxComponent implements OnInit {
     const norm = (s: string) =>
       s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const hsNorm = norm(hsText);
-    // Se prefiere la coincidencia más larga (más específica) para evitar que
-    // un texto de HS como "polvo para reconstituir a suspensión inyectable"
-    // quede matcheado contra la forma corta "Suspensión inyectable".
+    const formas = this.formas();
+
+    // Coincidencia exacta primero: un HS "TABLETA" no debe perder contra
+    // "Tableta de liberación prolongada" solo por ser un nombre más largo.
+    const exact = formas.find(f => norm(f.nombre) === hsNorm);
+    if (exact) return exact.id_forma;
+
+    // Si no hay exacta, se prefiere la coincidencia parcial más cercana en
+    // longitud (la más específica sin pasarse), para evitar que un texto
+    // largo de HS como "polvo para reconstituir a suspensión inyectable"
+    // quede matcheado contra una forma corta y genérica de más al elegir
+    // por longitud absoluta en vez de por cercanía real.
     let best: any = null;
-    let bestLen = -1;
-    for (const f of this.formas()) {
+    let bestDiff = Infinity;
+    for (const f of formas) {
       const fNorm = norm(f.nombre);
-      if ((hsNorm.includes(fNorm) || fNorm.includes(hsNorm)) && fNorm.length > bestLen) {
-        best = f;
-        bestLen = fNorm.length;
+      if (hsNorm.includes(fNorm) || fNorm.includes(hsNorm)) {
+        const diff = Math.abs(fNorm.length - hsNorm.length);
+        if (diff < bestDiff) {
+          best = f;
+          bestDiff = diff;
+        }
       }
     }
     return best?.id_forma ?? null;

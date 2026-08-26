@@ -26,6 +26,10 @@ interface Formulacion {
 interface MedicamentoFormulacion {
   id_med_formulacion: number;
   idMedicamento: number;
+  // id_producto local (Maestro), resuelto en el backend desde
+  // productos.id_medicamento_hs. idMedicamento es un id de HealthSphere y
+  // NUNCA debe usarse para consultar/descontar inventario local.
+  idProductoLocal: number | null;
   nombre_medicamento: string;
   viaAdministracion: string;
   unidadDosificacion: string;
@@ -59,7 +63,24 @@ interface FormulacionDetail extends Formulacion {
 interface ModalFormItem {
   med: MedicamentoFormulacion;
   cantidad: number;
+  // Arranca en 0 al abrir el modal (no se precarga con el histórico) — solo
+  // se usa como override real si el usuario la edita a mano, ver
+  // cantidadDispensadaTouched.
   cantidadDispensadaOverride: number;
+  // true en cuanto el usuario edita "Cant. dispensada" — distingue "el
+  // usuario quiere corregir el acumulado a este valor" de "sigue en su
+  // valor inicial sin tocar", para no mandar un override de 0 por accidente
+  // solo porque el campo arranca vacío.
+  cantidadDispensadaTouched: boolean;
+  // Total histórico ya dispensado ANTES de abrir este modal, capturado una
+  // sola vez desde el servidor. A diferencia de cantidadDispensadaOverride
+  // (editable a mano por el usuario), este nunca cambia durante la sesión del
+  // modal — sirve de base fija para getFaltante() sin importar qué escriba
+  // el usuario en "Cant. dispensada".
+  dispensadaOriginal: number;
+  // Lotes elegidos para cubrir "cantidad" (Control de entrega).
+  // Clave: `${id_lote}:${id_ubicacion}` — valor: cantidad asignada a esa fila.
+  loteSeleccion: Record<string, number>;
 }
 
 @Component({
@@ -99,6 +120,15 @@ export class DispensacionSebasComponent implements OnInit {
   modalSuccess    = signal('');
   showSoporteConfirm = signal(false);
   private soporteData: any = null;
+
+  showHistorial   = signal(false);
+  historial       = signal<any[]>([]);
+  historialLoading = signal(false);
+
+  showSoportesList    = signal(false);
+  soportesListLoading = signal(false);
+  soportesListGrupos  = signal<{ fecha: Date; items: any[] }[]>([]);
+  soportesListDetail  = signal<FormulacionDetail | null>(null);
 
   contratoOptions: { valor: string; etiqueta: string }[] = [];
   regimenOptions: { valor: string; etiqueta: string }[] = [];
@@ -215,67 +245,197 @@ export class DispensacionSebasComponent implements OnInit {
     return Math.max(0, (med.cantidad ?? 0) - (med.control?.cantidad_dispensada ?? 0));
   }
 
-  // Pendiente = cantidad formulada - Cant. dispensada (histórico acumulado,
+  // Pendiente = Control de entrega - Cant. dispensada (histórico acumulado,
   // editable en vivo en el modal vía cantidadDispensadaOverride).
   getPendiente(item: ModalFormItem): number {
-    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidadDispensadaOverride || 0));
+    return Math.max(0, Number(item.cantidad || 0) - Number(item.cantidadDispensadaOverride || 0));
   }
 
-  // Faltante = cantidad formulada - lo que se entrega en ESTA acción
-  // (no descuenta el histórico previo, a diferencia de "Cant. pendiente").
+  // Si aún queda cantidad formulada sin dispensar en el histórico. No
+  // confundir con getPendiente() (lo que muestra la casilla "Cant.
+  // Pendiente", que compara contra "Control de entrega") — este es el que
+  // decide si el medicamento sigue siendo elegible para guardarse y si debe
+  // mostrarse como "✅ Completado" (usado también por la plantilla).
+  tienePendientePorFormular(item: ModalFormItem): boolean {
+    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidadDispensadaOverride || 0)) > 0;
+  }
+
+  // Faltante = cantidad formulada - total histórico ya entregado (fijo, de
+  // rondas anteriores) - Control de entrega (esta acción). Se usa
+  // dispensadaOriginal (inmutable) y no cantidadDispensadaOverride (editable)
+  // para que escribir en "Cant. dispensada" nunca descuente dos veces la
+  // misma entrega.
   getFaltante(item: ModalFormItem): number {
-    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidad || 0));
+    return Math.max(0, (item.med.cantidad ?? 0) - item.dispensadaOriginal - Number(item.cantidad || 0));
+  }
+
+  // "Cant. dispensada" es 100% manual: nunca se autocompleta. Solo cuando el
+  // usuario escribe aquí a propósito se marca cantidadDispensadaTouched, para
+  // que saveDispensacion() la mande como override real — si nunca la toca,
+  // el backend sigue sumando el acumulado normalmente (sin riesgo).
+  setDispensadaOverride(item: ModalFormItem, value: number) {
+    this.modalFormItems.update(items => items.map(i =>
+      i !== item ? i : { ...i, cantidadDispensadaOverride: Number(value) || 0, cantidadDispensadaTouched: true }
+    ));
+  }
+
+  // "Control de entrega" solo actualiza cuánto se va a entregar en esta
+  // acción — a propósito no toca "Cant. dispensada" para nada (es un campo
+  // aparte, de edición libre y manual del usuario).
+  updateControlDeEntrega(item: ModalFormItem, value: number) {
+    const max = this.getMedEntregaMax(item.med);
+    const cantidad = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
+    this.modalFormItems.update(items => items.map(i =>
+      i !== item ? i : { ...i, cantidad }
+    ));
   }
 
   getMedEntregaMax(med: MedicamentoFormulacion): number {
     const pendiente = this.getMedRestante(med);
-    const stock = med.idMedicamento ? this.getMedStockTotal(med.idMedicamento) : 0;
+    const stock = med.idProductoLocal ? this.getMedStockTotal(med.idProductoLocal) : 0;
     return Math.min(pendiente, stock);
   }
 
+  // Clave estable para identificar una fila de stock (un mismo lote puede
+  // tener existencias en más de un almacén/ubicación).
+  loteKey(lot: any): string {
+    return `${lot.id_lote}:${lot.id_ubicacion}`;
+  }
+
+  // Número de lote legible para el soporte de entrega, a partir del stock
+  // ya cargado en el modal (el payload que se envía solo trae los ids).
+  private loteNumero(item: ModalFormItem, idLote: number, idUbicacion: number): string {
+    const stock = item.med.idProductoLocal ? this.getMedStock(item.med.idProductoLocal) : [];
+    const lote = stock.find(l => l.id_lote === idLote && l.id_ubicacion === idUbicacion);
+    return lote?.numero_lote ?? `#${idLote}`;
+  }
+
+  getAsignado(item: ModalFormItem): number {
+    return Object.values(item.loteSeleccion).reduce((s, v) => s + Number(v || 0), 0);
+  }
+
+  getAsignadoValido(item: ModalFormItem): boolean {
+    return this.getAsignado(item) === Number(item.cantidad || 0);
+  }
+
+  // Ajusta la cantidad de un lote ya marcado. A diferencia de toggleLote(),
+  // nunca lo desmarca al llegar a 0 — para eso está el checkbox — así el
+  // usuario puede seguir repartiendo entre los lotes marcados sin que el
+  // campo desaparezca a mitad de la edición.
+  setLoteQty(item: ModalFormItem, lot: any, value: number) {
+    const max = Number(lot.cantidad_disponible ?? 0);
+    const cantidad = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
+    const key = this.loteKey(lot);
+    this.modalFormItems.update(items => items.map(i => {
+      if (i !== item) return i;
+      return { ...i, loteSeleccion: { ...i.loteSeleccion, [key]: cantidad } };
+    }));
+  }
+
+  // "Marcado" es si el lote está seleccionado, independiente de si ya se le
+  // asignó cantidad (un lote recién marcado puede arrancar en 0 si ya no
+  // queda nada por repartir, para poder ajustarlo a mano).
+  isLoteChecked(item: ModalFormItem, lot: any): boolean {
+    return this.loteKey(lot) in item.loteSeleccion;
+  }
+
+  getLotesMarcados(item: ModalFormItem): number {
+    return Object.keys(item.loteSeleccion).length;
+  }
+
+  // Al marcar un lote se le asigna automáticamente lo que aún falte por cubrir
+  // (sin exceder su disponible), para que no haya que escribir el número a mano
+  // salvo que ese lote no alcance solo o se combinen varios lotes.
+  toggleLote(item: ModalFormItem, lot: any, checked: boolean) {
+    const key = this.loteKey(lot);
+    this.modalFormItems.update(items => items.map(i => {
+      if (i !== item) return i;
+      const loteSeleccion = { ...i.loteSeleccion };
+      if (!checked) {
+        delete loteSeleccion[key];
+        return { ...i, loteSeleccion };
+      }
+      const asignadoOtros = Object.entries(loteSeleccion)
+        .reduce((s, [k, v]) => s + (k === key ? 0 : Number(v || 0)), 0);
+      const restante = Math.max(0, Number(i.cantidad || 0) - asignadoOtros);
+      const disponible = Number(lot.cantidad_disponible ?? 0);
+      loteSeleccion[key] = Math.min(restante, disponible);
+      return { ...i, loteSeleccion };
+    }));
+  }
+
   hasItemsToDispense(): boolean {
+    if (!this.modalContrato || !this.modalRegimen) return false;
     const items = this.modalFormItems();
-    if (items.some(i => !i.med.idMedicamento)) return false;
-    const pendingItems = items.filter(i => this.getPendiente(i) > 0);
+    if (items.some(i => !i.med.idProductoLocal)) return false;
+    const pendingItems = items.filter(i => this.tienePendientePorFormular(i));
     if (!pendingItems.length) return false;
     const anyPendingWithNoStock = pendingItems.some(i =>
-      !this.stockLoading().has(i.med.idMedicamento) &&
-      this.getMedStockTotal(i.med.idMedicamento) === 0
+      !this.stockLoading().has(i.med.idProductoLocal!) &&
+      this.getMedStockTotal(i.med.idProductoLocal!) === 0
     );
     if (anyPendingWithNoStock) return false;
-    return pendingItems.some(i => i.cantidad > 0);
+    return pendingItems.some(i => i.cantidad > 0 && this.getAsignadoValido(i));
   }
 
-  getMedStock(idMedicamento: number): any[] {
-    return this.stockByMed()[idMedicamento] ?? [];
+  getMedStock(idProductoLocal: number): any[] {
+    return this.stockByMed()[idProductoLocal] ?? [];
   }
 
-  getMedStockTotal(idMedicamento: number): number {
-    return this.getMedStock(idMedicamento).reduce((s, l) => s + Number(l.cantidad_disponible ?? 0), 0);
+  getMedStockTotal(idProductoLocal: number): number {
+    return this.getMedStock(idProductoLocal).reduce((s, l) => s + Number(l.cantidad_disponible ?? 0), 0);
   }
 
-  private async loadStockForMed(idMedicamento: number) {
-    if (!idMedicamento) return;
-    this.stockLoading.update(s => new Set([...s, idMedicamento]));
+  private async loadStockForMed(idProductoLocal: number) {
+    if (!idProductoLocal) return;
+    this.stockLoading.update(s => new Set([...s, idProductoLocal]));
     try {
-      const res = await this.api.get<any>(`/inventory/stock/product/${idMedicamento}`);
+      const res = await this.api.get<any>(`/inventory/stock/product/${idProductoLocal}`);
       const lots = Array.isArray(res) ? res : (res?.data ?? []);
-      this.stockByMed.update(m => ({ ...m, [idMedicamento]: lots }));
+      this.stockByMed.update(m => ({ ...m, [idProductoLocal]: lots }));
       // El stock llega después de fijar la cantidad inicial (= pendiente);
       // si hay menos stock que pendiente, hay que bajar la cantidad a entregar.
       this.modalFormItems.update(items => items.map(item => {
-        if (item.med.idMedicamento !== idMedicamento) return item;
+        if (item.med.idProductoLocal !== idProductoLocal) return item;
         const entregaMax = this.getMedEntregaMax(item.med);
         return entregaMax > 0 ? { ...item, cantidad: Math.min(item.cantidad, entregaMax) } : item;
       }));
     } catch {
-      this.stockByMed.update(m => ({ ...m, [idMedicamento]: [] }));
+      this.stockByMed.update(m => ({ ...m, [idProductoLocal]: [] }));
     } finally {
-      this.stockLoading.update(s => { const n = new Set(s); n.delete(idMedicamento); return n; });
+      this.stockLoading.update(s => { const n = new Set(s); n.delete(idProductoLocal); return n; });
     }
   }
 
-  openFormulacionModal() {
+  async abrirHistorial() {
+    const detail = this.selectedDetail();
+    if (!detail) return;
+    this.showHistorial.set(true);
+    this.historialLoading.set(true);
+    this.historial.set([]);
+    try {
+      const res = await this.api.get<any>(`/dispensacion-hs/formulacion/${detail.id_formulacion}/historial`);
+      this.historial.set(Array.isArray(res) ? res : (res?.data ?? []));
+    } catch {
+      this.historial.set([]);
+    } finally {
+      this.historialLoading.set(false);
+    }
+  }
+
+  cerrarHistorial() {
+    this.showHistorial.set(false);
+  }
+
+  // Siempre recarga el detalle desde el servidor antes de sembrar el modal:
+  // selectedDetail() puede estar desactualizado si el usuario dispensa varias
+  // rondas seguidas antes de que termine el refresco automático de la ronda
+  // anterior, y sembrar con un total histórico viejo hace que el
+  // autocompletado de "Cant. dispensada" calcule mal el nuevo acumulado.
+  async openFormulacionModal() {
+    const current = this.selectedDetail();
+    if (!current) return;
+    await this.loadDetail(current.id_formulacion);
     const detail = this.selectedDetail();
     if (!detail) return;
 
@@ -283,8 +443,11 @@ export class DispensacionSebasComponent implements OnInit {
       .filter(m => m.control?.estado !== 'cancelado')
       .map(m => ({
         med: m,
-        cantidad: this.getMedRestante(m),
-        cantidadDispensadaOverride: m.control?.cantidad_dispensada ?? 0
+        cantidad: 0,
+        cantidadDispensadaOverride: 0,
+        cantidadDispensadaTouched: false,
+        dispensadaOriginal: m.control?.cantidad_dispensada ?? 0,
+        loteSeleccion: {}
       }));
 
     this.modalFormItems.set(items);
@@ -297,7 +460,7 @@ export class DispensacionSebasComponent implements OnInit {
     this.showModal.set(true);
 
     for (const item of items) {
-      if (item.med.idMedicamento) this.loadStockForMed(item.med.idMedicamento);
+      if (item.med.idProductoLocal) this.loadStockForMed(item.med.idProductoLocal);
     }
   }
 
@@ -313,11 +476,20 @@ export class DispensacionSebasComponent implements OnInit {
     const detail = this.selectedDetail();
     if (!detail) return;
 
+    if (!this.modalContrato || !this.modalRegimen) {
+      this.modalError.set('Debes seleccionar el contrato y el régimen antes de confirmar la dispensación.');
+      return;
+    }
+
     const toSave = this.modalFormItems().filter(
-      i => !!i.med.idMedicamento && this.getPendiente(i) > 0 && Number(i.cantidad) > 0
+      i => !!i.med.idProductoLocal && this.tienePendientePorFormular(i) && Number(i.cantidad) > 0
     );
     if (!toSave.length) {
       this.modalError.set('No hay medicamentos pendientes por dispensar.');
+      return;
+    }
+    if (toSave.some(i => !this.getAsignadoValido(i))) {
+      this.modalError.set('Debes asignar lotes por el total de "Control de entrega" en cada medicamento.');
       return;
     }
 
@@ -325,15 +497,32 @@ export class DispensacionSebasComponent implements OnInit {
     this.modalError.set('');
     this.modalSuccess.set('');
     try {
+      const soporteItems: any[] = [];
+      // Si esta entrega deja algo pendiente por primera vez (el medicamento
+      // no tenía nada dispensado antes), va en la página "Pendiente". Si en
+      // cambio esta entrega está resolviendo/continuando un pendiente que ya
+      // existía de una visita anterior, va en "Dispensación pendiente".
+      const pendientesNuevos: any[] = [];
+      const pendientesContinuados: any[] = [];
       for (const item of toSave) {
-        const dispensadaOriginal = item.med.control?.cantidad_dispensada ?? 0;
-        const overrideManual = Number(item.cantidadDispensadaOverride) !== dispensadaOriginal
+        const dispensadaOriginal = item.dispensadaOriginal;
+        // Solo se manda como override si el usuario escribió algo a mano en
+        // "Cant. dispensada" (cantidadDispensadaTouched). Si nunca la toca,
+        // no se manda override y el backend suma normalmente al acumulado.
+        const overrideManual = item.cantidadDispensadaTouched
           ? Number(item.cantidadDispensadaOverride)
           : null;
-        await this.api.post<any>('/dispensacion-hs', {
+        const lotes = Object.entries(item.loteSeleccion)
+          .filter(([, cantidad]) => Number(cantidad) > 0)
+          .map(([key, cantidad]) => {
+            const [id_lote, id_ubicacion] = key.split(':').map(Number);
+            return { id_lote, id_ubicacion, cantidad };
+          });
+        const res = await this.api.post<{ success: boolean; data: any }>('/dispensacion-hs', {
           id_formulacion_hs:                  detail.id_formulacion,
           id_med_formulacion_hs:              item.med.id_med_formulacion,
           cantidad_dispensada:                Number(item.cantidad),
+          lotes,
           cantidad_dispensada_total_override: overrideManual,
           cantidad_pendiente_antes:           this.getPendiente(item),
           cantidad_faltante:                  this.getFaltante(item),
@@ -341,11 +530,40 @@ export class DispensacionSebasComponent implements OnInit {
           contrato:                           this.modalContrato || null,
           regimen:                            this.modalRegimen || null
         });
+        const nuevoTotal = Number(res?.data?.cantidad_dispensada ?? item.cantidad);
+        const pendienteFinal = Math.max(0, Number(item.med.cantidad ?? 0) - nuevoTotal);
+        for (const l of lotes) {
+          soporteItems.push({
+            nombre_medicamento: item.med.nombre_medicamento,
+            numero_lote: this.loteNumero(item, l.id_lote, l.id_ubicacion),
+            cantidad_dispensada: l.cantidad,
+            cantidad_pendiente: pendienteFinal
+          });
+        }
+        if (pendienteFinal > 0) {
+          const resumenPendiente = {
+            nombre_medicamento: item.med.nombre_medicamento,
+            cantidad_dispensada: Number(item.cantidad),
+            cantidad_pendiente: pendienteFinal
+          };
+          if (dispensadaOriginal === 0) pendientesNuevos.push(resumenPendiente);
+          else pendientesContinuados.push(resumenPendiente);
+        } else if (dispensadaOriginal > 0) {
+          // Se terminó de pagar un pendiente anterior: igual documenta esta
+          // entrega en la página de "Dispensación pendiente" (con 0 restante).
+          pendientesContinuados.push({
+            nombre_medicamento: item.med.nombre_medicamento,
+            cantidad_dispensada: Number(item.cantidad),
+            cantidad_pendiente: 0
+          });
+        }
       }
       this.modalSuccess.set(`Dispensación registrada (${toSave.length} medicamento${toSave.length > 1 ? 's' : ''}).`);
       this.soporteData = {
         detail,
-        items: toSave.map(i => ({ ...i.med, cantidadDispensadaAhora: Number(i.cantidad) })),
+        pendientesNuevos,
+        pendientesContinuados,
+        items: soporteItems,
         contrato: this.modalContrato,
         regimen: this.modalRegimen,
         observaciones: this.modalObs,
@@ -359,30 +577,102 @@ export class DispensacionSebasComponent implements OnInit {
     }
   }
 
-  async verSoporteGuardado(f: Formulacion) {
+  // Lista, en un modal, cada entrega real ya realizada (una por acción de
+  // guardado, agrupando los lotes que comparten la misma fecha_hora), para
+  // poder abrir/regenerar el PDF de cualquiera de ellas puntualmente.
+  async abrirSoportesLista(f: Formulacion) {
     this.error.set('');
+    this.showSoportesList.set(true);
+    this.soportesListLoading.set(true);
+    this.soportesListGrupos.set([]);
+    this.soportesListDetail.set(null);
     try {
-      const res = await this.api.get<any>(`/formulaciones-hs/${f.id_formulacion}`);
-      const detail: FormulacionDetail = res.data;
-      const dispensados = detail.medicamentos.filter(m => m.control && Number(m.control.cantidad_dispensada) > 0);
-      if (!dispensados.length) {
-        this.error.set('Esta formulación aún no tiene medicamentos dispensados.');
-        return;
+      const [detailRes, histRes] = await Promise.all([
+        this.api.get<any>(`/formulaciones-hs/${f.id_formulacion}`),
+        this.api.get<any>(`/dispensacion-hs/formulacion/${f.id_formulacion}/historial`)
+      ]);
+      this.soportesListDetail.set(detailRes.data);
+      const rows = Array.isArray(histRes) ? histRes : (histRes?.data ?? []);
+
+      const gruposMap = new Map<string, any[]>();
+      for (const r of rows) {
+        const key = String(r.fecha_hora);
+        if (!gruposMap.has(key)) gruposMap.set(key, []);
+        gruposMap.get(key)!.push(r);
       }
-      const ultimo = dispensados.reduce((a, b) =>
-        new Date(a.control!.fecha_dispensacion ?? 0) > new Date(b.control!.fecha_dispensacion ?? 0) ? a : b
-      );
-      this.generarSoporteEntrega({
-        detail,
-        items: dispensados.map(m => ({ ...m, cantidadDispensadaAhora: m.control!.cantidad_dispensada })),
-        contrato: ultimo.control!.contrato,
-        regimen: ultimo.control!.regimen,
-        observaciones: ultimo.control!.observaciones,
-        fecha: ultimo.control!.fecha_dispensacion ? new Date(ultimo.control!.fecha_dispensacion) : new Date()
-      });
-    } catch (err: any) {
-      this.error.set(err?.error?.message ?? 'No fue posible generar el soporte de entrega.');
+      const grupos = Array.from(gruposMap.entries())
+        .map(([fechaKey, items]) => ({ fecha: new Date(fechaKey), items }))
+        .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+      this.soportesListGrupos.set(grupos);
+    } catch {
+      this.soportesListGrupos.set([]);
+    } finally {
+      this.soportesListLoading.set(false);
     }
+  }
+
+  cerrarSoportesLista() {
+    this.showSoportesList.set(false);
+  }
+
+  // Reconstruye el soporte de esa entrega puntual a partir del histórico real
+  // (movimientos_inventario), incluyendo si en ese momento el medicamento
+  // quedó pendiente por primera vez o si esa entrega estaba pagando un
+  // pendiente ya existente — igual que al guardar en vivo.
+  verSoportePdf(grupo: { fecha: Date; items: any[] }) {
+    const detail = this.soportesListDetail();
+    if (!detail) return;
+
+    const cronologico = [...this.soportesListGrupos()].sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+    const idx = cronologico.findIndex(g => g.fecha.getTime() === grupo.fecha.getTime());
+    const formuladaPorMed = Object.fromEntries(detail.medicamentos.map(m => [m.nombre_medicamento, Number(m.cantidad ?? 0)]));
+
+    const acumuladoAntes: Record<string, number> = {};
+    const acumuladoDespues: Record<string, number> = {};
+    for (let i = 0; i <= idx; i++) {
+      for (const it of cronologico[i].items) {
+        const nombre = it.nombre_medicamento;
+        if (i < idx) acumuladoAntes[nombre] = (acumuladoAntes[nombre] ?? 0) + Number(it.cantidad);
+        acumuladoDespues[nombre] = (acumuladoDespues[nombre] ?? 0) + Number(it.cantidad);
+      }
+    }
+
+    const items = grupo.items.map(it => ({
+      nombre_medicamento: it.nombre_medicamento,
+      numero_lote: it.numero_lote,
+      cantidad_dispensada: it.cantidad,
+      cantidad_pendiente: Math.max(0, (formuladaPorMed[it.nombre_medicamento] ?? 0) - (acumuladoDespues[it.nombre_medicamento] ?? 0))
+    }));
+
+    const pendientesNuevos: any[] = [];
+    const pendientesContinuados: any[] = [];
+    const vistos = new Set<string>();
+    for (const it of grupo.items) {
+      const nombre = it.nombre_medicamento;
+      if (vistos.has(nombre)) continue;
+      vistos.add(nombre);
+      const formulada = formuladaPorMed[nombre] ?? 0;
+      const antes = acumuladoAntes[nombre] ?? 0;
+      const despues = acumuladoDespues[nombre] ?? 0;
+      const pendienteFinal = Math.max(0, formulada - despues);
+      const resumen = { nombre_medicamento: nombre, cantidad_dispensada: despues - antes, cantidad_pendiente: pendienteFinal };
+      if (pendienteFinal > 0) {
+        if (antes === 0) pendientesNuevos.push(resumen); else pendientesContinuados.push(resumen);
+      } else if (antes > 0) {
+        pendientesContinuados.push({ ...resumen, cantidad_pendiente: 0 });
+      }
+    }
+
+    this.generarSoporteEntrega({
+      detail,
+      items,
+      pendientesNuevos,
+      pendientesContinuados,
+      contrato: null,
+      regimen: null,
+      observaciones: null,
+      fecha: grupo.fecha
+    });
   }
 
   descargarSoporte() {
@@ -424,39 +714,86 @@ export class DispensacionSebasComponent implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
+  // Página resumen para un saldo pendiente — sin bloque de firmas, solo el
+  // encabezado, los datos y la tabla filtrada al/los medicamento(s) en cuestión.
+  private buildPaginaPendiente(titulo: string, items: any[], detail: any, fechaStr: string, horaStr: string, impresionStr: string): string {
+    const filas = items.map(m => `
+      <tr>
+        <td>${m.nombre_medicamento ?? ''}</td>
+        <td style="text-align:center"><strong>${m.cantidad_dispensada ?? 0}</strong></td>
+        <td style="text-align:center">${m.cantidad_pendiente ?? 0}</td>
+      </tr>
+    `).join('');
+
+    return `
+  <div class="doc page-break">
+    <div class="doc-header">
+      <div class="brand">💊 AkriPharmacy<small>Sistema de gestión farmacéutica</small></div>
+      <div class="meta">Fecha de impresión<br><strong>${impresionStr}</strong></div>
+    </div>
+    <div class="doc-title"><h1>${titulo}</h1></div>
+    <div class="doc-body">
+      <div class="grid">
+        <div class="field"><span>Paciente</span><strong>${detail.nombre_paciente}</strong></div>
+        <div class="field"><span>Documento</span><strong>${detail.documento_paciente}</strong></div>
+        <div class="field"><span>Fecha</span><strong>${fechaStr} ${horaStr}</strong></div>
+      </div>
+      <table>
+        <thead><tr><th>Medicamento</th><th>Cantidad dispensada</th><th>Cantidad pendiente</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  </div>`;
+  }
+
   private buildSoporteHtml(data: any): string {
     const detail = data.detail;
     const fecha: Date = data.fecha;
     const fechaStr = fecha.toLocaleDateString('es-CO');
     const horaStr = fecha.toLocaleTimeString('es-CO');
+    const impresionStr = new Date().toLocaleDateString('es-CO') + ' ' + new Date().toLocaleTimeString('es-CO');
     const codigo = `SE-${detail.id_formulacion}-${fecha.getTime()}`;
     const contratoLabel = data.contrato ? this.getEtiqueta(this.contratoOptions, data.contrato) : '—';
     const regimenLabel = data.regimen ? this.getEtiqueta(this.regimenOptions, data.regimen) : '—';
     const usuario = this.currentUserName();
 
-    const filas = (data.items as MedicamentoFormulacion[]).map(m => `
+    const filas = (data.items as any[]).map(m => `
       <tr>
         <td>${m.nombre_medicamento ?? ''}</td>
-        <td>${m.presentacion ?? '—'}</td>
-        <td>${m.viaAdministracion ?? '—'}</td>
-        <td style="text-align:center">${m.cantidad ?? 0}</td>
-        <td style="text-align:center"><strong>${(m as any).cantidadDispensadaAhora ?? 0}</strong></td>
+        <td>${m.numero_lote ?? '—'}</td>
+        <td style="text-align:center"><strong>${m.cantidad_dispensada ?? 0}</strong></td>
+        <td style="text-align:center">${m.cantidad_pendiente ?? 0}</td>
       </tr>
     `).join('');
+
+    // Página 2: se genera en paralelo a esta misma dispensación cuando deja
+    // un saldo pendiente por primera vez. Página 3: cuando esta entrega está
+    // pagando/continuando un saldo que ya venía pendiente de una visita anterior.
+    const pendientesNuevos: any[] = data.pendientesNuevos ?? [];
+    const pendientesContinuados: any[] = data.pendientesContinuados ?? [];
+    const paginaPendiente = pendientesNuevos.length
+      ? this.buildPaginaPendiente('Pendiente', pendientesNuevos, detail, fechaStr, horaStr, impresionStr)
+      : '';
+    const paginaDispensacionPendiente = pendientesContinuados.length
+      ? this.buildPaginaPendiente('Dispensación pendiente', pendientesContinuados, detail, fechaStr, horaStr, impresionStr)
+      : '';
 
     return `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Soporte de Entrega - ${codigo}</title>
+<title>Dispensación de Medicamentos - ${codigo}</title>
 <style>
   body { font-family: Arial, Helvetica, sans-serif; color:#1e293b; margin:0; padding:2rem; background:#f8fafc; }
-  .doc { max-width:800px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); overflow:hidden; }
-  .doc-header { background: linear-gradient(135deg,#6d28d9,#7c3aed); color:#fff; padding:1.5rem 2rem; }
-  .doc-header h1 { margin:0; font-size:1.3rem; }
-  .doc-header p { margin:0.2rem 0 0; opacity:0.85; font-size:0.85rem; }
-  .doc-body { padding:1.5rem 2rem; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem 2rem; margin-bottom:1.5rem; }
+  .doc { max-width:800px; margin:0 auto 2rem; background:#fff; border-radius:4px; box-shadow:0 4px 24px rgba(0,0,0,0.08); overflow:hidden; }
+  .doc-header { display:flex; justify-content:space-between; align-items:flex-start; padding:1.25rem 2rem; border-bottom:2px solid #6d28d9; }
+  .doc-header .brand { font-size:1.15rem; font-weight:800; color:#6d28d9; }
+  .doc-header .brand small { display:block; font-weight:400; font-size:0.72rem; color:#64748b; margin-top:2px; }
+  .doc-header .meta { text-align:right; font-size:0.75rem; color:#64748b; }
+  .doc-title { text-align:center; padding:0.9rem 2rem 0.4rem; }
+  .doc-title h1 { margin:0; font-size:1.05rem; letter-spacing:0.04em; text-transform:uppercase; color:#1e293b; }
+  .doc-body { padding:1rem 2rem 1.5rem; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 2rem; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid #e2e8f0; }
   .field { font-size:0.85rem; }
   .field span { display:block; color:#94a3b8; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em; }
   .field strong { font-size:0.95rem; }
@@ -464,40 +801,52 @@ export class DispensacionSebasComponent implements OnInit {
   th { background:#f1f5f9; text-align:left; padding:0.5rem 0.6rem; color:#475569; font-size:0.75rem; text-transform:uppercase; }
   td { padding:0.55rem 0.6rem; border-bottom:1px solid #e2e8f0; }
   .obs { margin-top:1rem; font-size:0.85rem; color:#475569; }
-  .firmas { display:flex; gap:2rem; margin-top:3rem; }
-  .firma { flex:1; border-top:1px solid #94a3b8; padding-top:0.4rem; text-align:center; font-size:0.8rem; color:#64748b; }
+  .diligenciar { margin-top:2.5rem; border:1px solid #cbd5e1; border-radius:6px; padding:1.25rem 1.5rem; }
+  .diligenciar h2 { margin:0 0 1.4rem; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em; color:#475569; }
+  .diligenciar-row { display:flex; align-items:flex-end; gap:0.75rem; margin-bottom:1.6rem; font-size:0.85rem; color:#475569; }
+  .diligenciar-row:last-child { margin-bottom:0; }
+  .diligenciar-row .label { flex:0 0 210px; font-weight:600; }
+  .diligenciar-row .linea { flex:1; border-bottom:1px solid #64748b; height:1.1rem; }
   .footer { padding:1rem 2rem; font-size:0.7rem; color:#94a3b8; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; }
   .print-bar { max-width:800px; margin:0 auto 1rem; text-align:right; }
   .print-bar button { background:#7c3aed; color:#fff; border:none; padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; cursor:pointer; }
-  @media print { .print-bar { display:none; } body { background:#fff; padding:0; } .doc { box-shadow:none; } }
+  @media print {
+    .print-bar { display:none; }
+    body { background:#fff; padding:0; }
+    .doc { box-shadow:none; margin-bottom:0; }
+    .page-break { page-break-before: always; }
+  }
 </style>
 </head>
 <body>
   <div class="print-bar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
   <div class="doc">
     <div class="doc-header">
-      <h1>💊 AkriPharmacy — Soporte de Entrega de Medicamentos</h1>
-      <p>Documento N.° ${codigo} · Generado el ${fechaStr} ${horaStr}</p>
+      <div class="brand">💊 AkriPharmacy<small>Sistema de gestión farmacéutica</small></div>
+      <div class="meta">Fecha de impresión<br><strong>${impresionStr}</strong></div>
     </div>
+    <div class="doc-title"><h1>Dispensación de Medicamentos</h1></div>
     <div class="doc-body">
       <div class="grid">
         <div class="field"><span>Paciente</span><strong>${detail.nombre_paciente}</strong></div>
         <div class="field"><span>Documento</span><strong>${detail.documento_paciente}</strong></div>
-        <div class="field"><span>#Historia (Atención)</span><strong>${detail.consecutivo_atencion ?? '—'}</strong></div>
-        <div class="field"><span>Formulación N.°</span><strong>${detail.id_formulacion}</strong></div>
         <div class="field"><span>Contrato</span><strong>${contratoLabel}</strong></div>
         <div class="field"><span>Régimen</span><strong>${regimenLabel}</strong></div>
+        <div class="field"><span>Fecha de entrega</span><strong>${fechaStr} ${horaStr}</strong></div>
         <div class="field"><span>Dispensado por</span><strong>${usuario}</strong></div>
-        <div class="field"><span>Fecha y hora de entrega</span><strong>${fechaStr} ${horaStr}</strong></div>
       </div>
       <table>
-        <thead><tr><th>Medicamento</th><th>Presentación</th><th>Vía</th><th>Cant. formulada</th><th>Cant. entregada</th></tr></thead>
+        <thead><tr><th>Medicamento</th><th>Lote</th><th>Cantidad dispensada</th><th>Cantidad pendiente</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
       ${data.observaciones ? `<div class="obs"><strong>Observaciones:</strong> ${data.observaciones}</div>` : ''}
-      <div class="firmas">
-        <div class="firma">Firma de quien entrega</div>
-        <div class="firma">Firma de quien recibe</div>
+      <div class="diligenciar">
+        <h2>Para diligenciar por el paciente</h2>
+        <div class="diligenciar-row"><span class="label">Firma</span><span class="linea"></span></div>
+        <div class="diligenciar-row"><span class="label">Documento de identidad</span><span class="linea"></span></div>
+        <div class="diligenciar-row"><span class="label">Teléfono</span><span class="linea"></span></div>
+        <div class="diligenciar-row"><span class="label">Fecha de entrega</span><span class="linea"></span></div>
+        <div class="diligenciar-row"><span class="label">Parentesco (si aplica)</span><span class="linea"></span></div>
       </div>
     </div>
     <div class="footer">
@@ -505,6 +854,8 @@ export class DispensacionSebasComponent implements OnInit {
       <span>${codigo}</span>
     </div>
   </div>
+  ${paginaPendiente}
+  ${paginaDispensacionPendiente}
 </body>
 </html>`;
   }
