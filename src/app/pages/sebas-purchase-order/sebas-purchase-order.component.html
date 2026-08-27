@@ -118,14 +118,16 @@
                     </td>
                     <td style="text-align:right">{{ row.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                     <td>
-                      @if (isEditable(row.estado)) {
-                        <div class="actions-cell">
+                      <div class="actions-cell">
+                        <button class="btn-action pdf" [disabled]="pdfGenerando() === row.id_oc"
+                                (click)="generarPdfOrden(row)">
+                          {{ pdfGenerando() === row.id_oc ? 'Generando…' : '📄 PDF' }}
+                        </button>
+                        @if (isEditable(row.estado)) {
                           <button class="btn-action edit" (click)="loadOrderForEdit(row.id_oc)">Editar</button>
                           <button class="btn-action cancel-oc" (click)="cancelOrder(row.id_oc, row.numero_oc)">Cancelar</button>
-                        </div>
-                      } @else {
-                        <span style="color:#6b7280; font-size:0.78rem">—</span>
-                      }
+                        }
+                      </div>
                     </td>
                   </tr>
                 }

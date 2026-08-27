@@ -28,6 +28,7 @@ export class SebasIngresosComponent implements OnInit {
   readonly todosLosIngresos = signal<any[]>([]);
   readonly ingresosFiltrados = signal<any[]>([]);
   readonly expandedIngreso = signal<number | null>(null);
+  readonly actaGenerando = signal<number | null>(null);
 
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
   ocSearch = '';
@@ -134,6 +135,252 @@ export class SebasIngresosComponent implements OnInit {
   toggleExpandIngreso(id: number, event: Event) {
     event.stopPropagation();
     this.expandedIngreso.set(this.expandedIngreso() === id ? null : id);
+  }
+
+  // Acta de recepción técnica: documento formal de verificación de calidad
+  // que certifica lo que realmente llegó (lote, vencimiento, registro
+  // INVIMA, CUM, condiciones de cadena de frío) contra lo ordenado, con el
+  // resultado de cumplimiento por producto. Se arma con los mismos datos que
+  // ya se diligencian al crear el ingreso (GET /ingresos/:id trae el
+  // encabezado y los items estructurados de ingresos_items) — no se guarda
+  // en el servidor, se abre en una pestaña nueva para imprimir/guardar como
+  // PDF, igual que el resto de documentos de la app.
+  async generarActaRecepcion(ing: any, event?: Event) {
+    event?.stopPropagation();
+    if (this.actaGenerando() != null) return;
+    this.error.set('');
+    this.actaGenerando.set(ing.id_ingreso);
+    try {
+      const res: any = await this.api.get<any>(`/ingresos/${ing.id_ingreso}`);
+      const detalle = res?.data ?? res;
+      const html = this.buildActaRecepcionHtml(detalle);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      this.error.set(err?.error?.message ?? 'No fue posible generar el acta de recepción técnica.');
+    } finally {
+      this.actaGenerando.set(null);
+    }
+  }
+
+  private buildActaRecepcionHtml(ing: any): string {
+    const ahora = new Date();
+    const horaGeneracion = ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const fechaGeneracion = ahora.toLocaleDateString('es-CO');
+    const fmtFecha = (v: any) => v ? new Date(v).toLocaleDateString('es-CO') : '—';
+    const money = (n: any) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const items: any[] = Array.isArray(ing.items) ? ing.items : [];
+
+    const facturaStr = [ing.prefijo_factura, ing.numero_factura].filter(Boolean).join('') || '—';
+
+    const totalItems = items.length;
+    const cumplenCount = items.filter(i => i.cumple === 1 || i.cumple === true).length;
+    const noCumplenCount = items.filter(i => i.cumple === 0 || i.cumple === false).length;
+    const sinValidarCount = totalItems - cumplenCount - noCumplenCount;
+
+    const resultadoBadge = (it: any) => {
+      if (it.cumple === 1 || it.cumple === true) return '<span class="badge badge-ok">CUMPLE</span>';
+      if (it.cumple === 0 || it.cumple === false) return '<span class="badge badge-no">NO CUMPLE</span>';
+      return '<span class="badge badge-warn">SIN VALIDAR</span>';
+    };
+
+    const filasHtml = items.map(it => `
+      <tr>
+        <td>${it.codigo ?? '—'}</td>
+        <td>${it.nombre ?? '—'}</td>
+        <td>${it.laboratorio ?? '—'}</td>
+        <td>${it.lote ?? '—'}</td>
+        <td>${fmtFecha(it.fecha_vencimiento)}</td>
+        <td style="text-align:right;">${Number(it.cantidad ?? 0).toFixed(2)}</td>
+        <td>${it.registro_invima || '—'}</td>
+        <td>${it.cum || '—'}</td>
+        <td>${it.consecutivo_cum || '—'}</td>
+        <td>${it.presentacion || '—'}</td>
+        <td>${it.temperatura || '—'}</td>
+        <td style="text-align:center;">${resultadoBadge(it)}</td>
+      </tr>
+    `).join('');
+
+    const advertenciaNoCumplen = noCumplenCount > 0
+      ? `<div class="alerta-no-cumple">⚠ ${noCumplenCount} de ${totalItems} producto(s) fueron marcados como <strong>NO CUMPLE</strong> en la verificación técnica. Deben gestionarse conforme al procedimiento de rechazo, cuarentena o devolución al proveedor antes de su disposición para dispensación o venta.</div>`
+      : '';
+
+    return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Acta de Recepción Técnica ${ing.referencia ?? ing.id_ingreso}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#111827; margin:0; padding:1.5rem; background:#e5e7eb; font-size:0.78rem; }
+  .doc { max-width:1050px; margin:0 auto; background:#fff; padding:1.25rem 1.5rem 2rem; box-shadow:0 2px 12px rgba(0,0,0,0.12); }
+  .doc-header { position:relative; text-align:center; padding-bottom:0.4rem; border-bottom:3px solid #065f46; margin-bottom:0.75rem; }
+  .doc-header .brand { font-weight:800; font-size:0.85rem; color:#065f46; }
+  .doc-header .company { font-weight:700; font-size:0.95rem; margin-top:0.4rem; }
+  .doc-header .company-line { font-size:0.78rem; }
+  .doc-header .doc-title-main { margin:0.5rem 0 0.15rem; font-size:1.05rem; font-weight:800; letter-spacing:0.02em; color:#065f46; }
+  .doc-header .doc-subtitle { font-size:0.75rem; color:#4b5563; text-transform:uppercase; letter-spacing:0.03em; }
+  .doc-header .header-right { position:absolute; top:0; right:0; text-align:right; font-size:0.75rem; }
+  .marco-normativo { background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:0.6rem 0.85rem; font-size:0.72rem; color:#14532d; margin-bottom:0.75rem; }
+  .marco-normativo strong { display:block; margin-bottom:0.3rem; font-size:0.74rem; }
+  .marco-normativo ul { margin:0; padding-left:1.1rem; }
+  .marco-normativo li { margin-bottom:0.15rem; }
+  table.info { width:100%; border-collapse:collapse; margin-bottom:0.6rem; }
+  table.info th, table.info td { border:1px solid #9ca3af; padding:0.3rem 0.5rem; font-size:0.78rem; text-align:left; }
+  table.info th { background:#e5e7eb; font-weight:700; white-space:nowrap; width:1%; }
+  .section-title { font-size:0.78rem; font-weight:800; color:#065f46; text-transform:uppercase; letter-spacing:0.03em; margin:0.9rem 0 0.4rem; }
+  table.items { width:100%; border-collapse:collapse; margin-top:0.2rem; font-size:0.72rem; }
+  table.items th { background:#e5e7eb; border:1px solid #9ca3af; padding:0.3rem 0.35rem; font-weight:700; }
+  table.items td { border:1px solid #9ca3af; padding:0.3rem 0.35rem; vertical-align:top; }
+  .badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.65rem; font-weight:800; letter-spacing:0.02em; }
+  .badge-ok { background:#dcfce7; color:#166534; }
+  .badge-no { background:#fee2e2; color:#991b1b; }
+  .badge-warn { background:#fef3c7; color:#92400e; }
+  .resumen-verificacion { display:flex; gap:0.75rem; margin:0.6rem 0; flex-wrap:wrap; }
+  .resumen-verificacion .box { border:1px solid #9ca3af; border-radius:6px; padding:0.4rem 0.9rem; text-align:center; }
+  .resumen-verificacion .box strong { display:block; font-size:1.05rem; }
+  .resumen-verificacion .box span { font-size:0.68rem; color:#4b5563; text-transform:uppercase; }
+  .alerta-no-cumple { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; border-radius:6px; padding:0.6rem 0.85rem; font-size:0.76rem; margin:0.6rem 0; }
+  .totales-wrap { display:flex; justify-content:flex-end; margin-top:0.5rem; }
+  table.totales { border-collapse:collapse; min-width:300px; }
+  table.totales td { border:1px solid #9ca3af; padding:0.3rem 0.6rem; font-size:0.78rem; }
+  table.totales td:first-child { background:#e5e7eb; font-weight:700; }
+  table.totales td:last-child { text-align:right; }
+  table.totales tr.final td { font-weight:800; }
+  .obs { margin-top:0.6rem; font-size:0.78rem; color:#374151; white-space:pre-wrap; }
+  .certificacion { margin-top:1rem; font-size:0.76rem; color:#1f2937; text-align:justify; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.75rem 0.9rem; }
+  .firmas { display:grid; grid-template-columns:repeat(2, 1fr); gap:2rem; margin-top:3rem; text-align:center; font-size:0.75rem; }
+  .firmas .nombre { font-weight:700; min-height:1.1rem; margin-bottom:1.6rem; }
+  .firmas .cargo { font-size:0.7rem; color:#4b5563; }
+  .firmas .linea { border-top:1px solid #111827; padding-top:0.3rem; }
+  .print-bar { max-width:1050px; margin:0 auto 0.75rem; text-align:right; }
+  .print-bar button { background:#065f46; color:#fff; border:none; padding:0.5rem 1rem; border-radius:6px; font-size:0.85rem; cursor:pointer; }
+  @media print {
+    .print-bar { display:none; }
+    body { background:#fff; padding:0; }
+    .doc { box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-bar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+  <div class="doc">
+    <div class="doc-header">
+      <div class="header-right">
+        <div>${fechaGeneracion}</div>
+        <div>Hora: ${horaGeneracion}</div>
+      </div>
+      <div class="brand">💊 AkriPharmacy — Servicio Farmacéutico</div>
+      <div class="company">${ing.sede || '—'}${ing.bodega ? ' · ' + ing.bodega : ''}</div>
+      <div class="doc-title-main">ACTA DE RECEPCIÓN TÉCNICA</div>
+      <div class="doc-subtitle">Verificación técnica de ingreso de medicamentos y dispositivos médicos</div>
+    </div>
+
+    <div class="marco-normativo">
+      <strong>Marco normativo aplicable</strong>
+      <ul>
+        <li>Resolución 1403 de 2007 (Min. Protección Social) — Modelo de Gestión del Servicio Farmacéutico y Buenas Prácticas de Almacenamiento y Distribución.</li>
+        <li>Decreto 780 de 2016 — Decreto Único Reglamentario del Sector Salud y de Protección Social.</li>
+        <li>Decreto 2200 de 2005 — Reglamenta el servicio farmacéutico.</li>
+        <li>Resolución 3100 de 2019 — Estándares de habilitación de servicios de salud.</li>
+        <li>Decreto 677 de 1995 y normas concordantes — Registro Sanitario expedido por INVIMA.</li>
+        <li>Resolución 1403 de 2007, Anexo técnico N° 3 — Programa de cadena de frío (cuando aplique a productos termolábiles).</li>
+      </ul>
+    </div>
+
+    <div class="section-title">Datos generales de la recepción</div>
+    <table class="info">
+      <tr>
+        <th>Acta N° :</th><td>${ing.id_ingreso ?? '—'}</td>
+        <th>Referencia :</th><td>${ing.referencia ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Orden de compra :</th><td>${ing.numero_orden_compra || '—'}</td>
+        <th>Fecha de recepción :</th><td>${fmtFecha(ing.fecha_recepcion || ing.fecha_ingreso)}</td>
+      </tr>
+      <tr>
+        <th>Sede :</th><td>${ing.sede || '—'}</td>
+        <th>Bodega / Almacén :</th><td>${ing.bodega || '—'}</td>
+      </tr>
+      <tr>
+        <th>N° Factura :</th><td>${facturaStr}</td>
+        <th>CUFE :</th><td style="word-break:break-all;">${ing.cufe || '—'}</td>
+      </tr>
+      <tr>
+        <th>Estado del ingreso :</th><td colspan="3">${ing.estado ?? '—'}</td>
+      </tr>
+    </table>
+
+    <div class="section-title">Datos del proveedor</div>
+    <table class="info">
+      <tr><th>Razón social :</th><td colspan="3">${ing.proveedor_nombre || '—'}</td></tr>
+      <tr>
+        <th>Nit :</th><td>${ing.proveedor_nit || '—'}</td>
+        <th>Contacto :</th><td>${ing.proveedor_contacto || '—'}</td>
+      </tr>
+      <tr>
+        <th>Teléfono :</th><td>${ing.proveedor_telefono || '—'}</td>
+        <th>Dirección :</th><td>${ing.proveedor_direccion || '—'}</td>
+      </tr>
+    </table>
+
+    <div class="section-title">Verificación técnica por producto</div>
+    <div class="resumen-verificacion">
+      <div class="box"><strong>${totalItems}</strong><span>Productos</span></div>
+      <div class="box"><strong style="color:#166534">${cumplenCount}</strong><span>Cumplen</span></div>
+      <div class="box"><strong style="color:#991b1b">${noCumplenCount}</strong><span>No cumplen</span></div>
+      <div class="box"><strong style="color:#92400e">${sinValidarCount}</strong><span>Sin validar</span></div>
+    </div>
+    ${advertenciaNoCumplen}
+    <table class="items">
+      <thead>
+        <tr>
+          <th>Código</th><th>Producto</th><th>Laboratorio</th><th>Lote</th><th>Vencimiento</th>
+          <th>Cantidad</th><th>Reg. INVIMA</th><th>CUM</th><th>Consec. CUM</th>
+          <th>Presentación</th><th>Temp. cadena de frío</th><th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody>${filasHtml || '<tr><td colspan="12" style="text-align:center;color:#9ca3af;">Sin ítems registrados</td></tr>'}</tbody>
+    </table>
+
+    <div class="totales-wrap">
+      <table class="totales">
+        <tr><td>Total Items:</td><td>${money(ing.total_bruto)}</td></tr>
+        <tr><td>Total Descuento:</td><td>${money(ing.total_descuento)}</td></tr>
+        <tr><td>Sub-Total:</td><td>${money(ing.subtotal_neto)}</td></tr>
+        <tr><td>IVA:</td><td>${money(ing.total_iva)}</td></tr>
+        <tr class="final"><td>TOTAL RECIBIDO:</td><td>${money(ing.total_ingreso)}</td></tr>
+      </table>
+    </div>
+
+    ${ing.observaciones ? `<div class="obs"><strong>Observaciones:</strong><br>${ing.observaciones}</div>` : ''}
+
+    <div class="certificacion">
+      El(la) responsable de la verificación técnica certifica que la revisión de los productos relacionados en esta acta
+      se realizó cotejando lote, fecha de vencimiento, Registro Sanitario INVIMA, Código Único de Medicamento (CUM) y,
+      cuando corresponde, las condiciones de temperatura de cadena de frío, conforme a lo establecido en la Resolución 1403
+      de 2007 y demás normatividad vigente aplicable al servicio farmacéutico. Los productos marcados como <strong>NO CUMPLE</strong>
+      quedan identificados para su gestión de rechazo, cuarentena o devolución al proveedor, y no deben disponerse para
+      dispensación o venta hasta resolver la no conformidad.
+    </div>
+
+    <div class="firmas">
+      <div>
+        <div class="nombre">${ing.creado_por_nombre ?? ''}</div>
+        <div class="linea">Verificado y recibido por</div>
+        <div class="cargo">Químico Farmacéutico / Regente de Farmacia</div>
+      </div>
+      <div>
+        <div class="nombre">${ing.proveedor_contacto ?? ''}</div>
+        <div class="linea">Entregado por (proveedor / transportista)</div>
+        <div class="cargo">${ing.proveedor_nombre ?? ''}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   async cargarOrdenes() {

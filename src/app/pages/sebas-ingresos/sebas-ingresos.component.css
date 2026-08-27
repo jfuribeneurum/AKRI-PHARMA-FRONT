@@ -220,6 +220,13 @@
     .badge-almacenado { background: #dbeafe; color: #1e40af; }
     .badge-cancelado  { background: #fee2e2; color: #991b1b; }
     .ing-expand-panel { padding: 0.65rem 0.9rem 0.8rem; border-top: 1px solid var(--color-border, #e5e7eb); background: var(--color-surface-2, #f9fafb); }
+    .acta-btn {
+      padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600;
+      border: 1.5px solid #065f46; color: #065f46; background: transparent;
+      cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+    }
+    .acta-btn:hover:not(:disabled) { opacity: 0.75; }
+    .acta-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .preview-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
     .preview-table th { background: var(--color-surface, #fff); padding: 0.3rem 0.5rem; text-align: left; font-weight: 600; font-size: 0.76rem; color: #6b7280; border-bottom: 1px solid var(--color-border, #e5e7eb); }
     .preview-table td { padding: 0.28rem 0.5rem; border-bottom: 1px solid var(--color-border, #f3f4f6); }
@@ -247,5 +254,6 @@
     :host-context([data-theme="dark"]) .badge-almacenado { background: rgba(96,165,250,0.12);  color: #93C5FD; }
     :host-context([data-theme="dark"]) .badge-cancelado  { background: rgba(248,113,113,0.12); color: #FCA5A5; }
     :host-context([data-theme="dark"]) .ing-expand-panel { background: rgba(255,255,255,0.03); }
+    :host-context([data-theme="dark"]) .acta-btn { border-color: #6EE7B7; color: #6EE7B7; }
     :host-context([data-theme="dark"]) .preview-table th { background: transparent; }
     :host-context([data-theme="dark"]) .empty-msg { color: var(--muted); }

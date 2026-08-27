@@ -42,6 +42,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   readonly successModalTitle = signal('¡Orden creada!');
   readonly successModalSubtitle = signal('La orden de compra fue registrada correctamente.');
   readonly editingOrderId = signal<number | null>(null);
+  readonly pdfGenerando = signal<number | null>(null);
   tiposIdentificacion: { valor: string; etiqueta: string }[] = [];
 
   readonly isEditMode = computed(() => this.editingOrderId() !== null);
@@ -454,6 +455,231 @@ export class SebasPurchaseOrderComponent implements OnInit {
     } catch (err: any) {
       this.error.set(err?.error?.message || 'No se pudo cancelar la orden.');
     }
+  }
+
+  // Genera el documento formal de la orden de compra para enviar al
+  // proveedor. No se guarda en el servidor: se arma en el navegador (igual
+  // que los soportes de Dispensación) y se abre en una pestaña nueva, desde
+  // donde se imprime o se guarda como PDF con el diálogo del navegador.
+  async generarPdfOrden(row: any) {
+    if (this.pdfGenerando() != null) return;
+    this.error.set('');
+    this.pdfGenerando.set(row.id_oc);
+    try {
+      const res: any = await this.api.get(`/purchases/${row.id_oc}`);
+      const oc = res?.data ?? res;
+      const prov = this.allProviders().find(p => p.id_proveedor === oc.id_proveedor);
+
+      // La orden guarda las notas del usuario y un bloque de metadatos de
+      // texto libre juntos en observaciones (ver buildPayload): "notas +
+      // Item 1: ... + Sede: ...". Cuando no hay notas del usuario, el texto
+      // empieza directo en "Item 1:" (sin salto de línea previo), así que
+      // buscar solo "\nItem " lo pasa por alto y termina mostrando todo el
+      // bloque técnico en el PDF — se busca también el caso "^Item 1:".
+      const rawObs: string = oc.observaciones ?? '';
+      const itemsMatch = rawObs.search(/(?:^|\n\n)Item 1: /);
+      const notas = (itemsMatch > -1 ? rawObs.slice(0, itemsMatch) : rawObs).trim();
+
+      const html = this.buildOrdenCompraHtml(oc, prov, notas);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err: any) {
+      this.error.set(err?.error?.message ?? 'No fue posible generar el PDF de la orden.');
+    } finally {
+      this.pdfGenerando.set(null);
+    }
+  }
+
+  // Diseño calcado del formato de Orden de Compra que ya se usa en la
+  // operación real (tablas densas con borde, bloque de firmas al pie) — no
+  // el estilo de tarjeta a color usado en los soportes de Dispensación.
+  private buildOrdenCompraHtml(oc: any, prov: any, notas: string): string {
+    const ahora = new Date();
+    const horaGeneracion = ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const fechaGeneracion = ahora.toLocaleDateString('es-CO');
+    const fechaOc = oc.fecha ? new Date(oc.fecha).toLocaleDateString('es-CO') : '—';
+    const items: any[] = Array.isArray(oc.items) ? oc.items : [];
+    const money = (n: number) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const identificacion = prov
+      ? `${prov.tipo_identificacion ?? ''} ${prov.numero_identificacion ?? ''}${prov.digito_verificacion ? '-' + prov.digito_verificacion : ''}`.trim()
+      : '—';
+
+    const totalItems = items.reduce((s, it) => s + Number(it.cantidad ?? 0) * Number(it.precio_unitario ?? 0), 0);
+
+    // Bod. / % Dct / % IVA / % INC / % Csm no se registran hoy por ítem en
+    // el módulo de órdenes de compra (impuesto/descuento siempre se guardan
+    // en 0, ver buildPayload) — se muestran en 0.00 reflejando el dato real
+    // guardado, no un valor inventado.
+    const filasHtml = items.map(it => `
+      <tr>
+        <td>${it.codigo ?? '—'}</td>
+        <td>${it.nombre_comercial ?? '—'}${it.concentracion ? ' ' + it.concentracion : ''}</td>
+        <td>${it.laboratorio_nombre ?? '—'}</td>
+        <td style="text-align:center;">—</td>
+        <td style="text-align:right;">0.00</td>
+        <td style="text-align:right;">0.00</td>
+        <td style="text-align:right;">0.00</td>
+        <td style="text-align:right;">0.00</td>
+        <td style="text-align:right;">${Number(it.cantidad ?? 0).toFixed(2)}</td>
+        <td style="text-align:right;">${money(it.precio_unitario)}</td>
+        <td style="text-align:right;">${money(Number(it.cantidad ?? 0) * Number(it.precio_unitario ?? 0))}</td>
+      </tr>
+    `).join('');
+
+    return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Orden de Compra ${oc.numero_oc}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#111827; margin:0; padding:1.5rem; background:#e5e7eb; font-size:0.78rem; }
+  .doc { max-width:1000px; margin:0 auto; background:#fff; padding:1.25rem 1.5rem 2rem; box-shadow:0 2px 12px rgba(0,0,0,0.12); }
+  .doc-header { position:relative; text-align:center; padding-bottom:0.5rem; }
+  .doc-header .company { font-weight:800; font-size:1rem; margin-bottom:2px; }
+  .doc-header .company-line { font-size:0.78rem; }
+  .doc-header .doc-title-main { margin:0.5rem 0 0; font-size:1.05rem; font-weight:800; letter-spacing:0.03em; }
+  .doc-header .header-right { position:absolute; top:0; right:0; text-align:right; font-size:0.78rem; }
+  .page-info-row { display:flex; justify-content:space-between; font-size:0.75rem; margin:0.6rem 0; }
+  table.info { width:100%; border-collapse:collapse; margin-bottom:0.6rem; }
+  table.info th, table.info td { border:1px solid #9ca3af; padding:0.3rem 0.5rem; font-size:0.78rem; text-align:left; }
+  table.info th { background:#e5e7eb; font-weight:700; white-space:nowrap; width:1%; }
+  table.items { width:100%; border-collapse:collapse; margin-top:0.4rem; font-size:0.75rem; }
+  table.items th { background:#e5e7eb; border:1px solid #9ca3af; padding:0.35rem 0.4rem; font-weight:700; }
+  table.items td { border:1px solid #9ca3af; padding:0.35rem 0.4rem; vertical-align:top; }
+  table.items tfoot td { font-weight:800; border:1px solid #9ca3af; }
+  .totales-wrap { display:flex; justify-content:flex-end; margin-top:0.6rem; }
+  table.totales { border-collapse:collapse; min-width:320px; }
+  table.totales td { border:1px solid #9ca3af; padding:0.3rem 0.6rem; font-size:0.78rem; }
+  table.totales td:first-child { background:#e5e7eb; font-weight:700; }
+  table.totales td:last-child { text-align:right; }
+  table.totales tr.final td { font-weight:800; }
+  .firmas { display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-top:3rem; text-align:center; font-size:0.75rem; }
+  .firmas .nombre { font-weight:700; min-height:1.1rem; margin-bottom:1.6rem; }
+  .firmas .linea { border-top:1px solid #111827; padding-top:0.3rem; }
+  .print-bar { max-width:1000px; margin:0 auto 0.75rem; text-align:right; }
+  .print-bar button { background:#1d4ed8; color:#fff; border:none; padding:0.5rem 1rem; border-radius:6px; font-size:0.85rem; cursor:pointer; }
+  @media print {
+    .print-bar { display:none; }
+    body { background:#fff; padding:0; }
+    .doc { box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-bar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+  <div class="doc">
+    <div class="doc-header">
+      <div class="header-right">
+        <div>${fechaGeneracion}</div>
+        <div>Hora: ${horaGeneracion}</div>
+      </div>
+      <div class="company">${oc.sede_nombre ?? 'AkriPharmacy'}</div>
+      <div class="company-line">Dirección: ${oc.sede_direccion ?? '—'}</div>
+      <div class="company-line">Ciudad: ${oc.sede_ciudad ?? '—'}</div>
+      <div class="company-line">Teléfonos: ${oc.sede_telefono ?? '—'}</div>
+      <div class="doc-title-main">ORDEN DE COMPRA</div>
+    </div>
+
+    <div class="page-info-row">
+      <span>Página: 1 de 1</span>
+      <span>Fecha de generación: ${fechaGeneracion} ${horaGeneracion}</span>
+    </div>
+
+    <table class="info">
+      <tr>
+        <th>Consecutivo :</th><td>${oc.numero_oc ?? '—'}</td>
+        <th>Consecutivo BU :</th><td>—</td>
+        <th>BU :</th><td>—</td>
+      </tr>
+      <tr>
+        <th>Fecha :</th><td>${fechaOc}</td>
+        <th>Fecha Entrega :</th><td>—</td>
+        <th>Días de Plazo :</th><td>—</td>
+      </tr>
+      <tr>
+        <th>Forma de Pago :</th><td>—</td>
+        <th>Moneda :</th><td>COP - PESO COLOMBIANO</td>
+        <th>Estado :</th><td>${oc.estado ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Requisición :</th><td>—</td>
+        <th>Doc/Rel :</th><td>—</td>
+        <td colspan="2"></td>
+      </tr>
+      <tr>
+        <th>Detalles :</th><td colspan="5">${oc.sede_direccion ?? '—'} — ${oc.sede_ciudad ?? '—'}</td>
+      </tr>
+    </table>
+
+    <table class="info">
+      <tr><th>Observaciones :</th><td colspan="3">${notas || '—'}</td></tr>
+      <tr><th>Proveedor :</th><td colspan="3">${oc.proveedor_nombre ?? '—'}</td></tr>
+      <tr>
+        <th>Nit :</th><td>${identificacion}</td>
+        <th>Teléfono :</th><td>${prov?.telefono ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Dirección :</th><td>${prov?.direccion ?? '—'}${prov?.ciudad ? ' · ' + prov.ciudad : ''}</td>
+        <th>Fax :</th><td>—</td>
+      </tr>
+    </table>
+
+    <table class="items">
+      <thead>
+        <tr>
+          <th>Código</th><th>Nombre</th><th>Presentación</th><th>Bod.</th>
+          <th>% Dct</th><th>% IVA</th><th>% INC</th><th>% Csm</th>
+          <th>Cantidad</th><th>V. Unidad</th><th>Total</th>
+        </tr>
+      </thead>
+      <tbody>${filasHtml}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="10">Total Items</td>
+          <td style="text-align:right;">${money(totalItems)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="totales-wrap">
+      <table class="totales">
+        <tr><td>Total Items:</td><td>${money(totalItems)}</td></tr>
+        <tr><td>Total Descuento:</td><td>${money(0)}</td></tr>
+        <tr><td>Sub-Total:</td><td>${money(oc.subtotal)}</td></tr>
+        <tr><td>IVA:</td><td>${money(oc.impuestos)}</td></tr>
+        <tr><td>INC:</td><td>${money(0)}</td></tr>
+        <tr><td>Impuestos Aplicados:</td><td>${money(oc.impuestos)}</td></tr>
+        <tr><td>Otros Costos:</td><td>${money(0)}</td></tr>
+        <tr><td>Total Otros Conceptos:</td><td>${money(0)}</td></tr>
+        <tr class="final"><td>TOTAL ORDEN DE COMPRA:</td><td>${money(oc.total)}</td></tr>
+      </table>
+    </div>
+
+    <div class="firmas">
+      <div>
+        <div class="nombre">${oc.creado_por_nombre ?? ''}</div>
+        <div class="linea">Elaborado Por</div>
+      </div>
+      <div>
+        <div class="nombre"></div>
+        <div class="linea">Preaprobado Por</div>
+      </div>
+      <div>
+        <div class="nombre">${oc.aprobado_por_nombre ?? ''}</div>
+        <div class="linea">Aprobado Por</div>
+      </div>
+      <div>
+        <div class="nombre"></div>
+        <div class="linea">Recibido Por</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   private buildPayload() {

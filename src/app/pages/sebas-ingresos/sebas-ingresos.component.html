@@ -69,11 +69,16 @@
                       <span class="ing-creador">Registrado por: {{ ing.creado_por_nombre }}</span>
                     }
                   </div>
-                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.05rem;flex-shrink:0">
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0">
                     <span class="ing-badge badge-recibido">
                       {{ ing.estado }}
                     </span>
                     <span style="font-size:0.8rem;font-weight:600">{{ ing.cantidad }} uds.</span>
+                    <button class="acta-btn"
+                            [disabled]="actaGenerando() === ing.id_ingreso"
+                            (click)="generarActaRecepcion(ing, $event)">
+                      {{ actaGenerando() === ing.id_ingreso ? 'Generando…' : '📋 Acta de recepción' }}
+                    </button>
                   </div>
                 </div>
                 @if (expandedIngreso() === ing.id_ingreso && ing._items?.length > 0) {

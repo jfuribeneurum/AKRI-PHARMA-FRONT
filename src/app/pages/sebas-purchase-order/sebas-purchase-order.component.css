@@ -55,6 +55,8 @@
     .btn-action.edit    { border-color: #d97706; color: #d97706; background: transparent; }
     .btn-action.approve { border-color: #16a34a; color: #16a34a; background: transparent; }
     .btn-action.cancel-oc { border-color: #dc2626; color: #dc2626; background: transparent; }
+    .btn-action.pdf { border-color: #1d4ed8; color: #1d4ed8; background: transparent; }
+    .btn-action.pdf:disabled { opacity: 0.5; cursor: not-allowed; }
     .empty-row td { text-align: center; color: #9ca3af; padding: 1.5rem; }
 
     /* ── secciones del formulario ────────────────────────────── */
@@ -175,6 +177,7 @@
     :host-context([data-theme="dark"]) .btn-action.edit    { border-color: #FCD34D; color: #FCD34D; }
     :host-context([data-theme="dark"]) .btn-action.approve { border-color: #4ADE80; color: #4ADE80; }
     :host-context([data-theme="dark"]) .btn-action.cancel-oc { border-color: #F87171; color: #F87171; }
+    :host-context([data-theme="dark"]) .btn-action.pdf { border-color: #93C5FD; color: #93C5FD; }
     :host-context([data-theme="dark"]) .empty-row td { color: var(--muted); }
     :host-context([data-theme="dark"]) .btn-remove { color: var(--danger); }
     :host-context([data-theme="dark"]) .btn-remove:hover { color: #FCA5A5; }
