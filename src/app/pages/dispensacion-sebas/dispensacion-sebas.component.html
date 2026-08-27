@@ -73,53 +73,55 @@
 
                   <!-- Fila superior: info + controles -->
                   <div class="disp-med-card__top">
-                    <div class="disp-med-card__info">
-                      <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
-                      <div class="disp-med-card__meta">
-                        @if (item.med.presentacion) {
-                          <span>{{ item.med.presentacion }}</span>
-                        }
-                        @if (item.med.viaAdministracion) {
-                          <span class="disp-med-card__sep">·</span>
-                          <span>{{ item.med.viaAdministracion }}</span>
-                        }
-                        @if (item.med.pbs) {
-                          <span class="chip success" style="font-size:0.6rem; margin-left:4px;">PBS</span>
-                        }
+                    <div class="disp-med-card__info disp-med-card__info--clickable" (click)="toggleMedCard(item)">
+                      <span class="disp-med-card__caret">{{ isMedExpanded(item) ? '▾' : '▸' }}</span>
+                      <div>
+                        <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
+                        <div class="disp-med-card__meta">
+                          @if (item.med.presentacion) {
+                            <span>{{ item.med.presentacion }}</span>
+                          }
+                          @if (item.med.viaAdministracion) {
+                            <span class="disp-med-card__sep">·</span>
+                            <span>{{ item.med.viaAdministracion }}</span>
+                          }
+                          @if (item.med.pbs) {
+                            <span class="chip success" style="font-size:0.6rem; margin-left:4px;">PBS</span>
+                          }
+                        </div>
                       </div>
                     </div>
 
                     <div class="disp-med-card__right">
-                      <div class="disp-med-card__stats">
-                        <div class="dsm dsm--neutral">
-                          <span class="dsm__v">{{ item.med.cantidad }}</span>
-                          <span class="dsm__l">Form.</span>
+                      @if (isMedExpanded(item)) {
+                        <div class="disp-med-card__stats">
+                          <div class="dsm dsm--neutral">
+                            <span class="dsm__v">{{ item.med.cantidad }}</span>
+                            <span class="dsm__l">Form.</span>
+                          </div>
+                          <div class="dsm dsm--purple">
+                            <input class="dsm__input" type="number" min="0"
+                                   [ngModel]="item.cantidad"
+                                   (ngModelChange)="updateControlDeEntrega(item, $event)"
+                                   [max]="getMedEntregaMax(item.med)">
+                            <span class="dsm__l">Control de entrega</span>
+                          </div>
+                          <div class="dsm dsm--blue">
+                            <input class="dsm__input" type="number" min="0"
+                                   [ngModel]="item.cantidadDispensadaOverride"
+                                   (ngModelChange)="setDispensadaOverride(item, $event)">
+                            <span class="dsm__l">Cant. dispensada</span>
+                          </div>
+                          <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
+                            <span class="dsm__v">{{ getPendiente(item) }}</span>
+                            <span class="dsm__l">Cant. pendiente</span>
+                          </div>
+                          <div class="dsm" [class]="getFaltante(item) === 0 ? 'dsm--green' : 'dsm--red'">
+                            <span class="dsm__v">{{ getFaltante(item) }}</span>
+                            <span class="dsm__l">Cant. faltante</span>
+                          </div>
                         </div>
-                        <div class="dsm dsm--purple">
-                          <input class="dsm__input" type="number" min="0"
-                                 [ngModel]="item.cantidad"
-                                 (ngModelChange)="updateControlDeEntrega(item, $event)"
-                                 [max]="getMedEntregaMax(item.med)">
-                          <span class="dsm__l">Control de entrega</span>
-                        </div>
-                        <div class="dsm dsm--blue">
-                          <input class="dsm__input" type="number" min="0"
-                                 [ngModel]="item.cantidadDispensadaOverride"
-                                 (ngModelChange)="setDispensadaOverride(item, $event)">
-                          <span class="dsm__l">Cant. dispensada</span>
-                        </div>
-                        <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
-                          <span class="dsm__v">{{ getPendiente(item) }}</span>
-                          <span class="dsm__l">Cant. pendiente</span>
-                        </div>
-                        <div class="dsm" [class]="getFaltante(item) === 0 ? 'dsm--green' : 'dsm--red'">
-                          <span class="dsm__v">{{ getFaltante(item) }}</span>
-                          <span class="dsm__l">Cant. faltante</span>
-                        </div>
-                      </div>
-                      <div class="disp-med-card__dispensada-hint">
-                        Antes de esta entrega ya iba en <strong>{{ item.dispensadaOriginal }}</strong> — si editas "Cant. dispensada", escribe el <strong>NUEVO TOTAL</strong> (no solo lo de hoy). Si no la tocas, se suma sola sin riesgo.
-                      </div>
+                      }
 
                       @if (!item.med.idProductoLocal) {
                         <div class="disp-med-card__no-mx-badge">Sin MX</div>
@@ -129,59 +131,65 @@
                     </div>
                   </div>
 
-                  <!-- Disponibilidad por laboratorio -->
-                  <div class="disp-med-stock">
-                    @if (!item.med.idProductoLocal) {
-                      <span class="disp-med-stock__msg disp-med-stock__msg--warn">
-                        ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
-                      </span>
-                    } @else if (item.cantidad === 0) {
-                      <span class="disp-med-stock__msg">Escribe una cantidad en "Control de entrega" para ver los lotes disponibles.</span>
-                    } @else if (stockLoading().has(item.med.idProductoLocal)) {
-                      <span class="disp-med-stock__msg">Cargando stock…</span>
-                    } @else if (getMedStock(item.med.idProductoLocal).length === 0) {
-                      <span class="disp-med-stock__msg disp-med-stock__msg--empty">Sin stock disponible en inventario</span>
-                    } @else {
-                      <div class="disp-med-stock__header">
-                        <span class="disp-med-stock__label">Disponibilidad por laboratorio</span>
-                        <span class="disp-med-stock__asignado" [class.disp-med-stock__asignado--ok]="getAsignadoValido(item)">
-                          @if (getAsignadoValido(item)) {
-                            ✓ Unidades completas ({{ getAsignado(item) }}/{{ item.cantidad }})
-                          } @else {
-                            Asignado {{ getAsignado(item) }}/{{ item.cantidad }} — faltan {{ item.cantidad - getAsignado(item) }} por asignar
-                          }
+                  @if (isMedExpanded(item)) {
+                    <div class="disp-med-card__dispensada-hint">
+                      Antes de esta entrega ya iba en <strong>{{ item.dispensadaOriginal }}</strong> — si editas "Cant. dispensada", escribe el <strong>NUEVO TOTAL</strong> (no solo lo de hoy). Si no la tocas, se suma sola sin riesgo.
+                    </div>
+
+                    <!-- Disponibilidad por laboratorio -->
+                    <div class="disp-med-stock">
+                      @if (!item.med.idProductoLocal) {
+                        <span class="disp-med-stock__msg disp-med-stock__msg--warn">
+                          ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
                         </span>
-                        <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idProductoLocal) }} uds totales</span>
-                      </div>
-                      <div class="disp-med-stock__rows">
-                        @for (lot of getMedStock(item.med.idProductoLocal); track loteKey(lot)) {
-                          <div class="disp-med-stock__row">
-                            <span class="disp-med-stock__lab">{{ lot.laboratorio_nombre || '—' }}</span>
-                            <span class="disp-med-stock__sep">·</span>
-                            <span class="disp-med-stock__lote">Lote {{ lot.numero_lote }}</span>
-                            <span class="disp-med-stock__sep">·</span>
-                            <span class="disp-med-stock__vence">Vence {{ lot.fecha_vencimiento | date:'dd/MM/yyyy' }}</span>
-                            <span class="disp-med-stock__sep">·</span>
-                            <span class="disp-med-stock__almacen">{{ lot.almacen }}</span>
-                            <span class="disp-med-stock__qty">{{ lot.cantidad_disponible }} uds</span>
-                            <input class="disp-med-stock__check" type="checkbox"
-                                   [checked]="isLoteChecked(item, lot)"
-                                   (change)="toggleLote(item, lot, $any($event.target).checked)"
-                                   title="Usar este lote">
-                            @if (isLoteChecked(item, lot) && (!getAsignadoValido(item) || getLotesMarcados(item) > 1)) {
-                              <input class="disp-med-stock__pick" type="number" min="0"
-                                     [max]="lot.cantidad_disponible"
-                                     [ngModel]="item.loteSeleccion[loteKey(lot)] || 0"
-                                     (ngModelChange)="setLoteQty(item, lot, $event)"
-                                     title="Cantidad a tomar de este lote">
-                            } @else if (isLoteChecked(item, lot)) {
-                              <span class="disp-med-stock__assigned">{{ item.loteSeleccion[loteKey(lot)] }} uds asignadas</span>
+                      } @else if (item.cantidad === 0) {
+                        <span class="disp-med-stock__msg">Escribe una cantidad en "Control de entrega" para ver los lotes disponibles.</span>
+                      } @else if (stockLoading().has(item.med.idProductoLocal)) {
+                        <span class="disp-med-stock__msg">Cargando stock…</span>
+                      } @else if (getMedStock(item.med.idProductoLocal).length === 0) {
+                        <span class="disp-med-stock__msg disp-med-stock__msg--empty">Sin stock disponible en inventario</span>
+                      } @else {
+                        <div class="disp-med-stock__header">
+                          <span class="disp-med-stock__label">Disponibilidad por laboratorio</span>
+                          <span class="disp-med-stock__asignado" [class.disp-med-stock__asignado--ok]="getAsignadoValido(item)">
+                            @if (getAsignadoValido(item)) {
+                              ✓ Unidades completas ({{ getAsignado(item) }}/{{ item.cantidad }})
+                            } @else {
+                              Asignado {{ getAsignado(item) }}/{{ item.cantidad }} — faltan {{ item.cantidad - getAsignado(item) }} por asignar
                             }
-                          </div>
-                        }
-                      </div>
-                    }
-                  </div>
+                          </span>
+                          <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idProductoLocal) }} uds totales</span>
+                        </div>
+                        <div class="disp-med-stock__rows">
+                          @for (lot of getMedStock(item.med.idProductoLocal); track loteKey(lot)) {
+                            <div class="disp-med-stock__row">
+                              <span class="disp-med-stock__lab">{{ lot.laboratorio_nombre || '—' }}</span>
+                              <span class="disp-med-stock__sep">·</span>
+                              <span class="disp-med-stock__lote">Lote {{ lot.numero_lote }}</span>
+                              <span class="disp-med-stock__sep">·</span>
+                              <span class="disp-med-stock__vence">Vence {{ lot.fecha_vencimiento | date:'dd/MM/yyyy' }}</span>
+                              <span class="disp-med-stock__sep">·</span>
+                              <span class="disp-med-stock__almacen">{{ lot.almacen }}</span>
+                              <span class="disp-med-stock__qty">{{ lot.cantidad_disponible }} uds</span>
+                              <input class="disp-med-stock__check" type="checkbox"
+                                     [checked]="isLoteChecked(item, lot)"
+                                     (change)="toggleLote(item, lot, $any($event.target).checked)"
+                                     title="Usar este lote">
+                              @if (isLoteChecked(item, lot) && (!getAsignadoValido(item) || getLotesMarcados(item) > 1)) {
+                                <input class="disp-med-stock__pick" type="number" min="0"
+                                       [max]="lot.cantidad_disponible"
+                                       [ngModel]="item.loteSeleccion[loteKey(lot)] || 0"
+                                       (ngModelChange)="setLoteQty(item, lot, $event)"
+                                       title="Cantidad a tomar de este lote">
+                              } @else if (isLoteChecked(item, lot)) {
+                                <span class="disp-med-stock__assigned">{{ item.loteSeleccion[loteKey(lot)] }} uds asignadas</span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
 
                 </div>
               }
@@ -233,6 +241,11 @@
               <span class="disp-modal__header-sup">Histórico de entregas</span>
               <strong class="disp-modal__header-med">{{ selectedDetail()?.nombre_paciente }}</strong>
             </div>
+            @if (historial().length > 0) {
+              <button class="btn btn-small btn-outline" style="margin-right:0.5rem;" (click)="generarPdfHistorialGeneral()">
+                📄 Generar PDF general
+              </button>
+            }
             <button class="disp-modal__close" (click)="cerrarHistorial()" title="Cerrar">✕</button>
           </div>
 
@@ -246,7 +259,6 @@
                 <thead>
                   <tr>
                     <th>Fecha</th>
-                    <th>Medicamento</th>
                     <th>Lote</th>
                     <th>Almacén</th>
                     <th>Cantidad</th>
@@ -257,7 +269,6 @@
                   @for (h of historial(); track h.id_movimiento) {
                     <tr>
                       <td>{{ h.fecha_hora | date:'dd/MM/yyyy HH:mm' }}</td>
-                      <td>{{ h.nombre_medicamento }}</td>
                       <td>{{ h.numero_lote || '—' }}</td>
                       <td>{{ h.almacen || '—' }}</td>
                       <td style="text-align:center; font-weight:700;">{{ h.cantidad }}</td>
@@ -284,6 +295,11 @@
               <span class="disp-modal__header-sup">Soportes de entrega</span>
               <strong class="disp-modal__header-med">{{ soportesListDetail()?.nombre_paciente }}</strong>
             </div>
+            @if (soportesListGrupos().length > 0) {
+              <button class="btn btn-small btn-outline" style="margin-right:0.5rem;" (click)="generarPdfSoportesGeneral()">
+                📄 Generar PDF general
+              </button>
+            }
             <button class="disp-modal__close" (click)="cerrarSoportesLista()" title="Cerrar">✕</button>
           </div>
 

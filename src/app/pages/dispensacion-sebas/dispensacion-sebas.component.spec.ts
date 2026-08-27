@@ -177,6 +177,31 @@ describe('DispensacionSebasComponent', () => {
     });
   });
 
+  describe('isMedExpanded / toggleMedCard (solo un MX visible a la vez cuando hay varios)', () => {
+    it('toggling a collapsed item expands it and collapses whatever was open', () => {
+      const itemA = makeItem({ med: makeMed({ id_med_formulacion: 1 }) });
+      const itemB = makeItem({ med: makeMed({ id_med_formulacion: 2 }) });
+      component.expandedMedId.set(1);
+      expect(component.isMedExpanded(itemA)).toBe(true);
+      expect(component.isMedExpanded(itemB)).toBe(false);
+
+      component.toggleMedCard(itemB);
+
+      expect(component.isMedExpanded(itemA)).toBe(false);
+      expect(component.isMedExpanded(itemB)).toBe(true);
+    });
+
+    it('toggling the already-expanded item collapses it', () => {
+      const item = makeItem({ med: makeMed({ id_med_formulacion: 1 }) });
+      component.expandedMedId.set(1);
+
+      component.toggleMedCard(item);
+
+      expect(component.isMedExpanded(item)).toBe(false);
+      expect(component.expandedMedId()).toBeNull();
+    });
+  });
+
   describe('getMedEntregaMax', () => {
     it('is limited by available stock even when more is pending', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 24, control: null });

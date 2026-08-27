@@ -112,6 +112,10 @@ export class DispensacionSebasComponent implements OnInit {
 
   showModal       = signal(false);
   modalFormItems  = signal<ModalFormItem[]>([]);
+  // Cuando hay varios MX en la formulación, solo se muestran los controles
+  // completos del que se está trabajando — los demás quedan colapsados a
+  // solo el nombre hasta que se les da click.
+  expandedMedId   = signal<number | null>(null);
   modalObs        = '';
   modalContrato   = '';
   modalRegimen    = '';
@@ -290,6 +294,14 @@ export class DispensacionSebasComponent implements OnInit {
     ));
   }
 
+  isMedExpanded(item: ModalFormItem): boolean {
+    return this.expandedMedId() === item.med.id_med_formulacion;
+  }
+
+  toggleMedCard(item: ModalFormItem) {
+    this.expandedMedId.set(this.isMedExpanded(item) ? null : item.med.id_med_formulacion);
+  }
+
   getMedEntregaMax(med: MedicamentoFormulacion): number {
     const pendiente = this.getMedRestante(med);
     const stock = med.idProductoLocal ? this.getMedStockTotal(med.idProductoLocal) : 0;
@@ -427,17 +439,136 @@ export class DispensacionSebasComponent implements OnInit {
     this.showHistorial.set(false);
   }
 
+  // PDF consolidado con TODO el histórico de entregas de la formulación en un
+  // solo documento (a diferencia de "Soportes de entrega", que abre un PDF
+  // individual por cada acción de guardado). Diseño con acento distinto
+  // (teal) para que no se confunda visualmente con el soporte de entrega.
+  generarPdfHistorialGeneral() {
+    const detail = this.selectedDetail();
+    if (!detail) return;
+    const html = this.buildHistorialGeneralHtml(detail, this.historial());
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  private buildHistorialGeneralHtml(detail: FormulacionDetail, filas: any[]): string {
+    const impresionStr = new Date().toLocaleDateString('es-CO') + ' ' + new Date().toLocaleTimeString('es-CO');
+    const totalUnidades = filas.reduce((s, f) => s + Number(f.cantidad || 0), 0);
+    const codigo = `HG-${detail.id_formulacion}-${Date.now()}`;
+
+    const filasHtml = filas.map(f => `
+      <tr>
+        <td>${new Date(f.fecha_hora).toLocaleDateString('es-CO')} ${new Date(f.fecha_hora).toLocaleTimeString('es-CO')}</td>
+        <td>${f.nombre_medicamento ?? '—'}</td>
+        <td>${f.numero_lote ?? '—'}</td>
+        <td>${f.almacen ?? '—'}</td>
+        <td style="text-align:center; font-weight:700;">${f.cantidad ?? 0}</td>
+        <td>${f.usuario ?? '—'}</td>
+      </tr>
+    `).join('');
+
+    return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reporte General de Histórico - ${codigo}</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color:#1e293b; margin:0; padding:2rem; background:#f8fafc; }
+  .doc { max-width:900px; margin:0 auto; background:#fff; border-radius:4px; box-shadow:0 4px 24px rgba(0,0,0,0.08); overflow:hidden; }
+  .doc-header { display:flex; justify-content:space-between; align-items:flex-start; padding:1.25rem 2rem; border-bottom:3px solid #0d9488; background:#f0fdfa; }
+  .doc-header .brand { font-size:1.15rem; font-weight:800; color:#0d9488; }
+  .doc-header .brand small { display:block; font-weight:400; font-size:0.72rem; color:#64748b; margin-top:2px; }
+  .doc-header .meta { text-align:right; font-size:0.75rem; color:#64748b; }
+  .doc-title { text-align:center; padding:1rem 2rem 0.4rem; }
+  .doc-title h1 { margin:0; font-size:1.1rem; letter-spacing:0.05em; text-transform:uppercase; color:#0d9488; }
+  .doc-title span { font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.04em; }
+  .doc-body { padding:1rem 2rem 1.5rem; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 2rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #e2e8f0; }
+  .field { font-size:0.85rem; }
+  .field span { display:block; color:#94a3b8; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em; }
+  .field strong { font-size:0.95rem; }
+  .resumen { display:flex; gap:1.5rem; margin-bottom:1rem; }
+  .resumen .box { background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:0.6rem 1rem; text-align:center; }
+  .resumen .box strong { display:block; font-size:1.2rem; color:#0d9488; }
+  .resumen .box span { font-size:0.7rem; color:#64748b; text-transform:uppercase; }
+  table { width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.82rem; }
+  th { background:#f0fdfa; text-align:left; padding:0.5rem 0.6rem; color:#0d9488; font-size:0.72rem; text-transform:uppercase; }
+  td { padding:0.5rem 0.6rem; border-bottom:1px solid #e2e8f0; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  .footer { padding:1rem 2rem; font-size:0.7rem; color:#94a3b8; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; }
+  .print-bar { max-width:900px; margin:0 auto 1rem; text-align:right; }
+  .print-bar button { background:#0d9488; color:#fff; border:none; padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; cursor:pointer; }
+  @media print {
+    .print-bar { display:none; }
+    body { background:#fff; padding:0; }
+    .doc { box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-bar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+  <div class="doc">
+    <div class="doc-header">
+      <div class="brand">💊 AkriPharmacy<small>Sistema de gestión farmacéutica</small></div>
+      <div class="meta">Fecha de impresión<br><strong>${impresionStr}</strong></div>
+    </div>
+    <div class="doc-title">
+      <span>Reporte consolidado</span>
+      <h1>Histórico General de Entregas</h1>
+    </div>
+    <div class="doc-body">
+      <div class="grid">
+        <div class="field"><span>Paciente</span><strong>${detail.nombre_paciente}</strong></div>
+        <div class="field"><span>Documento</span><strong>${detail.documento_paciente}</strong></div>
+      </div>
+      <div class="resumen">
+        <div class="box"><strong>${filas.length}</strong><span>Movimientos</span></div>
+        <div class="box"><strong>${totalUnidades}</strong><span>Unidades entregadas</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Fecha</th><th>Medicamento</th><th>Lote</th><th>Almacén</th><th>Cantidad</th><th>Usuario</th></tr></thead>
+        <tbody>${filasHtml}</tbody>
+      </table>
+    </div>
+    <div class="footer">
+      <span>AkriPharmacy — Documento generado automáticamente por el sistema</span>
+      <span>${codigo}</span>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
   // Siempre recarga el detalle desde el servidor antes de sembrar el modal:
   // selectedDetail() puede estar desactualizado si el usuario dispensa varias
   // rondas seguidas antes de que termine el refresco automático de la ronda
-  // anterior, y sembrar con un total histórico viejo hace que el
-  // autocompletado de "Cant. dispensada" calcule mal el nuevo acumulado.
+  // anterior, y sembrar con un total histórico viejo hace que "Cant.
+  // Faltante" calcule mal.
+  //
+  // dispensadaOriginal NO se toma de dispensacion_hs_control.cantidad_dispensada
+  // (ese campo se puede desincronizar si alguien manda un override manual
+  // equivocado en "Cant. dispensada") — se calcula sumando el histórico real
+  // de movimientos_inventario, que es el registro append-only de lo que
+  // físicamente salió del inventario. Así "Cant. Faltante" es siempre
+  // correcto sin importar qué le pase al acumulado cacheado.
   async openFormulacionModal() {
     const current = this.selectedDetail();
     if (!current) return;
     await this.loadDetail(current.id_formulacion);
     const detail = this.selectedDetail();
     if (!detail) return;
+
+    const entregadoReal: Record<number, number> = {};
+    try {
+      const histRes = await this.api.get<any>(`/dispensacion-hs/formulacion/${detail.id_formulacion}/historial`);
+      const rows = Array.isArray(histRes) ? histRes : (histRes?.data ?? []);
+      for (const r of rows) {
+        if (r.id_med_formulacion_hs == null) continue;
+        entregadoReal[r.id_med_formulacion_hs] = (entregadoReal[r.id_med_formulacion_hs] ?? 0) + Number(r.cantidad || 0);
+      }
+    } catch { /* si falla, se usa el acumulado cacheado como respaldo */ }
 
     const items: ModalFormItem[] = detail.medicamentos
       .filter(m => m.control?.estado !== 'cancelado')
@@ -446,11 +577,12 @@ export class DispensacionSebasComponent implements OnInit {
         cantidad: 0,
         cantidadDispensadaOverride: 0,
         cantidadDispensadaTouched: false,
-        dispensadaOriginal: m.control?.cantidad_dispensada ?? 0,
+        dispensadaOriginal: entregadoReal[m.id_med_formulacion] ?? m.control?.cantidad_dispensada ?? 0,
         loteSeleccion: {}
       }));
 
     this.modalFormItems.set(items);
+    this.expandedMedId.set(items[0]?.med.id_med_formulacion ?? null);
     this.modalObs = '';
     this.modalContrato = '';
     this.modalRegimen = '';
@@ -594,15 +726,29 @@ export class DispensacionSebasComponent implements OnInit {
       this.soportesListDetail.set(detailRes.data);
       const rows = Array.isArray(histRes) ? histRes : (histRes?.data ?? []);
 
-      const gruposMap = new Map<string, any[]>();
-      for (const r of rows) {
-        const key = String(r.fecha_hora);
-        if (!gruposMap.has(key)) gruposMap.set(key, []);
-        gruposMap.get(key)!.push(r);
+      // Los lotes de UNA sola acción de guardado no siempre comparten el
+      // mismo fecha_hora exacto: si el guardado inserta varios lotes en el
+      // mismo clic, cada INSERT toma su propio NOW() y puede caer un segundo
+      // después del anterior (confirmado con datos reales). Agrupar por
+      // igualdad estricta de timestamp separaba una sola entrega en varias
+      // "soportes" — en vez de eso, se agrupan movimientos consecutivos que
+      // caen dentro de una ventana corta (2s) como una misma acción.
+      const UMBRAL_MS = 2000;
+      const ordenAsc = [...rows].sort(
+        (a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime()
+      );
+      const grupos: { fecha: Date; items: any[] }[] = [];
+      for (const r of ordenAsc) {
+        const t = new Date(r.fecha_hora).getTime();
+        const actual = grupos[grupos.length - 1];
+        const ultimoT = actual ? new Date(actual.items[actual.items.length - 1].fecha_hora).getTime() : null;
+        if (actual && ultimoT !== null && t - ultimoT <= UMBRAL_MS) {
+          actual.items.push(r);
+        } else {
+          grupos.push({ fecha: new Date(r.fecha_hora), items: [r] });
+        }
       }
-      const grupos = Array.from(gruposMap.entries())
-        .map(([fechaKey, items]) => ({ fecha: new Date(fechaKey), items }))
-        .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+      grupos.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
       this.soportesListGrupos.set(grupos);
     } catch {
       this.soportesListGrupos.set([]);
@@ -613,6 +759,79 @@ export class DispensacionSebasComponent implements OnInit {
 
   cerrarSoportesLista() {
     this.showSoportesList.set(false);
+  }
+
+  // PDF consolidado con TODAS las entregas (todos los soportes) de la
+  // formulación en un solo documento, en vez de tener que abrir cada uno por
+  // separado. Usa el mismo diseño que los soportes individuales — misma
+  // tabla y estilo, solo que con una columna de fecha y todas las filas
+  // juntas — para que se vea igual, no como un reporte aparte.
+  generarPdfSoportesGeneral() {
+    const detail = this.soportesListDetail();
+    if (!detail) return;
+
+    const cronologico = [...this.soportesListGrupos()].sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+    const formuladaPorMed = Object.fromEntries(detail.medicamentos.map(m => [m.nombre_medicamento, Number(m.cantidad ?? 0)]));
+    const acumulado: Record<string, number> = {};
+    const items: any[] = [];
+    const usuarios = new Set<string>();
+    for (const g of cronologico) {
+      for (const it of g.items) {
+        const nombre = it.nombre_medicamento;
+        acumulado[nombre] = (acumulado[nombre] ?? 0) + Number(it.cantidad);
+        if (it.usuario) usuarios.add(it.usuario);
+        items.push({
+          fechaStr: `${g.fecha.toLocaleDateString('es-CO')} ${g.fecha.toLocaleTimeString('es-CO')}`,
+          nombre_medicamento: nombre,
+          numero_lote: it.numero_lote,
+          cantidad_dispensada: it.cantidad,
+          cantidad_pendiente: Math.max(0, (formuladaPorMed[nombre] ?? 0) - acumulado[nombre])
+        });
+      }
+    }
+    items.reverse(); // más reciente primero, igual que la lista en pantalla
+
+    // Contrato/Régimen/Usuario pueden variar entre entregas — se muestra el
+    // valor si todas coinciden, o "Varios" cuando difieren.
+    const unico = (vals: (string | null | undefined)[]): string => {
+      const distintos = [...new Set(vals.filter(v => !!v))];
+      if (distintos.length === 0) return '—';
+      if (distintos.length === 1) return distintos[0]!;
+      return 'Varios';
+    };
+    const contratosMed = detail.medicamentos.map(m => m.control?.contrato ? this.getEtiqueta(this.contratoOptions, m.control.contrato) : null);
+    const regimenesMed = detail.medicamentos.map(m => m.control?.regimen ? this.getEtiqueta(this.regimenOptions, m.control.regimen) : null);
+    const contratoGeneral = unico(contratosMed);
+    const regimenGeneral = unico(regimenesMed);
+    const dispensadoPorGeneral = unico([...usuarios]);
+    const periodoGeneral = cronologico.length
+      ? `${cronologico[0].fecha.toLocaleDateString('es-CO')} — ${cronologico[cronologico.length - 1].fecha.toLocaleDateString('es-CO')}`
+      : '—';
+
+    // Estado final de pendientes: por cada medicamento, lo acumulado en TODAS
+    // las entregas de esta lista vs. lo formulado — no por acción individual.
+    const pendientesFinal = Object.keys(acumulado)
+      .map(nombre => ({
+        nombre_medicamento: nombre,
+        cantidad_dispensada: acumulado[nombre],
+        cantidad_pendiente: Math.max(0, (formuladaPorMed[nombre] ?? 0) - acumulado[nombre])
+      }))
+      .filter(p => p.cantidad_pendiente > 0);
+
+    this.generarSoporteEntrega({
+      detail,
+      items,
+      esGeneral: true,
+      pendientesFinal,
+      contratoGeneral,
+      regimenGeneral,
+      dispensadoPorGeneral,
+      periodoGeneral,
+      contrato: null,
+      regimen: null,
+      observaciones: null,
+      fecha: new Date()
+    });
   }
 
   // Reconstruye el soporte de esa entrega puntual a partir del histórico real
@@ -748,17 +967,19 @@ export class DispensacionSebasComponent implements OnInit {
 
   private buildSoporteHtml(data: any): string {
     const detail = data.detail;
+    const esGeneral: boolean = !!data.esGeneral;
     const fecha: Date = data.fecha;
     const fechaStr = fecha.toLocaleDateString('es-CO');
     const horaStr = fecha.toLocaleTimeString('es-CO');
     const impresionStr = new Date().toLocaleDateString('es-CO') + ' ' + new Date().toLocaleTimeString('es-CO');
-    const codigo = `SE-${detail.id_formulacion}-${fecha.getTime()}`;
+    const codigo = `${esGeneral ? 'HG' : 'SE'}-${detail.id_formulacion}-${fecha.getTime()}`;
     const contratoLabel = data.contrato ? this.getEtiqueta(this.contratoOptions, data.contrato) : '—';
     const regimenLabel = data.regimen ? this.getEtiqueta(this.regimenOptions, data.regimen) : '—';
     const usuario = this.currentUserName();
 
     const filas = (data.items as any[]).map(m => `
       <tr>
+        ${esGeneral ? `<td>${m.fechaStr ?? ''}</td>` : ''}
         <td>${m.nombre_medicamento ?? ''}</td>
         <td>${m.numero_lote ?? '—'}</td>
         <td style="text-align:center"><strong>${m.cantidad_dispensada ?? 0}</strong></td>
@@ -769,13 +990,15 @@ export class DispensacionSebasComponent implements OnInit {
     // Página 2: se genera en paralelo a esta misma dispensación cuando deja
     // un saldo pendiente por primera vez. Página 3: cuando esta entrega está
     // pagando/continuando un saldo que ya venía pendiente de una visita anterior.
-    const pendientesNuevos: any[] = data.pendientesNuevos ?? [];
-    const pendientesContinuados: any[] = data.pendientesContinuados ?? [];
+    // En el consolidado general no aplica esa distinción por acción — en su
+    // lugar se muestra el pendiente FINAL acumulado de cada medicamento.
+    const pendientesNuevos: any[] = esGeneral ? [] : (data.pendientesNuevos ?? []);
+    const pendientesContinuados: any[] = esGeneral ? (data.pendientesFinal ?? []) : (data.pendientesContinuados ?? []);
     const paginaPendiente = pendientesNuevos.length
       ? this.buildPaginaPendiente('Pendiente', pendientesNuevos, detail, fechaStr, horaStr, impresionStr)
       : '';
     const paginaDispensacionPendiente = pendientesContinuados.length
-      ? this.buildPaginaPendiente('Dispensación pendiente', pendientesContinuados, detail, fechaStr, horaStr, impresionStr)
+      ? this.buildPaginaPendiente(esGeneral ? 'Pendientes actuales' : 'Dispensación pendiente', pendientesContinuados, detail, fechaStr, horaStr, impresionStr)
       : '';
 
     return `<!doctype html>
@@ -825,18 +1048,18 @@ export class DispensacionSebasComponent implements OnInit {
       <div class="brand">💊 AkriPharmacy<small>Sistema de gestión farmacéutica</small></div>
       <div class="meta">Fecha de impresión<br><strong>${impresionStr}</strong></div>
     </div>
-    <div class="doc-title"><h1>Dispensación de Medicamentos</h1></div>
+    <div class="doc-title"><h1>${esGeneral ? 'Histórico General de Entregas' : 'Dispensación de Medicamentos'}</h1></div>
     <div class="doc-body">
       <div class="grid">
         <div class="field"><span>Paciente</span><strong>${detail.nombre_paciente}</strong></div>
         <div class="field"><span>Documento</span><strong>${detail.documento_paciente}</strong></div>
-        <div class="field"><span>Contrato</span><strong>${contratoLabel}</strong></div>
-        <div class="field"><span>Régimen</span><strong>${regimenLabel}</strong></div>
-        <div class="field"><span>Fecha de entrega</span><strong>${fechaStr} ${horaStr}</strong></div>
-        <div class="field"><span>Dispensado por</span><strong>${usuario}</strong></div>
+        <div class="field"><span>Contrato</span><strong>${esGeneral ? (data.contratoGeneral ?? '—') : contratoLabel}</strong></div>
+        <div class="field"><span>Régimen</span><strong>${esGeneral ? (data.regimenGeneral ?? '—') : regimenLabel}</strong></div>
+        <div class="field"><span>${esGeneral ? 'Periodo' : 'Fecha de entrega'}</span><strong>${esGeneral ? (data.periodoGeneral ?? '—') : `${fechaStr} ${horaStr}`}</strong></div>
+        <div class="field"><span>Dispensado por</span><strong>${esGeneral ? (data.dispensadoPorGeneral ?? usuario) : usuario}</strong></div>
       </div>
       <table>
-        <thead><tr><th>Medicamento</th><th>Lote</th><th>Cantidad dispensada</th><th>Cantidad pendiente</th></tr></thead>
+        <thead><tr>${esGeneral ? '<th>Fecha</th>' : ''}<th>Medicamento</th><th>Lote</th><th>Cantidad dispensada</th><th>Cantidad pendiente</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
       ${data.observaciones ? `<div class="obs"><strong>Observaciones:</strong> ${data.observaciones}</div>` : ''}

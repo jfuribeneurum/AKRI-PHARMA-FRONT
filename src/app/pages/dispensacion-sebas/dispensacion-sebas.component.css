@@ -162,6 +162,12 @@
 
     /* Info izquierda */
     .disp-med-card__info { flex: 1; min-width: 0; }
+    .disp-med-card__info--clickable {
+      display: flex; align-items: flex-start; gap: 0.4rem; cursor: pointer; user-select: none;
+    }
+    .disp-med-card__caret {
+      color: #7c3aed; font-size: 0.75rem; margin-top: 2px; flex-shrink: 0;
+    }
     .disp-med-card__name {
       font-weight: 700; font-size: 0.88rem; color: #1e293b;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -208,7 +214,7 @@
     .dsm--purple .dsm__input { color: #7c3aed; }
     .dsm--blue   .dsm__input { color: #2563eb; }
     .disp-med-card__dispensada-hint {
-      font-size: 0.68rem; color: #64748b; text-align: right; margin-top: 0.15rem;
+      font-size: 0.7rem; color: #64748b; margin-top: -0.4rem;
     }
     .disp-med-card__dispensada-hint strong { color: #2563eb; }
 
@@ -382,6 +388,7 @@
     :host-context([data-theme="dark"]) .disp-med-card { background: var(--surface); border-color: var(--line); }
     :host-context([data-theme="dark"]) .disp-med-card--done { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); }
     :host-context([data-theme="dark"]) .disp-med-card__name { color: var(--text); }
+    :host-context([data-theme="dark"]) .disp-med-card__caret { color: var(--primary); }
     :host-context([data-theme="dark"]) .disp-med-card__meta { color: var(--muted); }
     :host-context([data-theme="dark"]) .disp-med-card__sep { color: var(--line); }
     :host-context([data-theme="dark"]) .dsm--neutral { background: var(--surface-muted); border-color: var(--line); }
