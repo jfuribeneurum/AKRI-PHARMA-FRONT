@@ -128,6 +128,8 @@ export class DispensacionSebasComponent implements OnInit {
   showHistorial   = signal(false);
   historial       = signal<any[]>([]);
   historialLoading = signal(false);
+  historialAnulando = signal<number | null>(null);
+  entregaAAnular    = signal<any | null>(null);
 
   showSoportesList    = signal(false);
   soportesListLoading = signal(false);
@@ -437,6 +439,38 @@ export class DispensacionSebasComponent implements OnInit {
 
   cerrarHistorial() {
     this.showHistorial.set(false);
+  }
+
+  // Anula una entrega puntual del histórico: repone el inventario que había
+  // salido y la cantidad vuelve a sumarse a lo pendiente por entregar. Queda
+  // trazabilidad en BD del usuario que anuló (recordProcessTrace, backend).
+  // Se pide confirmación con el mismo estilo de modal que el resto de la
+  // app (en vez del confirm() nativo del navegador, poco amigable).
+  pedirAnulacion(h: any) {
+    if (this.historialAnulando() != null) return;
+    this.entregaAAnular.set(h);
+  }
+
+  cancelarAnulacion() {
+    this.entregaAAnular.set(null);
+  }
+
+  async confirmarAnulacion() {
+    const h = this.entregaAAnular();
+    if (!h) return;
+    this.entregaAAnular.set(null);
+
+    this.historialAnulando.set(h.id_movimiento);
+    try {
+      await this.api.post(`/dispensacion-hs/movimiento/${h.id_movimiento}/anular`, {});
+      await this.abrirHistorial();
+      const detail = this.selectedDetail();
+      if (detail) await this.loadDetail(detail.id_formulacion);
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No fue posible anular esta entrega.');
+    } finally {
+      this.historialAnulando.set(null);
+    }
   }
 
   // PDF consolidado con TODO el histórico de entregas de la formulación en un

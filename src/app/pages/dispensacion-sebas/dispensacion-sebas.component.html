@@ -249,6 +249,25 @@
             <button class="disp-modal__close" (click)="cerrarHistorial()" title="Cerrar">✕</button>
           </div>
 
+          @if (entregaAAnular(); as h) {
+            <div class="disp-modal__soporte-overlay">
+              <div class="disp-modal__soporte-card">
+                <div class="disp-modal__soporte-icon">⚠️</div>
+                <h3>¿Anular esta entrega?</h3>
+                <p>
+                  Se anulará la entrega de <strong>{{ h.cantidad }}</strong> unidad(es) del lote
+                  <strong>{{ h.numero_lote || '—' }}</strong> registrada el
+                  {{ h.fecha_hora | date:'dd/MM/yyyy HH:mm' }}.
+                </p>
+                <p>El inventario descontado se repondrá y esa cantidad volverá a quedar pendiente por entregar.</p>
+                <div class="disp-modal__soporte-actions">
+                  <button class="disp-modal__btn-cancel" (click)="cancelarAnulacion()">Cancelar</button>
+                  <button class="disp-modal__btn-confirm disp-modal__btn-confirm--danger" (click)="confirmarAnulacion()">Sí, anular</button>
+                </div>
+              </div>
+            </div>
+          }
+
           <div class="disp-modal__body">
             @if (historialLoading()) {
               <p style="text-align:center; color:#64748b;">Cargando histórico…</p>
@@ -275,7 +294,12 @@
                       <td style="text-align:center; font-weight:700;">{{ h.cantidad }}</td>
                       <td>{{ h.usuario || '—' }}</td>
                       <td style="text-align:center;">
-                        <button type="button" class="disp-historial__delete-btn" title="Eliminar">✕</button>
+                        <button type="button" class="disp-historial__delete-btn"
+                                [disabled]="historialAnulando() === h.id_movimiento"
+                                title="Anular esta entrega"
+                                (click)="pedirAnulacion(h)">
+                          {{ historialAnulando() === h.id_movimiento ? '…' : '✕' }}
+                        </button>
                       </td>
                     </tr>
                   }

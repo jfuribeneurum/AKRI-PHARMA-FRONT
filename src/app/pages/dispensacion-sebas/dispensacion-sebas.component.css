@@ -366,6 +366,7 @@
     }
     .disp-modal__btn-confirm:hover:not(:disabled) { opacity: .88; }
     .disp-modal__btn-confirm:disabled { opacity: .5; cursor: not-allowed; }
+    .disp-modal__btn-confirm--danger { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); }
 
     /* Spinner */
     .disp-modal__spinner {
