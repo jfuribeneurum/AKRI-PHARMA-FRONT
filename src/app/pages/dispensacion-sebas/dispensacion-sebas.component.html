@@ -263,6 +263,7 @@
                     <th>Almacén</th>
                     <th>Cantidad</th>
                     <th>Usuario</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,6 +274,9 @@
                       <td>{{ h.almacen || '—' }}</td>
                       <td style="text-align:center; font-weight:700;">{{ h.cantidad }}</td>
                       <td>{{ h.usuario || '—' }}</td>
+                      <td style="text-align:center;">
+                        <button type="button" class="disp-historial__delete-btn" title="Eliminar">✕</button>
+                      </td>
                     </tr>
                   }
                 </tbody>

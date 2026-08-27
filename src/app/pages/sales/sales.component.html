@@ -74,6 +74,15 @@
 
         <div class="form-grid">
           <label>
+            Sede *
+            <select [(ngModel)]="sale.id_sede">
+              <option [ngValue]="null" disabled>-- Seleccionar --</option>
+              @for (site of sites(); track site.id_sede) {
+                <option [ngValue]="site.id_sede">{{ site.nombre }}</option>
+              }
+            </select>
+          </label>
+          <label>
             Folio
             <input [(ngModel)]="sale.folio_venta">
           </label>

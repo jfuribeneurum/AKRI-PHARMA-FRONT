@@ -7,6 +7,8 @@
     .inner-table tr:last-child td { border-bottom:none; }
     .btn-icon { background:none; border:none; cursor:pointer; font-size:0.9rem; color:#64748b; padding:2px 6px; border-radius:4px; }
     .btn-icon:hover { background:#e2e8f0; }
+    .disp-historial__delete-btn { background:none; border:none; cursor:pointer; font-size:0.85rem; font-weight:700; color:#94a3b8; padding:2px 8px; border-radius:4px; line-height:1; }
+    .disp-historial__delete-btn:hover { background:#fee2e2; color:#dc2626; }
     .btn-small { padding:0.25rem 0.65rem; font-size:0.8rem; }
     .acciones-fecha { margin-top:0.3rem; font-size:0.72rem; color:#94a3b8; white-space:nowrap; display:flex; align-items:center; gap:0.3rem; }
     .btn-icon--soporte { font-size:0.85rem; padding:0 2px; line-height:1; }
@@ -378,6 +380,8 @@
     :host-context([data-theme="dark"]) .inner-table th { background: var(--surface-muted); color: var(--muted); }
     :host-context([data-theme="dark"]) .inner-table td { border-bottom-color: var(--line); }
     :host-context([data-theme="dark"]) .btn-icon { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-historial__delete-btn { color: var(--muted); }
+    :host-context([data-theme="dark"]) .disp-historial__delete-btn:hover { background: rgba(220,38,38,0.15); color: #f87171; }
     :host-context([data-theme="dark"]) .btn-icon:hover { background: var(--line); }
     :host-context([data-theme="dark"]) .loading-state,
     :host-context([data-theme="dark"]) .empty-state { color: var(--muted); }

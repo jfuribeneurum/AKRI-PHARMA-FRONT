@@ -21,9 +21,15 @@ export class SalesComponent implements OnInit {
   message = signal('');
   error = signal('');
 
+  // Sedes disponibles para elegir dónde se registra la venta — ventas.id_sede
+  // es obligatorio en la base de datos, así que sin esto ninguna venta se
+  // podía guardar.
+  sites = signal<any[]>([]);
+
   reportSearch = '';
 
   sale: any = {
+    id_sede: null,
     folio_venta: `VTA-${Date.now()}`,
     id_cliente: 1,
     id_paciente: 1,
@@ -37,6 +43,7 @@ export class SalesComponent implements OnInit {
 
   ngOnInit() {
     void this.load();
+    void this.loadSites();
   }
 
   async load() {
@@ -46,6 +53,19 @@ export class SalesComponent implements OnInit {
       this.sales.set(response.data);
     } catch (error: any) {
       this.error.set(error?.error?.message || 'No fue posible cargar las ventas.');
+    }
+  }
+
+  async loadSites() {
+    try {
+      const response = await this.api.get<{ success: boolean; data: any }>('/dispensing/lookups');
+      const sites = response.data?.sites ?? [];
+      this.sites.set(sites);
+      if (!this.sale.id_sede && sites.length) {
+        this.sale.id_sede = sites[0].id_sede;
+      }
+    } catch {
+      // no bloquea la pantalla — el selector queda vacío y el usuario puede reintentar con "Actualizar"
     }
   }
 
@@ -73,11 +93,17 @@ export class SalesComponent implements OnInit {
   }
 
   async createSale() {
+    if (!this.sale.id_sede) {
+      this.error.set('Debes seleccionar la sede antes de registrar la venta.');
+      return;
+    }
     try {
       this.error.set('');
       await this.api.post('/sales', this.sale);
       this.message.set('Venta registrada.');
+      const idSedeActual = this.sale.id_sede;
       this.sale = {
+        id_sede: idSedeActual,
         folio_venta: `VTA-${Date.now()}`,
         id_cliente: 1,
         id_paciente: 1,
