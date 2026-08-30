@@ -176,9 +176,7 @@ export class SebasIngresosComponent implements OnInit {
     const facturaStr = [ing.prefijo_factura, ing.numero_factura].filter(Boolean).join('') || '—';
 
     const totalItems = items.length;
-    const cumplenCount = items.filter(i => i.cumple === 1 || i.cumple === true).length;
     const noCumplenCount = items.filter(i => i.cumple === 0 || i.cumple === false).length;
-    const sinValidarCount = totalItems - cumplenCount - noCumplenCount;
 
     const resultadoBadge = (it: any) => {
       if (it.cumple === 1 || it.cumple === true) return '<span class="badge badge-ok">CUMPLE</span>';
@@ -223,10 +221,6 @@ export class SebasIngresosComponent implements OnInit {
   .doc-header .doc-title-main { margin:0.5rem 0 0.15rem; font-size:1.05rem; font-weight:800; letter-spacing:0.02em; color:#065f46; }
   .doc-header .doc-subtitle { font-size:0.75rem; color:#4b5563; text-transform:uppercase; letter-spacing:0.03em; }
   .doc-header .header-right { position:absolute; top:0; right:0; text-align:right; font-size:0.75rem; }
-  .marco-normativo { background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:0.6rem 0.85rem; font-size:0.72rem; color:#14532d; margin-bottom:0.75rem; }
-  .marco-normativo strong { display:block; margin-bottom:0.3rem; font-size:0.74rem; }
-  .marco-normativo ul { margin:0; padding-left:1.1rem; }
-  .marco-normativo li { margin-bottom:0.15rem; }
   table.info { width:100%; border-collapse:collapse; margin-bottom:0.6rem; }
   table.info th, table.info td { border:1px solid #9ca3af; padding:0.3rem 0.5rem; font-size:0.78rem; text-align:left; }
   table.info th { background:#e5e7eb; font-weight:700; white-space:nowrap; width:1%; }
@@ -238,10 +232,6 @@ export class SebasIngresosComponent implements OnInit {
   .badge-ok { background:#dcfce7; color:#166534; }
   .badge-no { background:#fee2e2; color:#991b1b; }
   .badge-warn { background:#fef3c7; color:#92400e; }
-  .resumen-verificacion { display:flex; gap:0.75rem; margin:0.6rem 0; flex-wrap:wrap; }
-  .resumen-verificacion .box { border:1px solid #9ca3af; border-radius:6px; padding:0.4rem 0.9rem; text-align:center; }
-  .resumen-verificacion .box strong { display:block; font-size:1.05rem; }
-  .resumen-verificacion .box span { font-size:0.68rem; color:#4b5563; text-transform:uppercase; }
   .alerta-no-cumple { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; border-radius:6px; padding:0.6rem 0.85rem; font-size:0.76rem; margin:0.6rem 0; }
   .totales-wrap { display:flex; justify-content:flex-end; margin-top:0.5rem; }
   table.totales { border-collapse:collapse; min-width:300px; }
@@ -278,18 +268,6 @@ export class SebasIngresosComponent implements OnInit {
       <div class="doc-subtitle">Verificación técnica de ingreso de medicamentos y dispositivos médicos</div>
     </div>
 
-    <div class="marco-normativo">
-      <strong>Marco normativo aplicable</strong>
-      <ul>
-        <li>Resolución 1403 de 2007 (Min. Protección Social) — Modelo de Gestión del Servicio Farmacéutico y Buenas Prácticas de Almacenamiento y Distribución.</li>
-        <li>Decreto 780 de 2016 — Decreto Único Reglamentario del Sector Salud y de Protección Social.</li>
-        <li>Decreto 2200 de 2005 — Reglamenta el servicio farmacéutico.</li>
-        <li>Resolución 3100 de 2019 — Estándares de habilitación de servicios de salud.</li>
-        <li>Decreto 677 de 1995 y normas concordantes — Registro Sanitario expedido por INVIMA.</li>
-        <li>Resolución 1403 de 2007, Anexo técnico N° 3 — Programa de cadena de frío (cuando aplique a productos termolábiles).</li>
-      </ul>
-    </div>
-
     <div class="section-title">Datos generales de la recepción</div>
     <table class="info">
       <tr>
@@ -301,15 +279,10 @@ export class SebasIngresosComponent implements OnInit {
         <th>Fecha de recepción :</th><td>${fmtFecha(ing.fecha_recepcion || ing.fecha_ingreso)}</td>
       </tr>
       <tr>
-        <th>Sede :</th><td>${ing.sede || '—'}</td>
-        <th>Bodega / Almacén :</th><td>${ing.bodega || '—'}</td>
+        <th>Sede :</th><td colspan="3">${ing.sede || '—'}</td>
       </tr>
       <tr>
-        <th>N° Factura :</th><td>${facturaStr}</td>
-        <th>CUFE :</th><td style="word-break:break-all;">${ing.cufe || '—'}</td>
-      </tr>
-      <tr>
-        <th>Estado del ingreso :</th><td colspan="3">${ing.estado ?? '—'}</td>
+        <th>N° Factura :</th><td colspan="3">${facturaStr}</td>
       </tr>
     </table>
 
@@ -317,8 +290,7 @@ export class SebasIngresosComponent implements OnInit {
     <table class="info">
       <tr><th>Razón social :</th><td colspan="3">${ing.proveedor_nombre || '—'}</td></tr>
       <tr>
-        <th>Nit :</th><td>${ing.proveedor_nit || '—'}</td>
-        <th>Contacto :</th><td>${ing.proveedor_contacto || '—'}</td>
+        <th>Nit :</th><td colspan="3">${ing.proveedor_nit || '—'}</td>
       </tr>
       <tr>
         <th>Teléfono :</th><td>${ing.proveedor_telefono || '—'}</td>
@@ -327,12 +299,6 @@ export class SebasIngresosComponent implements OnInit {
     </table>
 
     <div class="section-title">Verificación técnica por producto</div>
-    <div class="resumen-verificacion">
-      <div class="box"><strong>${totalItems}</strong><span>Productos</span></div>
-      <div class="box"><strong style="color:#166534">${cumplenCount}</strong><span>Cumplen</span></div>
-      <div class="box"><strong style="color:#991b1b">${noCumplenCount}</strong><span>No cumplen</span></div>
-      <div class="box"><strong style="color:#92400e">${sinValidarCount}</strong><span>Sin validar</span></div>
-    </div>
     ${advertenciaNoCumplen}
     <table class="items">
       <thead>
@@ -347,9 +313,6 @@ export class SebasIngresosComponent implements OnInit {
 
     <div class="totales-wrap">
       <table class="totales">
-        <tr><td>Total Items:</td><td>${money(ing.total_bruto)}</td></tr>
-        <tr><td>Total Descuento:</td><td>${money(ing.total_descuento)}</td></tr>
-        <tr><td>Sub-Total:</td><td>${money(ing.subtotal_neto)}</td></tr>
         <tr><td>IVA:</td><td>${money(ing.total_iva)}</td></tr>
         <tr class="final"><td>TOTAL RECIBIDO:</td><td>${money(ing.total_ingreso)}</td></tr>
       </table>

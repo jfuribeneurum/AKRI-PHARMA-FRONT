@@ -312,6 +312,101 @@
       </div>
     }
 
+    <!-- Confirmación: eliminar (excluir) un medicamento formulado -->
+    @if (medAExcluir(); as med) {
+      <div class="modal-backdrop" (click)="cancelarExclusion()">
+        <div class="disp-modal__soporte-card" (click)="$event.stopPropagation()">
+          <div class="disp-modal__soporte-icon">⚠️</div>
+          <h3>¿Eliminar este medicamento?</h3>
+          <p>
+            <strong>{{ med.nombre_medicamento }}</strong> se quitará de la lista a dispensar de esta formulación.
+            No se modifica el registro original en HealthSphere.
+          </p>
+          <div class="disp-modal__soporte-actions">
+            <button class="disp-modal__btn-cancel" (click)="cancelarExclusion()">Cancelar</button>
+            <button class="disp-modal__btn-confirm disp-modal__btn-confirm--danger" (click)="confirmarExclusion()">Sí, eliminar</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal: agregar medicamento manual a la formulación -->
+    @if (showAgregarMedModal()) {
+      <div class="modal-backdrop" (click)="cerrarAgregarMedModal()">
+        <div class="disp-modal" (click)="$event.stopPropagation()" style="max-width: 480px; height: auto;">
+
+          <div class="disp-modal__header">
+            <div class="disp-modal__header-icon">➕</div>
+            <div class="disp-modal__header-text">
+              <span class="disp-modal__header-sup">Agregar medicamento</span>
+              <strong class="disp-modal__header-med">{{ selectedDetail()?.nombre_paciente }}</strong>
+            </div>
+            <button class="disp-modal__close" (click)="cerrarAgregarMedModal()" title="Cerrar">✕</button>
+          </div>
+
+          <div class="disp-modal__body" style="display:flex; flex-direction:column; gap:0.75rem;">
+            @if (agregarMedError()) {
+              <p style="color:#dc2626; font-size:0.85rem; margin:0;">{{ agregarMedError() }}</p>
+            }
+            <div class="disp-modal__obs-label">
+              Medicamento *
+              @if (medSeleccionado(); as p) {
+                <div class="med-buscador__seleccionado">
+                  <div>
+                    <strong>{{ p.nombre_comercial }}</strong>
+                    <span class="muted"> · {{ p.principio_activo }}{{ p.concentracion ? ' · ' + p.concentracion : '' }}</span>
+                  </div>
+                  <button type="button" class="btn secondary btn-small" (click)="cambiarMedicamentoSeleccionado()">Cambiar</button>
+                </div>
+              } @else {
+                <input type="text" class="disp-modal__obs-input" placeholder="Buscar medicamento por nombre o principio activo…"
+                       [(ngModel)]="medSearch" (ngModelChange)="onMedSearchChange($event)" autocomplete="off">
+                @if (medSearching()) {
+                  <span class="muted" style="font-size:0.78rem;">Buscando…</span>
+                }
+                @if (medResults().length) {
+                  <div class="med-buscador__resultados">
+                    @for (p of medResults(); track p.id_producto) {
+                      <div class="med-buscador__fila" (click)="seleccionarMedicamento(p)">
+                        <div>
+                          <strong>{{ p.nombre_comercial }}</strong>
+                          <span class="muted"> · {{ p.principio_activo }}{{ p.concentracion ? ' · ' + p.concentracion : '' }}{{ p.laboratorio_nombre ? ' · ' + p.laboratorio_nombre : '' }}</span>
+                        </div>
+                        <span class="muted" style="font-size:0.75rem; white-space:nowrap;">Stock: {{ p.stock_actual }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (medNoResults()) {
+                  <div class="muted" style="font-size:0.8rem;">No se encontraron medicamentos para "{{ medSearch }}" en el Maestro.</div>
+                }
+              }
+            </div>
+            <label class="disp-modal__obs-label">
+              Presentación
+              <input type="text" class="disp-modal__obs-input" [(ngModel)]="nuevoMed.presentacion">
+            </label>
+            <label class="disp-modal__obs-label">
+              Vía de administración
+              <input type="text" class="disp-modal__obs-input" [(ngModel)]="nuevoMed.via_administracion">
+            </label>
+            <label class="disp-modal__obs-label">
+              Cantidad *
+              <input type="number" class="disp-modal__obs-input" min="1" step="1" [(ngModel)]="nuevoMed.cantidad">
+            </label>
+          </div>
+
+          <div class="disp-modal__soporte-actions" style="padding: 0 1.75rem 1.5rem;">
+            <button class="disp-modal__btn-cancel" [disabled]="agregarMedSaving()" (click)="cerrarAgregarMedModal()">Cancelar</button>
+            <button class="disp-modal__btn-confirm" [disabled]="agregarMedSaving()" (click)="confirmarAgregarMed()">
+              {{ agregarMedSaving() ? 'Guardando…' : 'Agregar' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    }
+
     <!-- Modal: lista de soportes (PDF) de cada entrega ya realizada -->
     @if (showSoportesList()) {
       <div class="modal-backdrop" (click)="cerrarSoportesLista()">
@@ -498,6 +593,9 @@
                             <button class="btn btn-small btn-outline" (click)="abrirHistorial()">
                               🕘 Histórico de entregas
                             </button>
+                            <button class="btn btn-small btn-outline" (click)="abrirAgregarMedModal()">
+                              ➕ Agregar medicamento
+                            </button>
                             <button class="btn btn-small" (click)="openFormulacionModal()">
                               💊 Dispensar formulación
                             </button>
@@ -513,6 +611,7 @@
                                 <th>Cantidad</th>
                                 <th>Diagnóstico</th>
                                 <th>Estado</th>
+                                <th></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -522,6 +621,9 @@
                                     <strong>{{ med.nombre_medicamento }}</strong>
                                     @if (med.pbs) {
                                       <span class="chip success" style="font-size:0.65rem; margin-left:4px;">PBS</span>
+                                    }
+                                    @if (med.esManual) {
+                                      <span class="chip" style="font-size:0.65rem; margin-left:4px; background:#ede9fe; color:#6d28d9;">Manual</span>
                                     }
                                   </td>
                                   <td class="muted">{{ med.presentacion }}</td>
@@ -538,6 +640,14 @@
                                     <span class="chip {{ getEstadoClass(med.control?.estado ?? 'pendiente') }}">
                                       {{ getEstadoLabel(med.control?.estado ?? 'pendiente') }}
                                     </span>
+                                  </td>
+                                  <td style="text-align:center;">
+                                    <button type="button" class="disp-historial__delete-btn"
+                                            [disabled]="excluyendoMedId() === med.id_med_formulacion"
+                                            title="Eliminar este medicamento de la dispensación"
+                                            (click)="pedirExclusion(med)">
+                                      {{ excluyendoMedId() === med.id_med_formulacion ? '…' : '✕' }}
+                                    </button>
                                   </td>
                                 </tr>
                               }

@@ -462,6 +462,226 @@ describe('DispensacionSebasComponent', () => {
     });
   });
 
+  describe('pedirExclusion / cancelarExclusion / confirmarExclusion (eliminar un medicamento formulado)', () => {
+    it('pedirExclusion does nothing while a previous exclusion is still in flight', () => {
+      component.excluyendoMedId.set(5);
+      component.pedirExclusion(makeMed({ id_med_formulacion: 1 }));
+      expect(component.medAExcluir()).toBeNull();
+    });
+
+    it('pedirExclusion stores the medicamento pending confirmation', () => {
+      const med = makeMed({ id_med_formulacion: 1 });
+      component.pedirExclusion(med);
+      expect(component.medAExcluir()).toBe(med);
+    });
+
+    it('cancelarExclusion clears the pending confirmation without calling the API', () => {
+      component.medAExcluir.set(makeMed());
+      component.cancelarExclusion();
+      expect(component.medAExcluir()).toBeNull();
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('confirmarExclusion does nothing without a medicamento pending confirmation', async () => {
+      component.medAExcluir.set(null);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      await component.confirmarExclusion();
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('confirmarExclusion does nothing without a formulación selected', async () => {
+      component.medAExcluir.set(makeMed());
+      component.selectedDetail.set(null);
+      await component.confirmarExclusion();
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('posts the exclusion, reloads the detail and clears the confirmation state on success', async () => {
+      const med = makeMed({ id_med_formulacion: 11, nombre_medicamento: 'ABACAVIR 300 MG' });
+      component.medAExcluir.set(med);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [] } });
+
+      await component.confirmarExclusion();
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/dispensacion-hs/formulacion/7/medicamentos/11/excluir',
+        { nombre_medicamento: 'ABACAVIR 300 MG' }
+      );
+      expect(api.get).toHaveBeenCalledWith('/formulaciones-hs/7');
+      expect(component.medAExcluir()).toBeNull();
+      expect(component.excluyendoMedId()).toBeNull();
+    });
+
+    it('surfaces the backend error message and clears excluyendoMedId on failure', async () => {
+      component.medAExcluir.set(makeMed({ id_med_formulacion: 11 }));
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      (api.post as any).mockRejectedValue({ error: { message: 'No autorizado' } });
+
+      await component.confirmarExclusion();
+
+      expect(component.error()).toBe('No autorizado');
+      expect(component.excluyendoMedId()).toBeNull();
+    });
+  });
+
+  describe('abrirAgregarMedModal / seleccionarMedicamento / cambiarMedicamentoSeleccionado (agregar mx manual)', () => {
+    it('resets the form, clears any previous selection and opens the modal', () => {
+      component.nuevoMed = { presentacion: 'x', via_administracion: 'y', cantidad: 9 };
+      component.medSeleccionado.set({ id_producto: 1 });
+      component.medSearch = 'algo';
+      component.agregarMedError.set('previo');
+
+      component.abrirAgregarMedModal();
+
+      expect(component.showAgregarMedModal()).toBe(true);
+      expect(component.medSeleccionado()).toBeNull();
+      expect(component.medSearch).toBe('');
+      expect(component.nuevoMed).toEqual({ presentacion: '', via_administracion: '', cantidad: 1 });
+      expect(component.agregarMedError()).toBe('');
+    });
+
+    it('selecting a product fills presentación/vía from its forma_farmacéutica and clears the search list', () => {
+      component.medResults.set([{ id_producto: 1 }]);
+
+      component.seleccionarMedicamento({ id_producto: 42, nombre_comercial: 'IBUPROFENO 400', forma_farmaceutica: 'Tableta' });
+
+      expect(component.medSeleccionado()).toEqual({ id_producto: 42, nombre_comercial: 'IBUPROFENO 400', forma_farmaceutica: 'Tableta' });
+      expect(component.nuevoMed.presentacion).toBe('Tableta');
+      expect(component.nuevoMed.via_administracion).toBe('Oral');
+      expect(component.medResults()).toEqual([]);
+    });
+
+    it('infers the presentación from the nombre_comercial when the product has no forma_farmacéutica linked', () => {
+      component.seleccionarMedicamento({
+        id_producto: 7,
+        nombre_comercial: '(ALFA) RIFAXIMINA 550 mg TABLETA RECUBIERTA',
+        forma_farmaceutica: null
+      });
+      expect(component.nuevoMed.presentacion).toBe('Tableta Recubierta');
+      expect(component.nuevoMed.via_administracion).toBe('Oral');
+    });
+
+    it('suggests Parenteral for an injectable form, always as an editable starting point', () => {
+      component.seleccionarMedicamento({
+        id_producto: 8,
+        nombre_comercial: 'ABATACEPT 250 MG POLVO PARA RECONSTITUIR A SOLUCION INYECTABLE',
+        forma_farmaceutica: 'Solución inyectable'
+      });
+      expect(component.nuevoMed.via_administracion).toBe('Parenteral');
+    });
+
+    it('leaves vía empty when the form cannot be recognized', () => {
+      component.seleccionarMedicamento({ id_producto: 9, nombre_comercial: 'PRODUCTO SIN FORMA RECONOCIBLE', forma_farmaceutica: null });
+      expect(component.nuevoMed.via_administracion).toBe('');
+    });
+
+    it('cambiarMedicamentoSeleccionado clears the current selection so the search box reappears', () => {
+      component.medSeleccionado.set({ id_producto: 1 });
+      component.cambiarMedicamentoSeleccionado();
+      expect(component.medSeleccionado()).toBeNull();
+    });
+  });
+
+  describe('onMedSearchChange / searchMedicamento (buscador del Maestro)', () => {
+    it('clears results immediately when the search box is emptied, without calling the API', () => {
+      component.medResults.set([{ id_producto: 1 }]);
+      component.onMedSearchChange('   ');
+      expect(component.medResults()).toEqual([]);
+      expect(api.get).not.toHaveBeenCalled();
+    });
+
+    it('queries /products with the typed term and keeps at most 20 results', async () => {
+      component.medSearch = 'rifaximina';
+      const many = Array.from({ length: 25 }, (_, i) => ({ id_producto: i }));
+      (api.get as any).mockResolvedValue({ data: many });
+
+      await component.searchMedicamento();
+
+      expect(api.get).toHaveBeenCalledWith('/products?search=rifaximina');
+      expect(component.medResults().length).toBe(20);
+      expect(component.medNoResults()).toBe(false);
+      expect(component.medSearching()).toBe(false);
+    });
+
+    it('flags medNoResults when nothing matches', async () => {
+      component.medSearch = 'zzz';
+      (api.get as any).mockResolvedValue({ data: [] });
+
+      await component.searchMedicamento();
+
+      expect(component.medNoResults()).toBe(true);
+    });
+
+    it('flags medNoResults and stops the spinner when the request fails', async () => {
+      component.medSearch = 'zzz';
+      (api.get as any).mockRejectedValue(new Error('network'));
+
+      await component.searchMedicamento();
+
+      expect(component.medNoResults()).toBe(true);
+      expect(component.medSearching()).toBe(false);
+    });
+  });
+
+  describe('confirmarAgregarMed', () => {
+    it('requires a medicamento to be selected from the catalog before submitting', async () => {
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set(null);
+
+      await component.confirmarAgregarMed();
+
+      expect(component.agregarMedError()).toBe('Debes seleccionar un medicamento del listado.');
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('requires a positive cantidad', async () => {
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed.cantidad = 0;
+
+      await component.confirmarAgregarMed();
+
+      expect(component.agregarMedError()).toBe('La cantidad debe ser mayor a cero.');
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it("posts id_producto plus the form fields, then reloads the detail and closes the modal", async () => {
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed = { presentacion: 'Tableta', via_administracion: 'Oral', cantidad: 3 };
+      component.showAgregarMedModal.set(true);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [] } });
+
+      await component.confirmarAgregarMed();
+
+      expect(api.post).toHaveBeenCalledWith('/dispensacion-hs/formulacion/7/medicamentos-extra', {
+        id_producto: 42,
+        presentacion: 'Tableta',
+        via_administracion: 'Oral',
+        cantidad: 3
+      });
+      expect(component.showAgregarMedModal()).toBe(false);
+      expect(api.get).toHaveBeenCalledWith('/formulaciones-hs/7');
+    });
+
+    it('keeps the modal open and surfaces the backend error message on failure', async () => {
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed.cantidad = 1;
+      component.showAgregarMedModal.set(true);
+      (api.post as any).mockRejectedValue({ error: { message: 'El medicamento seleccionado no existe en el Maestro de productos.' } });
+
+      await component.confirmarAgregarMed();
+
+      expect(component.agregarMedError()).toBe('El medicamento seleccionado no existe en el Maestro de productos.');
+      expect(component.showAgregarMedModal()).toBe(true);
+      expect(component.agregarMedSaving()).toBe(false);
+    });
+  });
+
   describe('getEstadoLabel / getEstadoClass (por medicamento)', () => {
     it('maps every known estado to its label and class', () => {
       expect(component.getEstadoLabel('pendiente')).toBe('Pendiente');

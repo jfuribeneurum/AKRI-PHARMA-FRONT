@@ -41,6 +41,10 @@ interface MedicamentoFormulacion {
   vigenciaInicio: string | null;
   vigenciaFin: string | null;
   pbs: boolean;
+  // true cuando el medicamento no viene de HealthSphere sino que se agregó
+  // manualmente desde AkriPharmacy (ver agregarMedicamentoExtra en backend).
+  esManual?: boolean;
+  idMedicamentoExtra?: number;
   control: {
     id: number;
     estado: string;
@@ -130,6 +134,23 @@ export class DispensacionSebasComponent implements OnInit {
   historialLoading = signal(false);
   historialAnulando = signal<number | null>(null);
   entregaAAnular    = signal<any | null>(null);
+
+  medAExcluir     = signal<MedicamentoFormulacion | null>(null);
+  excluyendoMedId = signal<number | null>(null);
+
+  showAgregarMedModal = signal(false);
+  agregarMedSaving    = signal(false);
+  agregarMedError     = signal('');
+  nuevoMed = { presentacion: '', via_administracion: '', cantidad: 1 };
+  // Búsqueda de medicamento: siempre debe elegirse un producto ya existente
+  // en el Maestro local (nunca texto libre), para poder dispensarlo luego
+  // contra inventario real.
+  medSeleccionado = signal<any | null>(null);
+  medSearch       = '';
+  medResults      = signal<any[]>([]);
+  medSearching    = signal(false);
+  medNoResults    = signal(false);
+  private medDebounce: ReturnType<typeof setTimeout> | null = null;
 
   showSoportesList    = signal(false);
   soportesListLoading = signal(false);
@@ -470,6 +491,176 @@ export class DispensacionSebasComponent implements OnInit {
       this.error.set(error?.error?.message ?? 'No fue posible anular esta entrega.');
     } finally {
       this.historialAnulando.set(null);
+    }
+  }
+
+  // "Elimina" un medicamento de la lista a dispensar. El registro origen de
+  // HealthSphere es de solo lectura y nunca se toca: el backend solo guarda
+  // que este medicamento queda excluido para esta formulación (dispensacion_hs_exclusiones).
+  pedirExclusion(med: MedicamentoFormulacion) {
+    if (this.excluyendoMedId() != null) return;
+    this.medAExcluir.set(med);
+  }
+
+  cancelarExclusion() {
+    this.medAExcluir.set(null);
+  }
+
+  async confirmarExclusion() {
+    const med = this.medAExcluir();
+    const detail = this.selectedDetail();
+    if (!med || !detail) return;
+    this.medAExcluir.set(null);
+
+    this.excluyendoMedId.set(med.id_med_formulacion);
+    try {
+      await this.api.post(`/dispensacion-hs/formulacion/${detail.id_formulacion}/medicamentos/${med.id_med_formulacion}/excluir`, {
+        nombre_medicamento: med.nombre_medicamento
+      });
+      await this.loadDetail(detail.id_formulacion);
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No fue posible eliminar este medicamento.');
+    } finally {
+      this.excluyendoMedId.set(null);
+    }
+  }
+
+  // Agrega un medicamento manual a la formulación actual (no existe en
+  // HealthSphere, ej. algo que el médico no alcanzó a formular). Queda
+  // disponible para dispensar igual que el resto de medicamentos.
+  abrirAgregarMedModal() {
+    this.nuevoMed = { presentacion: '', via_administracion: '', cantidad: 1 };
+    this.medSeleccionado.set(null);
+    this.medSearch = '';
+    this.medResults.set([]);
+    this.medNoResults.set(false);
+    this.agregarMedError.set('');
+    this.showAgregarMedModal.set(true);
+  }
+
+  cerrarAgregarMedModal() {
+    if (this.agregarMedSaving()) return;
+    this.showAgregarMedModal.set(false);
+  }
+
+  onMedSearchChange(value: string) {
+    if (this.medDebounce) clearTimeout(this.medDebounce);
+    if (!value.trim()) {
+      this.medResults.set([]);
+      this.medNoResults.set(false);
+      return;
+    }
+    this.medDebounce = setTimeout(() => this.searchMedicamento(), 300);
+  }
+
+  async searchMedicamento() {
+    const term = this.medSearch.trim();
+    if (!term) return;
+    this.medSearching.set(true);
+    this.medNoResults.set(false);
+    this.medResults.set([]);
+    try {
+      const resp: any = await this.api.get(`/products?search=${encodeURIComponent(term)}`);
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.medResults.set(lista.slice(0, 20));
+      this.medNoResults.set(lista.length === 0);
+    } catch {
+      this.medNoResults.set(true);
+    } finally {
+      this.medSearching.set(false);
+    }
+  }
+
+  seleccionarMedicamento(p: any) {
+    this.medSeleccionado.set(p);
+    const { presentacion, via } = this.inferirPresentacionYVia(p);
+    this.nuevoMed.presentacion = presentacion;
+    this.nuevoMed.via_administracion = via;
+    this.medSearch = '';
+    this.medResults.set([]);
+    this.medNoResults.set(false);
+  }
+
+  // El Maestro local no guarda "vía de administración" por producto (es un
+  // dato de la formulación médica, no del catálogo — el mismo producto puede
+  // administrarse por distintas vías según el caso). Se sugiere una vía a
+  // partir de la forma farmacéutica como punto de partida editable; si el
+  // producto no tiene forma farmacéutica asociada, se intenta reconocerla
+  // dentro del propio nombre comercial.
+  private readonly FORMAS_CONOCIDAS = [
+    'tableta recubierta', 'tableta', 'cápsula blanda', 'cápsula', 'comprimido',
+    'jarabe', 'suspensión oral', 'solución oral', 'elixir', 'granulado',
+    'polvo para reconstituir a suspensión oral', 'solución inyectable', 'emulsión inyectable',
+    'solución oftálmica', 'suspensión oftálmica', 'ungüento oftálmico', 'gel intraocular',
+    'solución ótica', 'solución nasal', 'suspensión nasal',
+    'solución para inhalación', 'suspensión para inhalación', 'polvo para inhalación', 'solución para nebulización', 'suspensión para nebulización',
+    'crema vaginal', 'gel vaginal', 'óvulo',
+    'supositorio', 'enema',
+    'crema', 'pomada', 'ungüento tópico', 'ungüento proctológico', 'loción', 'polvo tópico', 'solución tópica', 'suspensión tópica', 'emulsión tópica', 'parche', 'jalea', 'pasta',
+    'solución bucal', 'solución bucofaríngea', 'implante de liberación prolongada', 'implante'
+  ];
+
+  private readonly VIA_POR_FORMA: { match: RegExp; via: string }[] = [
+    { match: /inyect|ampolla|\bvial\b|implante/i,                         via: 'Parenteral' },
+    { match: /oftálmic|oftalmic|intraocular/i,                            via: 'Oftálmica' },
+    { match: /ótic|otic/i,                                                via: 'Ótica' },
+    { match: /nasal/i,                                                    via: 'Nasal' },
+    { match: /inhalaci|nebuliza/i,                                        via: 'Inhalatoria' },
+    { match: /vaginal|óvulo|ovulo/i,                                      via: 'Vaginal' },
+    { match: /rectal|supositorio|enema|proctológic|proctologic/i,         via: 'Rectal' },
+    { match: /tópic|topic|crema|pomada|ungüento|unguento|gel|loción|locion|parche|pasta|jalea/i, via: 'Tópica' },
+    { match: /bucal|bucofaríngea|bucofaringea|sublingual/i,               via: 'Oral' },
+    { match: /tableta|cápsula|capsula|comprimido|jarabe|oral|elixir|granulado/i, via: 'Oral' }
+  ];
+
+  private inferirPresentacionYVia(p: any): { presentacion: string; via: string } {
+    let presentacion = String(p.forma_farmaceutica ?? '').trim();
+
+    if (!presentacion) {
+      const nombre = String(p.nombre_comercial ?? '').toLowerCase();
+      const encontrada = this.FORMAS_CONOCIDAS.find(f => nombre.includes(f));
+      if (encontrada) {
+        presentacion = encontrada.replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
+
+    const texto = `${presentacion} ${p.nombre_comercial ?? ''}`;
+    const via = this.VIA_POR_FORMA.find(r => r.match.test(texto))?.via ?? '';
+
+    return { presentacion, via };
+  }
+
+  cambiarMedicamentoSeleccionado() {
+    this.medSeleccionado.set(null);
+  }
+
+  async confirmarAgregarMed() {
+    const detail = this.selectedDetail();
+    const producto = this.medSeleccionado();
+    if (!detail) return;
+
+    if (!producto) {
+      this.agregarMedError.set('Debes seleccionar un medicamento del listado.');
+      return;
+    }
+    if (!this.nuevoMed.cantidad || this.nuevoMed.cantidad <= 0) {
+      this.agregarMedError.set('La cantidad debe ser mayor a cero.');
+      return;
+    }
+
+    this.agregarMedError.set('');
+    this.agregarMedSaving.set(true);
+    try {
+      await this.api.post(`/dispensacion-hs/formulacion/${detail.id_formulacion}/medicamentos-extra`, {
+        id_producto: producto.id_producto,
+        ...this.nuevoMed
+      });
+      this.showAgregarMedModal.set(false);
+      await this.loadDetail(detail.id_formulacion);
+    } catch (error: any) {
+      this.agregarMedError.set(error?.error?.message ?? 'No fue posible agregar el medicamento.');
+    } finally {
+      this.agregarMedSaving.set(false);
     }
   }
 
