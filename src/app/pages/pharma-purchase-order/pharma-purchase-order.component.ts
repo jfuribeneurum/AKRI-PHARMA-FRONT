@@ -19,14 +19,14 @@ interface OrderItem {
 const EDITABLE_STATES = ['borrador', 'enviada', 'editada'];
 
 @Component({
-  selector: 'akri-sebas-purchase-order',
+  selector: 'akri-pharma-purchase-order',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './sebas-purchase-order.component.html',
-  styleUrls: ['./sebas-purchase-order.component.css'],
+  templateUrl: './pharma-purchase-order.component.html',
+  styleUrls: ['./pharma-purchase-order.component.css'],
   imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
-export class SebasPurchaseOrderComponent implements OnInit {
+export class PharmaPurchaseOrderComponent implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly saving = signal(false);
@@ -557,7 +557,7 @@ export class SebasPurchaseOrderComponent implements OnInit {
   table.totales td:first-child { background:#e5e7eb; font-weight:700; }
   table.totales td:last-child { text-align:right; }
   table.totales tr.final td { font-weight:800; }
-  .firmas { display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-top:3rem; text-align:center; font-size:0.75rem; }
+  .firmas { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; margin-top:3rem; text-align:center; font-size:0.75rem; }
   .firmas .nombre { font-weight:700; min-height:1.1rem; margin-bottom:1.6rem; }
   .firmas .linea { border-top:1px solid #111827; padding-top:0.3rem; }
   .print-bar { max-width:1000px; margin:0 auto 0.75rem; text-align:right; }
@@ -665,16 +665,8 @@ export class SebasPurchaseOrderComponent implements OnInit {
         <div class="linea">Elaborado Por</div>
       </div>
       <div>
-        <div class="nombre"></div>
-        <div class="linea">Preaprobado Por</div>
-      </div>
-      <div>
         <div class="nombre">${oc.aprobado_por_nombre ?? ''}</div>
         <div class="linea">Aprobado Por</div>
-      </div>
-      <div>
-        <div class="nombre"></div>
-        <div class="linea">Recibido Por</div>
       </div>
     </div>
   </div>

@@ -9,12 +9,24 @@ interface Almacen {
   es_principal: boolean | number;
 }
 
+interface Sede {
+  id_sede: number;
+  codigo: string;
+  nombre: string;
+  es_predeterminada: boolean | number;
+  puede_admin_sede: boolean | number;
+  es_principal: boolean | number;
+  activo: boolean | number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SiteContextService {
   private readonly api = inject(ApiService);
 
   almacenes = signal<Almacen[]>([]);
   activeAlmacenId = signal<number | null>(null);
+  sedes = signal<Sede[]>([]);
+  activeSedeId = signal<number | null>(null);
 
   private currentUser(): any {
     try {
@@ -28,6 +40,8 @@ export class SiteContextService {
     if (!user) return;
     this.almacenes.set(user.almacenes ?? []);
     this.activeAlmacenId.set(user.id_almacen_principal ?? null);
+    this.sedes.set(user.access ?? []);
+    this.activeSedeId.set(user.id_sede ?? null);
     localStorage.setItem('akri_user', JSON.stringify(user));
   }
 
@@ -46,6 +60,15 @@ export class SiteContextService {
     const res = await this.api.post<{ success: boolean; data: { token: string; user: any } }>(
       '/auth/select-almacen',
       { id_almacen: idAlmacen }
+    );
+    localStorage.setItem('akri_token', res.data.token);
+    this.hydrateFromUser(res.data.user);
+  }
+
+  async switchSede(idSede: number) {
+    const res = await this.api.post<{ success: boolean; data: { token: string; user: any } }>(
+      '/auth/select-site',
+      { id_sede: idSede }
     );
     localStorage.setItem('akri_token', res.data.token);
     this.hydrateFromUser(res.data.user);

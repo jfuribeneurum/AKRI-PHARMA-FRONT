@@ -103,13 +103,16 @@
                             <input class="dsm__input" type="number" min="0"
                                    [ngModel]="item.cantidad"
                                    (ngModelChange)="updateControlDeEntrega(item, $event)"
-                                   [max]="getMedEntregaMax(item.med)">
-                            <span class="dsm__l">Control de entrega</span>
+                                   [max]="getMedEntregaMax(item.med)"
+                                   title="Solo referencia — no exige lote ni descuenta inventario">
+                            <span class="dsm__l">Control de entrega <em>(referencia)</em></span>
                           </div>
                           <div class="dsm dsm--blue">
                             <input class="dsm__input" type="number" min="0"
                                    [ngModel]="item.cantidadDispensadaOverride"
-                                   (ngModelChange)="setDispensadaOverride(item, $event)">
+                                   (ngModelChange)="setDispensadaOverride(item, $event)"
+                                   [max]="getMedEntregaMax(item.med)"
+                                   title="Lo que de verdad sale del inventario ahora">
                             <span class="dsm__l">Cant. dispensada</span>
                           </div>
                           <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
@@ -133,7 +136,7 @@
 
                   @if (isMedExpanded(item)) {
                     <div class="disp-med-card__dispensada-hint">
-                      Antes de esta entrega ya iba en <strong>{{ item.dispensadaOriginal }}</strong> — si editas "Cant. dispensada", escribe el <strong>NUEVO TOTAL</strong> (no solo lo de hoy). Si no la tocas, se suma sola sin riesgo.
+                      Antes de esta entrega ya iba en <strong>{{ item.dispensadaOriginal }}</strong> de <strong>{{ item.med.cantidad }}</strong> formuladas. En "Cant. dispensada" escribe cuánto vas a entregar <strong>AHORA</strong> (no el acumulado) — si la dejas en 0, no se exige lote porque no sale nada del inventario.
                     </div>
 
                     <!-- Disponibilidad por laboratorio -->
@@ -142,8 +145,8 @@
                         <span class="disp-med-stock__msg disp-med-stock__msg--warn">
                           ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
                         </span>
-                      } @else if (item.cantidad === 0) {
-                        <span class="disp-med-stock__msg">Escribe una cantidad en "Control de entrega" para ver los lotes disponibles.</span>
+                      } @else if (item.cantidadDispensadaOverride === 0) {
+                        <span class="disp-med-stock__msg">Escribe una cantidad en "Cant. dispensada" para ver los lotes disponibles.</span>
                       } @else if (stockLoading().has(item.med.idProductoLocal)) {
                         <span class="disp-med-stock__msg">Cargando stock…</span>
                       } @else if (getMedStock(item.med.idProductoLocal).length === 0) {
@@ -153,9 +156,9 @@
                           <span class="disp-med-stock__label">Disponibilidad por laboratorio</span>
                           <span class="disp-med-stock__asignado" [class.disp-med-stock__asignado--ok]="getAsignadoValido(item)">
                             @if (getAsignadoValido(item)) {
-                              ✓ Unidades completas ({{ getAsignado(item) }}/{{ item.cantidad }})
+                              ✓ Unidades completas ({{ getAsignado(item) }}/{{ item.cantidadDispensadaOverride }})
                             } @else {
-                              Asignado {{ getAsignado(item) }}/{{ item.cantidad }} — faltan {{ item.cantidad - getAsignado(item) }} por asignar
+                              Asignado {{ getAsignado(item) }}/{{ item.cantidadDispensadaOverride }} — faltan {{ item.cantidadDispensadaOverride - getAsignado(item) }} por asignar
                             }
                           </span>
                           <span class="disp-med-stock__total">{{ getMedStockTotal(item.med.idProductoLocal) }} uds totales</span>

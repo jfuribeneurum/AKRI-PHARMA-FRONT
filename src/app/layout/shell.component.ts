@@ -57,17 +57,15 @@ import { SiteContextService } from '../core/site-context.service';
         <header class="topbar">
           <div></div>
           <div class="topbar-actions">
-            @if (siteContext.almacenes().length > 1) {
+            @if (siteContext.sedes().length > 1) {
               <select class="chip primary chip-select"
-                      [ngModel]="siteContext.activeAlmacenId()"
-                      (ngModelChange)="onAlmacenChange($event)"
-                      title="Cambiar almacén activo">
-                @for (a of siteContext.almacenes(); track a.id_almacen) {
-                  <option [value]="a.id_almacen">{{ a.nombre }}</option>
+                      [ngModel]="siteContext.activeSedeId()"
+                      (ngModelChange)="onSedeChange($event)"
+                      title="Cambiar sede activa">
+                @for (s of siteContext.sedes(); track s.id_sede) {
+                  <option [value]="s.id_sede">{{ s.nombre }}</option>
                 }
               </select>
-            } @else {
-              <span class="chip primary">{{ siteContext.almacenes().at(0)?.nombre ?? 'Multisede' }}</span>
             }
             <button class="btn secondary" (click)="logout()">Salir</button>
             <button
@@ -162,6 +160,10 @@ export class ShellComponent {
     void this.siteContext.switchAlmacen(Number(id)).then(() => window.location.reload());
   }
 
+  onSedeChange(id: number | string) {
+    void this.siteContext.switchSede(Number(id)).then(() => window.location.reload());
+  }
+
   readonly navItems: any[] = [
     { path: '/dashboard', label: 'Dashboard', any: [] },
     {
@@ -183,8 +185,8 @@ export class ShellComponent {
       any: [],
       expanded: false,
       children: [
-        { path: '/sebas-purchase-order', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
-        { path: '/sebas-ingresos', label: 'Ingreso', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
+        { path: '/pharma-purchase-order', label: 'Orden de compra', any: ['perm_compras_solicitar', 'perm_compras_aprobar'] },
+        { path: '/pharma-ingresos', label: 'Ingreso', any: ['perm_inventario_movimiento', 'perm_compras_recibir'] },
         { path: '/devolucion-pedido', label: 'Devolución', any: [] },
         { path: '/alertas-entrega', label: 'Alertas pendientes de entrega', any: [] }
       ]
@@ -200,7 +202,7 @@ export class ShellComponent {
         { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] }
       ]
     },
-    { path: '/dispensing-sebas', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/dispensing-pharma', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
     {
       label: 'Otros',
       any: [],

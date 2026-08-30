@@ -32,13 +32,9 @@
     if (!anchor) { anchor = document.createElement('a'); anchor.className = 'akri-ops-nav-link'; anchor.dataset.akriOpsLink = 'true'; anchor.innerHTML = '<span>Centro de control</span><span class="badge">v26</span>'; nav.appendChild(anchor); }
     anchor.href = controlCenterHref(); bindLink(anchor);
   }
-  function ensureTopbarButton() {
-    const actions = document.querySelector('.topbar-actions');
-    if (!actions) return;
-    let btn = actions.querySelector('[data-akri-ops-top]');
-    if (!btn) { btn = document.createElement('a'); btn.className = 'btn secondary akri-ops-toplink'; btn.dataset.akriOpsTop = 'true'; btn.textContent = 'Centro de control'; const logout = Array.from(actions.querySelectorAll('button, a')).find((el) => (el.textContent || '').trim().toLowerCase() === 'salir'); if (logout) actions.insertBefore(btn, logout); else actions.appendChild(btn); }
-    btn.href = controlCenterHref(); bindLink(btn);
+  function removeTopbarButton() {
+    document.querySelector('.topbar-actions [data-akri-ops-top]')?.remove();
   }
-  function tick() { injectStyles(); removeLegacyLauncher(); ensureSidebarLink(); ensureTopbarButton(); }
+  function tick() { injectStyles(); removeLegacyLauncher(); ensureSidebarLink(); removeTopbarButton(); }
   document.addEventListener('DOMContentLoaded', tick); window.addEventListener('load', tick); window.addEventListener('hashchange', tick); setInterval(tick, 1500);
 })();

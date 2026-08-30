@@ -1,4 +1,4 @@
-import { DispensacionSebasComponent } from './dispensacion-sebas.component';
+import { DispensacionPharmaComponent } from './dispensacion-pharma.component';
 import { ApiService } from '../../core/api.service';
 
 // These cover the pure calculation/branching logic behind the dispensación
@@ -25,22 +25,21 @@ function makeMed(overrides: Partial<any> = {}): any {
 function makeItem(overrides: Partial<any> = {}): any {
   return {
     med: makeMed(),
-    cantidad: 0,
-    cantidadDispensadaOverride: 0,
-    cantidadDispensadaTouched: false,
+    cantidad: 0, // "Control de entrega": solo referencia, no mueve inventario
+    cantidadDispensadaOverride: 0, // "Cant. dispensada": lo que de verdad sale ahora
     dispensadaOriginal: 0,
     loteSeleccion: {},
     ...overrides
   };
 }
 
-describe('DispensacionSebasComponent', () => {
-  let component: DispensacionSebasComponent;
+describe('DispensacionPharmaComponent', () => {
+  let component: DispensacionPharmaComponent;
   let api: ApiService;
 
   beforeEach(() => {
     api = makeApiStub();
-    component = new DispensacionSebasComponent(api);
+    component = new DispensacionPharmaComponent(api);
   });
 
   describe('hasActiveFilter', () => {
@@ -128,51 +127,51 @@ describe('DispensacionSebasComponent', () => {
     });
   });
 
-  describe('getPendiente (Control de entrega menos Cant. dispensada)', () => {
-    it('equals "Control de entrega" minus the live "Cant. dispensada" override', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 10, cantidadDispensadaOverride: 4 });
-      expect(component.getPendiente(item)).toBe(6);
+  describe('getPendiente (formulada menos histórico ANTES de esta acción — fijo, no depende de lo que se escriba)', () => {
+    it('equals formulada minus what was historically dispensed before opening the modal', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), dispensadaOriginal: 10 });
+      expect(component.getPendiente(item)).toBe(14);
     });
 
-    it('ignores the formulated amount entirely — only Control de entrega and Cant. dispensada matter', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 100 }), cantidad: 10, cantidadDispensadaOverride: 3 });
-      expect(component.getPendiente(item)).toBe(7);
+    it('does not change no matter what is typed in "Control de entrega" or "Cant. dispensada"', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), dispensadaOriginal: 10, cantidad: 99, cantidadDispensadaOverride: 99 });
+      expect(component.getPendiente(item)).toBe(14);
     });
 
-    it('drops to zero once the override reaches Control de entrega', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 5, cantidadDispensadaOverride: 5 });
+    it('is zero once history already covers everything formulated', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), dispensadaOriginal: 24 });
       expect(component.getPendiente(item)).toBe(0);
     });
 
     it('clamps at zero instead of going negative', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 5, cantidadDispensadaOverride: 99 });
+      const item = makeItem({ med: makeMed({ cantidad: 5 }), dispensadaOriginal: 8 });
       expect(component.getPendiente(item)).toBe(0);
     });
   });
 
-  describe('getFaltante (formulada menos histórico ya entregado menos Control de entrega)', () => {
+  describe('getFaltante (formulada menos histórico ya entregado menos "Cant. dispensada" — lo que de verdad sale ahora)', () => {
     it('equals formulada minus what is being delivered right now when there is no history', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 90 }), cantidad: 15, dispensadaOriginal: 0 });
+      const item = makeItem({ med: makeMed({ cantidad: 90 }), cantidadDispensadaOverride: 15, dispensadaOriginal: 0 });
       expect(component.getFaltante(item)).toBe(75);
     });
 
     it('subtracts prior deliveries recorded before this modal session', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidad: 0, dispensadaOriginal: 2 });
+      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidadDispensadaOverride: 0, dispensadaOriginal: 2 });
       expect(component.getFaltante(item)).toBe(2998);
     });
 
-    it('ignores "Cant. dispensada" entirely — typing there must not double-discount the delivery', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidad: 1, dispensadaOriginal: 0, cantidadDispensadaOverride: 1 });
+    it('ignores "Control de entrega" entirely — it is only a reference field, it must not affect real accounting', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidad: 500, dispensadaOriginal: 0, cantidadDispensadaOverride: 1 });
       expect(component.getFaltante(item)).toBe(2999);
     });
 
     it('is zero when history plus the current delivery covers everything formulated', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 14, dispensadaOriginal: 10 });
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidadDispensadaOverride: 14, dispensadaOriginal: 10 });
       expect(component.getFaltante(item)).toBe(0);
     });
 
     it('clamps at zero instead of going negative', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 30, dispensadaOriginal: 0 });
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidadDispensadaOverride: 30, dispensadaOriginal: 0 });
       expect(component.getFaltante(item)).toBe(0);
     });
   });
@@ -221,7 +220,7 @@ describe('DispensacionSebasComponent', () => {
     });
   });
 
-  describe('updateControlDeEntrega ("Cant. dispensada" nunca se autocompleta, es 100% manual)', () => {
+  describe('updateControlDeEntrega ("Control de entrega" es solo referencia, nunca toca "Cant. dispensada")', () => {
     it('updates "Control de entrega" without touching "Cant. dispensada" at all', () => {
       const item = makeItem({
         med: makeMed({ idProductoLocal: 10, cantidad: 3000, control: { cantidad_dispensada: 15 } as any }),
@@ -235,7 +234,6 @@ describe('DispensacionSebasComponent', () => {
       const updated = component.modalFormItems()[0];
       expect(updated.cantidad).toBe(2);
       expect(updated.cantidadDispensadaOverride).toBe(0);
-      expect(updated.cantidadDispensadaTouched).toBe(false);
     });
 
     it('leaves a manual "Cant. dispensada" value untouched no matter what Control de entrega does', () => {
@@ -252,7 +250,6 @@ describe('DispensacionSebasComponent', () => {
       const updated = component.modalFormItems()[0];
       expect(updated.cantidad).toBe(3);
       expect(updated.cantidadDispensadaOverride).toBe(16);
-      expect(updated.cantidadDispensadaTouched).toBe(true);
     });
 
     it('clamps Control de entrega to the lesser of pending and available stock', () => {
@@ -271,13 +268,57 @@ describe('DispensacionSebasComponent', () => {
     });
   });
 
+  describe('setDispensadaOverride ("Cant. dispensada" es lo que de verdad sale del inventario)', () => {
+    it('clamps to the lesser of pending and available stock, same as Control de entrega', () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
+
+      component.setDispensadaOverride(item, 999);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidadDispensadaOverride).toBe(5);
+    });
+
+    it('never touches "Control de entrega"', () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 3000, control: null }),
+        dispensadaOriginal: 0,
+        cantidad: 7
+      });
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 100 }] });
+
+      component.setDispensadaOverride(item, 16);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidad).toBe(7);
+      expect(updated.cantidadDispensadaOverride).toBe(16);
+    });
+
+    it('leaving it at 0 (dejar pendiente) means nothing is being delivered', () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
+        dispensadaOriginal: 0,
+        cantidad: 30 // Control de entrega es solo referencia, no obliga a nada
+      });
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
+
+      expect(component.getAsignadoValido(item)).toBe(true); // 0 asignado == 0 requerido
+    });
+  });
+
   describe('getFaltante reproduce el incidente real: 15 ya dispensadas + 1 ahora', () => {
-    it('is 2984 regardless of what "Cant. dispensada" shows, since it ignores that field', () => {
+    it('is 2984 regardless of what "Control de entrega" shows, since it is only a reference field', () => {
       const item = makeItem({
         med: makeMed({ cantidad: 3000 }),
         dispensadaOriginal: 15,
-        cantidad: 1,
-        cantidadDispensadaOverride: 0
+        cantidad: 500,
+        cantidadDispensadaOverride: 1
       });
       expect(component.getFaltante(item)).toBe(2984);
     });
@@ -293,11 +334,16 @@ describe('DispensacionSebasComponent', () => {
       expect(component.getAsignado(item)).toBe(6);
     });
 
-    it('getAsignadoValido is true only when the assigned total exactly matches "Control de entrega"', () => {
-      const item = makeItem({ cantidad: 6, loteSeleccion: { '3:1': 4, '3:2': 2 } });
+    it('getAsignadoValido is true only when the assigned total exactly matches "Cant. dispensada"', () => {
+      const item = makeItem({ cantidadDispensadaOverride: 6, loteSeleccion: { '3:1': 4, '3:2': 2 } });
       expect(component.getAsignadoValido(item)).toBe(true);
-      item.cantidad = 7;
+      item.cantidadDispensadaOverride = 7;
       expect(component.getAsignadoValido(item)).toBe(false);
+    });
+
+    it('getAsignadoValido ignores "Control de entrega" completely — it never gates lote assignment', () => {
+      const item = makeItem({ cantidad: 999, cantidadDispensadaOverride: 0, loteSeleccion: {} });
+      expect(component.getAsignadoValido(item)).toBe(true);
     });
 
     it('setLoteQty clamps to the lot\'s available stock and updates the right key', () => {
@@ -326,8 +372,8 @@ describe('DispensacionSebasComponent', () => {
       expect(component.isLoteChecked(item, { id_lote: 9, id_ubicacion: 1 })).toBe(false);
     });
 
-    it('checking a single lote with enough stock auto-assigns the full "Control de entrega" quantity — no typing needed', () => {
-      const item = makeItem({ cantidad: 5 });
+    it('checking a single lote with enough stock auto-assigns the full "Cant. dispensada" quantity — no typing needed', () => {
+      const item = makeItem({ cantidadDispensadaOverride: 5 });
       component.modalFormItems.set([item]);
       component.toggleLote(item, { id_lote: 3, id_ubicacion: 1, cantidad_disponible: 24 }, true);
       const updated = component.modalFormItems()[0];
@@ -336,7 +382,7 @@ describe('DispensacionSebasComponent', () => {
     });
 
     it('checking a lote that cannot cover the full quantity alone assigns only what it has available', () => {
-      const item = makeItem({ cantidad: 10 });
+      const item = makeItem({ cantidadDispensadaOverride: 10 });
       component.modalFormItems.set([item]);
       component.toggleLote(item, { id_lote: 3, id_ubicacion: 1, cantidad_disponible: 4 }, true);
       const updated = component.modalFormItems()[0];
@@ -345,7 +391,7 @@ describe('DispensacionSebasComponent', () => {
     });
 
     it('checking a second lote fills only the remaining gap left by the first', () => {
-      const item = makeItem({ cantidad: 10, loteSeleccion: { '3:1': 4 } });
+      const item = makeItem({ cantidadDispensadaOverride: 10, loteSeleccion: { '3:1': 4 } });
       component.modalFormItems.set([item]);
       component.toggleLote(item, { id_lote: 5, id_ubicacion: 1, cantidad_disponible: 20 }, true);
       const updated = component.modalFormItems()[0];
@@ -355,7 +401,7 @@ describe('DispensacionSebasComponent', () => {
     });
 
     it('unchecking a lote removes its assigned quantity entirely', () => {
-      const item = makeItem({ cantidad: 10, loteSeleccion: { '3:1': 4, '5:1': 6 } });
+      const item = makeItem({ cantidadDispensadaOverride: 10, loteSeleccion: { '3:1': 4, '5:1': 6 } });
       component.modalFormItems.set([item]);
       component.toggleLote(item, { id_lote: 3, id_ubicacion: 1, cantidad_disponible: 4 }, false);
       const updated = component.modalFormItems()[0];
@@ -364,13 +410,21 @@ describe('DispensacionSebasComponent', () => {
     });
 
     it('checking a second lote when the first already covers everything still marks it (at 0) so it can be edited by hand', () => {
-      const item = makeItem({ cantidad: 5, loteSeleccion: { '3:1': 5 } });
+      const item = makeItem({ cantidadDispensadaOverride: 5, loteSeleccion: { '3:1': 5 } });
       component.modalFormItems.set([item]);
       component.toggleLote(item, { id_lote: 5, id_ubicacion: 1, cantidad_disponible: 15 }, true);
       const updated = component.modalFormItems()[0];
       expect(component.isLoteChecked(updated, { id_lote: 5, id_ubicacion: 1 })).toBe(true);
       expect(updated.loteSeleccion['5:1']).toBe(0);
       expect(component.getLotesMarcados(updated)).toBe(2);
+    });
+
+    it('ignores "Control de entrega" when computing how much is left to cover — only "Cant. dispensada" matters', () => {
+      const item = makeItem({ cantidad: 999, cantidadDispensadaOverride: 5 });
+      component.modalFormItems.set([item]);
+      component.toggleLote(item, { id_lote: 3, id_ubicacion: 1, cantidad_disponible: 24 }, true);
+      const updated = component.modalFormItems()[0];
+      expect(updated.loteSeleccion['3:1']).toBe(5);
     });
   });
 
@@ -385,44 +439,53 @@ describe('DispensacionSebasComponent', () => {
   describe('hasItemsToDispense', () => {
     it('is false when any item is missing its MX product link', () => {
       component.modalFormItems.set([
-        makeItem({ med: makeMed({ idProductoLocal: null }), cantidad: 1 })
+        makeItem({ med: makeMed({ idProductoLocal: null }), cantidadDispensadaOverride: 1 })
       ]);
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
     it('is false when every medicamento is already fully dispensed', () => {
       component.modalFormItems.set([
-        makeItem({ med: makeMed({ cantidad: 10, control: { cantidad_dispensada: 10 } as any }), cantidad: 0, cantidadDispensadaOverride: 10 })
+        makeItem({ med: makeMed({ cantidad: 10, control: { cantidad_dispensada: 10 } as any }), cantidadDispensadaOverride: 10 })
       ]);
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
     it('is false when a pending medicamento has zero stock available', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
-      component.modalFormItems.set([makeItem({ med, cantidad: 5 })]);
+      component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5 })]);
       component.stockByMed.set({ 10: [] });
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
     it('is false when there is a positive quantity but no lote has been assigned yet', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
-      component.modalFormItems.set([makeItem({ med, cantidad: 5 })]);
+      component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5 })]);
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
-    it('is true when there is a pending medicamento with stock, a positive quantity, a matching lote assignment, and contrato/régimen are set', () => {
+    it('is true when there is a pending medicamento with stock, a positive "Cant. dispensada", a matching lote assignment, and contrato/régimen are set', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
-      component.modalFormItems.set([makeItem({ med, cantidad: 5, loteSeleccion: { '3:1': 5 } })]);
+      component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5, loteSeleccion: { '3:1': 5 } })]);
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
       component.modalContrato = 'contrato_1';
       component.modalRegimen = 'contributivo';
       expect(component.hasItemsToDispense()).toBe(true);
     });
 
-    it('is false when the pending item has stock but the chosen quantity is zero', () => {
+    it('is false when the pending item has stock but "Cant. dispensada" is zero (dejar pendiente)', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
-      component.modalFormItems.set([makeItem({ med, cantidad: 0 })]);
+      component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 0 })]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      expect(component.hasItemsToDispense()).toBe(false);
+    });
+
+    it('ignores "Control de entrega" — a positive value there alone must not enable dispensing', () => {
+      const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
+      component.modalFormItems.set([makeItem({ med, cantidad: 30, cantidadDispensadaOverride: 0 })]);
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
       component.modalContrato = 'contrato_1';
       component.modalRegimen = 'contributivo';
@@ -431,7 +494,7 @@ describe('DispensacionSebasComponent', () => {
 
     it('is false when everything else is valid but contrato or régimen is missing', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
-      component.modalFormItems.set([makeItem({ med, cantidad: 5, loteSeleccion: { '3:1': 5 } })]);
+      component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5, loteSeleccion: { '3:1': 5 } })]);
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
       component.modalContrato = '';
       component.modalRegimen = 'contributivo';
@@ -679,6 +742,51 @@ describe('DispensacionSebasComponent', () => {
       expect(component.agregarMedError()).toBe('El medicamento seleccionado no existe en el Maestro de productos.');
       expect(component.showAgregarMedModal()).toBe(true);
       expect(component.agregarMedSaving()).toBe(false);
+    });
+  });
+
+  describe('saveDispensacion — "Cantidad pendiente" del soporte de entrega', () => {
+    it('is Control de entrega minus Cant. dispensada, never the global faltante of the whole formulación', async () => {
+      // formulada = 100, Control de entrega (referencia de hoy) = 48, se
+      // entregan 30 realmente. El faltante GLOBAL sería 100-30=70, pero el
+      // soporte debe mostrar 48-30=18 (lo que quedó debiendo de HOY).
+      const med = makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 });
+      const item = makeItem({
+        med,
+        cantidad: 48,
+        cantidadDispensadaOverride: 30,
+        dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 30 }
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([item]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 30 } });
+
+      await component.saveDispensacion();
+
+      expect((component as any).soporteData.items[0].cantidad_pendiente).toBe(18);
+    });
+
+    it('is zero once Cant. dispensada covers all of Control de entrega, regardless of the global faltante', async () => {
+      const med = makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 });
+      const item = makeItem({
+        med,
+        cantidad: 30,
+        cantidadDispensadaOverride: 30,
+        dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 30 }
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([item]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 30 } });
+
+      await component.saveDispensacion();
+
+      expect((component as any).soporteData.items[0].cantidad_pendiente).toBe(0);
     });
   });
 

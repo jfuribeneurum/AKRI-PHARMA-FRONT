@@ -48,7 +48,14 @@ button, input, select, textarea {
 }
 
 input:not([type=email]):not([type=password]):not([type=number]):not([type=radio]):not([type=checkbox]):not([readonly]),
-textarea:not([readonly]) {
+textarea:not([readonly]),
+select {
+  text-transform: uppercase;
+}
+
+/* Datos ya guardados (tablas de listados): se muestran en mayúscula sin
+   modificar el valor real guardado en la base de datos. */
+table td {
   text-transform: uppercase;
 }
 

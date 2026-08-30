@@ -49,7 +49,7 @@
     <!-- ── BUSCADOR DE INGRESOS ──────────────────────────────── -->
     <div class="card">
       <div class="section-header-row">
-        <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Buscar ingreso Sebas</div>
+        <div class="po-section-title" style="margin-bottom:0;border-bottom:none">Buscar ingreso Pharma</div>
         <button class="toggle-todos-btn" [class.active]="mostrarTodos()" (click)="toggleMostrarTodos()">
           {{ mostrarTodos() ? 'Solo elegibles' : 'Ver todos' }}
         </button>
@@ -69,7 +69,7 @@
       <div class="filter-input-row">
         @if (filterType() === 'numero') {
           <label>Número / Referencia
-            <input [(ngModel)]="filter.numero_oc" placeholder="ING-SEBAS-..." (ngModelChange)="applyFilter()">
+            <input [(ngModel)]="filter.numero_oc" placeholder="ING-PHARMA-..." (ngModelChange)="applyFilter()">
           </label>
         }
         @if (filterType() === 'proveedor') {

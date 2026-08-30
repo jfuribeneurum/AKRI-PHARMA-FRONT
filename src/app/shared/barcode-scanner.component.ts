@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { UppercaseInputDirective } from './uppercase-input.directive';
 
 type ScanOrigin = 'camara' | 'archivo' | 'manual' | 'scanner_usb';
 
@@ -12,7 +13,7 @@ export interface BarcodeScanEvent {
 @Component({
   selector: 'akri-barcode-scanner',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UppercaseInputDirective],
   template: `
     <div class="scanner-shell">
       <div class="toolbar">

@@ -31,7 +31,7 @@ export class DispensingComponent implements OnInit {
   missingDraft: any = this.blankMissingDraft();
   adjustmentDraft: any = this.blankAdjustmentDraft();
   form: any = this.blankForm();
-  isSebasDispensing = false;
+  isPharmaDispensing = false;
 
   constructor(
     private readonly api: ApiService,
@@ -39,7 +39,7 @@ export class DispensingComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.isSebasDispensing = this.router.url.includes('dispensing-sebas');
+    this.isPharmaDispensing = this.router.url.includes('dispensing-pharma');
     void this.load();
   }
 
@@ -201,7 +201,7 @@ export class DispensingComponent implements OnInit {
         id_ubicacion_origen: selected.id_ubicacion,
         cantidad: quantity,
         motivo: `${this.adjustmentDraft.motivo}${this.adjustmentDraft.soporte ? ` - ${this.adjustmentDraft.soporte}` : ''}`,
-        referencia_tipo: 'AJUSTE_INVENTARIO_SEBAS',
+        referencia_tipo: 'AJUSTE_INVENTARIO_PHARMA',
         referencia_id: null
       });
       this.message.set('Salida de ajuste registrada y descontada del inventario.');
@@ -324,7 +324,7 @@ export class DispensingComponent implements OnInit {
 
   private buildObservations() {
     const observations = String(this.form.observaciones ?? '').trim();
-    if (!this.isSebasDispensing || !this.form.missing_items.length) {
+    if (!this.isPharmaDispensing || !this.form.missing_items.length) {
       return observations;
     }
 

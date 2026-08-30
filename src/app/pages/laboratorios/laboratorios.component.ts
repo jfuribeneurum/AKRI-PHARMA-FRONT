@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/cor
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 type LabForm = {
   id_laboratorio: number | null;
@@ -13,7 +14,7 @@ type LabForm = {
   selector: 'akri-laboratorios',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, UppercaseInputDirective],
   templateUrl: './laboratorios.component.html',
   styleUrls: ['./laboratorios.component.css']
 })

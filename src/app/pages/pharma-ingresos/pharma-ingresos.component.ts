@@ -6,14 +6,14 @@ import { SiteContextService } from '../../core/site-context.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
 @Component({
-  selector: 'akri-sebas-ingresos',
+  selector: 'akri-pharma-ingresos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './sebas-ingresos.component.html',
-  styleUrls: ['./sebas-ingresos.component.css'],
+  templateUrl: './pharma-ingresos.component.html',
+  styleUrls: ['./pharma-ingresos.component.css'],
   imports: [CommonModule, FormsModule, DatePipe, UppercaseInputDirective]
 })
-export class SebasIngresosComponent implements OnInit {
+export class PharmaIngresosComponent implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
@@ -282,7 +282,8 @@ export class SebasIngresosComponent implements OnInit {
         <th>Sede :</th><td colspan="3">${ing.sede || '—'}</td>
       </tr>
       <tr>
-        <th>N° Factura :</th><td colspan="3">${facturaStr}</td>
+        <th>N° Factura :</th><td>${facturaStr}</td>
+        <th>Fecha factura :</th><td>${fmtFecha(ing.fecha_factura)}</td>
       </tr>
     </table>
 
@@ -397,7 +398,7 @@ export class SebasIngresosComponent implements OnInit {
     this.modo.set('sin_orden');
     this.ordenSeleccionada.set(null);
     this.limpiar();
-    this.ocMeta.consecutivo = `ING-SEBAS-${Date.now()}`;
+    this.ocMeta.consecutivo = `ING-PHARMA-${Date.now()}`;
   }
 
   agregarItem() {
@@ -605,11 +606,11 @@ export class SebasIngresosComponent implements OnInit {
         return;
       }
       await this.api.post('/ingresos', this.ingresoConOrdenPayload());
-      this.message.set('Ingreso Sebas creado exitosamente.');
+      this.message.set('Ingreso Pharma creado exitosamente.');
       this.limpiar();
       this.ordenSeleccionada.set(null);
     } catch (error: any) {
-      this.error.set(error?.error?.message || 'No fue posible crear el ingreso Sebas.');
+      this.error.set(error?.error?.message || 'No fue posible crear el ingreso Pharma.');
     }
   }
 
@@ -634,6 +635,7 @@ export class SebasIngresosComponent implements OnInit {
       // Factura
       prefijo_factura:     this.ingresoExtra.prefijo_factura || null,
       numero_factura:      this.ingresoExtra.numero_factura != null ? String(this.ingresoExtra.numero_factura) : null,
+      fecha_factura:       this.ingresoExtra.fecha_factura || null,
       cufe:                this.ingresoExtra.cufe || null,
       fecha_recepcion:     this.ingresoExtra.fecha_recepcion || null,
       observaciones:       this.ingresoExtra.observaciones || null,
@@ -708,6 +710,7 @@ export class SebasIngresosComponent implements OnInit {
     return {
       prefijo_factura: '',
       numero_factura: null as number | null,
+      fecha_factura: '',
       cufe: '',
       fecha_recepcion: new Date().toISOString().slice(0, 10),
       observaciones: '',
@@ -716,7 +719,7 @@ export class SebasIngresosComponent implements OnInit {
 
   private emptyIngreso() {
     return {
-      referencia: `ING-SEBAS-${Date.now()}`,
+      referencia: `ING-PHARMA-${Date.now()}`,
       producto: '',
       cantidad: 1,
       lote: '',

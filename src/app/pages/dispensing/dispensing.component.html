@@ -1,7 +1,7 @@
 <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">{{ isSebasDispensing ? 'Dispensación Sebas' : 'Dispensación' }}</h1>
+          <h1 class="page-title">{{ isPharmaDispensing ? 'Dispensación Pharma' : 'Dispensación' }}</h1>
           <p class="page-subtitle">
             Registra domiciliarios, paciente, receptor, temperatura de entrega y firma digital de recepción a conformidad.
           </p>
@@ -82,7 +82,7 @@
             </table>
           </div>
 
-          <div class="card missing-meds-card" *ngIf="isSebasDispensing">
+          <div class="card missing-meds-card" *ngIf="isPharmaDispensing">
             <div class="card-header">
               <div>
                 <h3>Medicamentos faltantes</h3>
@@ -148,7 +148,7 @@
             </div>
           </div>
 
-          <div class="card adjustment-exit-card" *ngIf="isSebasDispensing">
+          <div class="card adjustment-exit-card" *ngIf="isPharmaDispensing">
             <div class="card-header">
               <div>
                 <h3>Salida de ajustes</h3>

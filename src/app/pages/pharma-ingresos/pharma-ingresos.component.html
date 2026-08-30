@@ -1,7 +1,7 @@
 <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Ingresos Sebas</h1>
+          <h1 class="page-title">Ingresos Pharma</h1>
           <p class="page-subtitle">Registro de ingreso con datos de factura, proveedor, producto, lote y valores.</p>
         </div>
       </div>
@@ -28,7 +28,7 @@
         <div class="filter-input-row">
           @if (filterType() === 'numero') {
             <label>Número / Referencia / Orden
-              <input [(ngModel)]="filter.numero_oc" placeholder="ING-SEBAS-... o OC-..." (ngModelChange)="aplicarFiltro()">
+              <input [(ngModel)]="filter.numero_oc" placeholder="Ej: ING-2026-0001 o OC-2026-0001" (ngModelChange)="aplicarFiltro()">
             </label>
           }
           @if (filterType() === 'fecha') {
@@ -294,6 +294,7 @@
                 <div class="ing-footer-grid">
                   <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
                   <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
+                  <label>Fecha factura<input type="date" [(ngModel)]="ingresoExtra.fecha_factura"></label>
                 </div>
                 <label class="obs-label" style="margin-top:0.6rem">
                   Observaciones
@@ -363,7 +364,7 @@
             <div class="form-grid">
               <label>
                 Consecutivo
-                <input [(ngModel)]="ocMeta.consecutivo" placeholder="ING-SEBAS-...">
+                <input [(ngModel)]="ocMeta.consecutivo" placeholder="ING-PHARMA-...">
               </label>
               <label>
                 Fecha recepcion
@@ -476,6 +477,7 @@
                 <div class="ing-footer-grid">
                   <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
                   <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
+                  <label>Fecha factura<input type="date" [(ngModel)]="ingresoExtra.fecha_factura"></label>
                 </div>
                 <label class="obs-label" style="margin-top:0.6rem">
                   Observaciones
@@ -529,7 +531,7 @@
             </div>
           }
           <div class="toolbar" style="margin-top:0.75rem">
-            <button class="btn" (click)="crearIngreso()" [disabled]="!allItemsValidated()">Crear ingreso Sebas</button>
+            <button class="btn" (click)="crearIngreso()" [disabled]="!allItemsValidated()">Crear ingreso Pharma</button>
             <button class="btn secondary" (click)="limpiar()">Limpiar</button>
           </div>
         </div>

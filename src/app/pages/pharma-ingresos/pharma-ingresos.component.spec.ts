@@ -1,4 +1,4 @@
-import { SebasIngresosComponent } from './sebas-ingresos.component';
+import { PharmaIngresosComponent } from './pharma-ingresos.component';
 import { ApiService } from '../../core/api.service';
 import { ChangeDetectorRef } from '@angular/core';
 import { SiteContextService } from '../../core/site-context.service';
@@ -49,12 +49,12 @@ function makeIngreso(overrides: Partial<any> = {}): any {
   };
 }
 
-describe('SebasIngresosComponent — acta de recepción técnica (PDF)', () => {
-  let component: SebasIngresosComponent;
+describe('PharmaIngresosComponent — acta de recepción técnica (PDF)', () => {
+  let component: PharmaIngresosComponent;
   let html: string;
 
   beforeEach(() => {
-    component = new SebasIngresosComponent(
+    component = new PharmaIngresosComponent(
       makeApiStub(),
       {} as unknown as ChangeDetectorRef,
       {} as unknown as SiteContextService
