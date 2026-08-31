@@ -278,6 +278,15 @@ export class DispensacionPharmaComponent implements OnInit {
     return Math.max(0, (item.med.cantidad ?? 0) - item.dispensadaOriginal);
   }
 
+  // Pendiente de HOY (mostrado en vivo en la tarjeta) = Control de entrega
+  // (referencia de lo que se planeó entregar) - Cant. dispensada (lo que de
+  // verdad se está sacando ahora). Reacciona en vivo mientras el usuario
+  // escribe en cualquiera de los dos campos. Misma fórmula que "pendienteDeHoy"
+  // usada al armar el soporte de la entrega (ver confirmarDispensacion).
+  getPendienteEntrega(item: ModalFormItem): number {
+    return Math.max(0, Number(item.cantidad ?? 0) - Number(item.cantidadDispensadaOverride ?? 0));
+  }
+
   // Si aún queda cantidad formulada sin dispensar en el histórico. No
   // confundir con getPendiente() (lo que muestra la casilla "Cant.
   // Pendiente") — este es el que decide si el medicamento sigue siendo
@@ -287,13 +296,11 @@ export class DispensacionPharmaComponent implements OnInit {
     return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidadDispensadaOverride || 0)) > 0;
   }
 
-  // Faltante = cantidad formulada - histórico ya entregado (fijo, de rondas
-  // anteriores) - Cant. dispensada (lo que se está entregando AHORA en esta
-  // acción). "Cant. dispensada" es el único campo que de verdad descuenta
-  // inventario — "Control de entrega" (item.cantidad) es solo referencia y
-  // ya no participa en este cálculo.
+  // Faltante = cantidad formulada - Control de entrega (lo que aún no se ha
+  // planeado entregar de todo lo formulado). Reacciona en vivo con lo que se
+  // escriba en "Control de entrega".
   getFaltante(item: ModalFormItem): number {
-    return Math.max(0, (item.med.cantidad ?? 0) - item.dispensadaOriginal - Number(item.cantidadDispensadaOverride || 0));
+    return Math.max(0, (item.med.cantidad ?? 0) - Number(item.cantidad ?? 0));
   }
 
   // "Cant. dispensada" es lo que físicamente sale del inventario en esta
@@ -313,7 +320,10 @@ export class DispensacionPharmaComponent implements OnInit {
   // backend. A propósito no toca "Cant. dispensada" para nada (es el campo
   // aparte que sí mueve inventario, ver setDispensadaOverride).
   updateControlDeEntrega(item: ModalFormItem, value: number) {
-    const max = this.getMedEntregaMax(item.med);
+    // Solo referencia/planeación — se limita a lo pendiente formulado, NO al
+    // stock físico disponible (ese límite es exclusivo de "Cant. dispensada",
+    // el campo que sí saca inventario; ver setDispensadaOverride/getMedEntregaMax).
+    const max = this.getMedRestante(item.med);
     const cantidad = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
     this.modalFormItems.update(items => items.map(i =>
       i !== item ? i : { ...i, cantidad }
@@ -434,16 +444,17 @@ export class DispensacionPharmaComponent implements OnInit {
       const res = await this.api.get<any>(`/inventory/stock/product/${idProductoLocal}`);
       const lots = Array.isArray(res) ? res : (res?.data ?? []);
       this.stockByMed.update(m => ({ ...m, [idProductoLocal]: lots }));
-      // El stock llega después de fijar la cantidad inicial (= pendiente);
-      // si hay menos stock que pendiente, hay que bajar tanto la referencia
-      // ("Control de entrega") como lo que de verdad se va a entregar
-      // ("Cant. dispensada") para que nunca queden por encima de lo disponible.
+      // El stock llega después de fijar la cantidad inicial (= pendiente).
+      // "Cant. dispensada" sí saca inventario, así que se recorta al stock
+      // real disponible. "Control de entrega" es solo referencia/planeación
+      // y no depende del stock — solo se limita a lo pendiente formulado.
       this.modalFormItems.update(items => items.map(item => {
         if (item.med.idProductoLocal !== idProductoLocal) return item;
         const entregaMax = this.getMedEntregaMax(item.med);
+        const pendiente = this.getMedRestante(item.med);
         return {
           ...item,
-          cantidad: Math.min(item.cantidad, entregaMax),
+          cantidad: Math.min(item.cantidad, pendiente),
           cantidadDispensadaOverride: Math.min(item.cantidadDispensadaOverride, entregaMax)
         };
       }));
@@ -530,6 +541,11 @@ export class DispensacionPharmaComponent implements OnInit {
         nombre_medicamento: med.nombre_medicamento
       });
       await this.loadDetail(detail.id_formulacion);
+      // Si la exclusión se pidió desde dentro del modal de dispensación, la
+      // fila también debe desaparecer de ahí sin esperar a cerrar/reabrir.
+      if (this.showModal()) {
+        this.modalFormItems.update(items => items.filter(i => i.med.id_med_formulacion !== med.id_med_formulacion));
+      }
     } catch (error: any) {
       this.error.set(error?.error?.message ?? 'No fue posible eliminar este medicamento.');
     } finally {
@@ -669,6 +685,24 @@ export class DispensacionPharmaComponent implements OnInit {
       });
       this.showAgregarMedModal.set(false);
       await this.loadDetail(detail.id_formulacion);
+      // Si se agregó desde dentro del modal de dispensación, la fila nueva
+      // también debe aparecer ahí sin esperar a cerrar/reabrir el modal.
+      if (this.showModal()) {
+        const yaEnModal = new Set(this.modalFormItems().map(i => i.med.id_med_formulacion));
+        const nuevos = (this.selectedDetail()?.medicamentos ?? []).filter(m => !yaEnModal.has(m.id_med_formulacion));
+        if (nuevos.length) {
+          this.modalFormItems.update(items => [
+            ...items,
+            ...nuevos.map(m => ({
+              med: m,
+              cantidad: 0,
+              cantidadDispensadaOverride: 0,
+              dispensadaOriginal: m.control?.cantidad_dispensada ?? 0,
+              loteSeleccion: {}
+            }))
+          ]);
+        }
+      }
     } catch (error: any) {
       this.agregarMedError.set(error?.error?.message ?? 'No fue posible agregar el medicamento.');
     } finally {

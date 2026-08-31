@@ -66,6 +66,12 @@
               </label>
             </div>
 
+            <div class="disp-med-list__toolbar">
+              <button type="button" class="btn btn-small btn-outline" (click)="abrirAgregarMedModal()">
+                ➕ Agregar medicamento
+              </button>
+            </div>
+
             <!-- Lista de medicamentos -->
             <div class="disp-med-list">
               @for (item of modalFormItems(); track item.med.id_med_formulacion) {
@@ -75,7 +81,7 @@
                   <div class="disp-med-card__top">
                     <div class="disp-med-card__info disp-med-card__info--clickable" (click)="toggleMedCard(item)">
                       <span class="disp-med-card__caret">{{ isMedExpanded(item) ? '▾' : '▸' }}</span>
-                      <div>
+                      <div class="disp-med-card__info-text">
                         <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
                         <div class="disp-med-card__meta">
                           @if (item.med.presentacion) {
@@ -103,7 +109,7 @@
                             <input class="dsm__input" type="number" min="0"
                                    [ngModel]="item.cantidad"
                                    (ngModelChange)="updateControlDeEntrega(item, $event)"
-                                   [max]="getMedEntregaMax(item.med)"
+                                   [max]="getMedRestante(item.med)"
                                    title="Solo referencia — no exige lote ni descuenta inventario">
                             <span class="dsm__l">Control de entrega <em>(referencia)</em></span>
                           </div>
@@ -115,8 +121,8 @@
                                    title="Lo que de verdad sale del inventario ahora">
                             <span class="dsm__l">Cant. dispensada</span>
                           </div>
-                          <div class="dsm" [class]="getPendiente(item) === 0 ? 'dsm--green' : 'dsm--red'">
-                            <span class="dsm__v">{{ getPendiente(item) }}</span>
+                          <div class="dsm" [class]="getPendienteEntrega(item) === 0 ? 'dsm--green' : 'dsm--red'">
+                            <span class="dsm__v">{{ getPendienteEntrega(item) }}</span>
                             <span class="dsm__l">Cant. pendiente</span>
                           </div>
                           <div class="dsm" [class]="getFaltante(item) === 0 ? 'dsm--green' : 'dsm--red'">
@@ -131,6 +137,13 @@
                       } @else if (!tienePendientePorFormular(item)) {
                         <div class="disp-med-card__done-badge">✅ Completado</div>
                       }
+
+                      <button type="button" class="disp-historial__delete-btn"
+                              [disabled]="excluyendoMedId() === item.med.id_med_formulacion"
+                              title="Eliminar este medicamento de la dispensación"
+                              (click)="pedirExclusion(item.med)">
+                        {{ excluyendoMedId() === item.med.id_med_formulacion ? '…' : '✕' }}
+                      </button>
                     </div>
                   </div>
 
@@ -201,7 +214,7 @@
             <!-- Observaciones -->
             <label class="disp-modal__obs-label">
               Observaciones
-              <span style="color:#94a3b8; font-weight:400; margin-left:4px;">(opcional — aplica a todos)</span>
+              <span style="color:var(--muted, #94a3b8); font-weight:400; margin-left:4px;">(opcional — aplica a todos)</span>
               <textarea class="disp-modal__obs-input" [(ngModel)]="modalObs"
                         rows="2" placeholder="Ej: entrega parcial por falta de stock…"></textarea>
             </label>
@@ -273,9 +286,9 @@
 
           <div class="disp-modal__body">
             @if (historialLoading()) {
-              <p style="text-align:center; color:#64748b;">Cargando histórico…</p>
+              <p style="text-align:center; color:var(--muted, #64748b);">Cargando histórico…</p>
             } @else if (historial().length === 0) {
-              <p style="text-align:center; color:#64748b;">Aún no se ha registrado ninguna entrega para esta formulación.</p>
+              <p style="text-align:center; color:var(--muted, #64748b);">Aún no se ha registrado ninguna entrega para esta formulación.</p>
             } @else {
               <table class="inner-table">
                 <thead>
@@ -349,7 +362,7 @@
 
           <div class="disp-modal__body" style="display:flex; flex-direction:column; gap:0.75rem;">
             @if (agregarMedError()) {
-              <p style="color:#dc2626; font-size:0.85rem; margin:0;">{{ agregarMedError() }}</p>
+              <p style="color:var(--danger, #dc2626); font-size:0.85rem; margin:0;">{{ agregarMedError() }}</p>
             }
             <div class="disp-modal__obs-label">
               Medicamento *
@@ -431,9 +444,9 @@
 
           <div class="disp-modal__body">
             @if (soportesListLoading()) {
-              <p style="text-align:center; color:#64748b;">Cargando soportes…</p>
+              <p style="text-align:center; color:var(--muted, #64748b);">Cargando soportes…</p>
             } @else if (soportesListGrupos().length === 0) {
-              <p style="text-align:center; color:#64748b;">Aún no se ha generado ningún soporte de entrega para esta formulación.</p>
+              <p style="text-align:center; color:var(--muted, #64748b);">Aún no se ha generado ningún soporte de entrega para esta formulación.</p>
             } @else {
               <table class="inner-table">
                 <thead>
@@ -492,13 +505,13 @@
           <option value="dispensado">Dispensado</option>
         </select>
 
-        <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:#475569; margin:0;">
+        <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:var(--muted, #475569); margin:0;">
           Desde
           <input type="date" [(ngModel)]="fechaDesde" (ngModelChange)="resetAndLoad()"
                  style="padding:0.35rem 0.5rem; font-size:0.85rem;">
         </label>
 
-        <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:#475569; margin:0;">
+        <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; color:var(--muted, #475569); margin:0;">
           Hasta
           <input type="date" [(ngModel)]="fechaHasta" (ngModelChange)="resetAndLoad()"
                  style="padding:0.35rem 0.5rem; font-size:0.85rem;">
@@ -570,20 +583,20 @@
                 <!-- Fila expandida con medicamentos -->
                 @if (expandedId() === f.id_formulacion) {
                   <tr class="detail-row">
-                    <td colspan="8" style="padding:0; background:#f8fafc;">
+                    <td colspan="8" style="padding:0; background:var(--surface-muted, #f8fafc);">
                       @if (detailLoading()) {
-                        <div style="padding:1.5rem; text-align:center; color:#64748b;">Cargando medicamentos…</div>
+                        <div style="padding:1.5rem; text-align:center; color:var(--muted, #64748b);">Cargando medicamentos…</div>
                       } @else if (selectedDetail()) {
                         <div style="padding:1rem 1.5rem;">
 
                           <!-- Info paciente + botón dispensar -->
                           <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem;">
                             @if (selectedDetail()!.consecutivo_atencion) {
-                              <h3 style="margin:0; width:100%; font-size:1rem; color:#1e293b;">
+                              <h3 style="margin:0; width:100%; font-size:1rem; color:var(--text, #1e293b);">
                                 #historia {{ selectedDetail()!.consecutivo_atencion }}
                               </h3>
                             }
-                            <div style="display:flex; gap:2rem; flex-wrap:wrap; font-size:0.85rem; color:#475569; flex:1;">
+                            <div style="display:flex; gap:2rem; flex-wrap:wrap; font-size:0.85rem; color:var(--muted, #475569); flex:1;">
                               <span><strong>Paciente:</strong> {{ selectedDetail()!.nombre_paciente }}</span>
                               <span><strong>Doc:</strong> {{ selectedDetail()!.documento_paciente }}</span>
                               @if (selectedDetail()!.celular_paciente) {
@@ -614,7 +627,6 @@
                                 <th>Cantidad</th>
                                 <th>Diagnóstico</th>
                                 <th>Estado</th>
-                                <th></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -626,7 +638,7 @@
                                       <span class="chip success" style="font-size:0.65rem; margin-left:4px;">PBS</span>
                                     }
                                     @if (med.esManual) {
-                                      <span class="chip" style="font-size:0.65rem; margin-left:4px; background:#ede9fe; color:#6d28d9;">Manual</span>
+                                      <span class="chip" style="font-size:0.65rem; margin-left:4px; background:var(--primary-soft, #ede9fe); color:var(--primary, #6d28d9);">Manual</span>
                                     }
                                   </td>
                                   <td class="muted">{{ med.presentacion }}</td>
@@ -643,14 +655,6 @@
                                     <span class="chip {{ getEstadoClass(med.control?.estado ?? 'pendiente') }}">
                                       {{ getEstadoLabel(med.control?.estado ?? 'pendiente') }}
                                     </span>
-                                  </td>
-                                  <td style="text-align:center;">
-                                    <button type="button" class="disp-historial__delete-btn"
-                                            [disabled]="excluyendoMedId() === med.id_med_formulacion"
-                                            title="Eliminar este medicamento de la dispensación"
-                                            (click)="pedirExclusion(med)">
-                                      {{ excluyendoMedId() === med.id_med_formulacion ? '…' : '✕' }}
-                                    </button>
                                   </td>
                                 </tr>
                               }

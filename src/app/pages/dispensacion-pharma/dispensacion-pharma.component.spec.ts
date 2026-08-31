@@ -149,29 +149,47 @@ describe('DispensacionPharmaComponent', () => {
     });
   });
 
-  describe('getFaltante (formulada menos histórico ya entregado menos "Cant. dispensada" — lo que de verdad sale ahora)', () => {
-    it('equals formulada minus what is being delivered right now when there is no history', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 90 }), cantidadDispensadaOverride: 15, dispensadaOriginal: 0 });
-      expect(component.getFaltante(item)).toBe(75);
+  describe('getPendienteEntrega (Control de entrega menos Cant. dispensada — reactivo, se muestra en la tarjeta del modal)', () => {
+    it('equals "Control de entrega" minus "Cant. dispensada"', () => {
+      const item = makeItem({ cantidad: 100, cantidadDispensadaOverride: 30 });
+      expect(component.getPendienteEntrega(item)).toBe(70);
     });
 
-    it('subtracts prior deliveries recorded before this modal session', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidadDispensadaOverride: 0, dispensadaOriginal: 2 });
-      expect(component.getFaltante(item)).toBe(2998);
+    it('reacts live as either field changes, unlike getPendiente', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 300 }), dispensadaOriginal: 0, cantidad: 100, cantidadDispensadaOverride: 30 });
+      expect(component.getPendienteEntrega(item)).toBe(70);
+      expect(component.getPendiente(item)).toBe(300);
     });
 
-    it('ignores "Control de entrega" entirely — it is only a reference field, it must not affect real accounting', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 3000 }), cantidad: 500, dispensadaOriginal: 0, cantidadDispensadaOverride: 1 });
-      expect(component.getFaltante(item)).toBe(2999);
+    it('is zero once the delivered amount covers the planned "Control de entrega"', () => {
+      const item = makeItem({ cantidad: 50, cantidadDispensadaOverride: 50 });
+      expect(component.getPendienteEntrega(item)).toBe(0);
     });
 
-    it('is zero when history plus the current delivery covers everything formulated', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidadDispensadaOverride: 14, dispensadaOriginal: 10 });
+    it('clamps at zero instead of going negative when more was delivered than planned', () => {
+      const item = makeItem({ cantidad: 20, cantidadDispensadaOverride: 30 });
+      expect(component.getPendienteEntrega(item)).toBe(0);
+    });
+  });
+
+  describe('getFaltante (formulada menos "Control de entrega" — reactivo, se muestra en la tarjeta del modal)', () => {
+    it('equals formulada minus "Control de entrega"', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 600 }), cantidad: 100 });
+      expect(component.getFaltante(item)).toBe(500);
+    });
+
+    it('ignores "Cant. dispensada" and dispensadaOriginal entirely', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 600 }), cantidad: 100, cantidadDispensadaOverride: 999, dispensadaOriginal: 999 });
+      expect(component.getFaltante(item)).toBe(500);
+    });
+
+    it('is zero once "Control de entrega" covers everything formulated', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 24 });
       expect(component.getFaltante(item)).toBe(0);
     });
 
-    it('clamps at zero instead of going negative', () => {
-      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidadDispensadaOverride: 30, dispensadaOriginal: 0 });
+    it('clamps at zero instead of going negative when "Control de entrega" exceeds lo formulado', () => {
+      const item = makeItem({ med: makeMed({ cantidad: 24 }), cantidad: 30 });
       expect(component.getFaltante(item)).toBe(0);
     });
   });
@@ -252,19 +270,88 @@ describe('DispensacionPharmaComponent', () => {
       expect(updated.cantidadDispensadaOverride).toBe(16);
     });
 
-    it('clamps Control de entrega to the lesser of pending and available stock', () => {
+    it('clamps Control de entrega to what is pending, WITHOUT being limited by available stock', () => {
+      // Bug real: "Control de entrega" es solo un valor de referencia/planeación,
+      // no debe estar atado al stock físico actual como "Cant. dispensada" sí lo
+      // está — de lo contrario un producto con poco stock nunca deja escribir un
+      // valor de referencia mayor, aunque falte mucho por formular.
       const item = makeItem({
-        med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
+        med: makeMed({ idProductoLocal: 10, cantidad: 300, control: null }),
         dispensadaOriginal: 0
       });
       component.modalFormItems.set([item]);
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
 
+      component.updateControlDeEntrega(item, 60);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidad).toBe(60);
+      expect(updated.cantidadDispensadaOverride).toBe(0);
+    });
+
+    it('still clamps Control de entrega to what is pending formulado (upper sanity bound)', () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 500 }] });
+
       component.updateControlDeEntrega(item, 999);
 
       const updated = component.modalFormItems()[0];
-      expect(updated.cantidad).toBe(5);
+      expect(updated.cantidad).toBe(24);
       expect(updated.cantidadDispensadaOverride).toBe(0);
+    });
+  });
+
+  describe('loadStockForMed (reclamp al llegar el stock del backend)', () => {
+    it('does NOT clamp "Control de entrega" to arriving stock, only to lo pendiente', async () => {
+      // Regresión real: al abrir la fila del medicamento, el stock llega de
+      // forma asíncrona y antes recortaba "Control de entrega" al stock físico
+      // (ej. de 60 a 30 automáticamente) aunque ese campo sea solo referencia.
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 300, control: null }),
+        cantidad: 60,
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      (api.get as any).mockResolvedValue({ data: [{ id_lote: 1, cantidad_disponible: 30 }] });
+
+      await (component as any).loadStockForMed(10);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidad).toBe(60);
+    });
+
+    it('DOES clamp "Cant. dispensada" to arriving stock (that field really moves inventory)', async () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 300, control: null }),
+        cantidadDispensadaOverride: 60,
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      (api.get as any).mockResolvedValue({ data: [{ id_lote: 1, cantidad_disponible: 30 }] });
+
+      await (component as any).loadStockForMed(10);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidadDispensadaOverride).toBe(30);
+    });
+
+    it('still clamps "Control de entrega" down to lo pendiente formulado if it exceeds it', async () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
+        cantidad: 24,
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      (api.get as any).mockResolvedValue({ data: [{ id_lote: 1, cantidad_disponible: 500 }] });
+
+      await (component as any).loadStockForMed(10);
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidad).toBe(24);
     });
   });
 
@@ -313,14 +400,14 @@ describe('DispensacionPharmaComponent', () => {
   });
 
   describe('getFaltante reproduce el incidente real: 15 ya dispensadas + 1 ahora', () => {
-    it('is 2984 regardless of what "Control de entrega" shows, since it is only a reference field', () => {
+    it('is 2500 (formulada 3000 menos Control de entrega 500), regardless of history or "Cant. dispensada"', () => {
       const item = makeItem({
         med: makeMed({ cantidad: 3000 }),
         dispensadaOriginal: 15,
         cantidad: 500,
         cantidadDispensadaOverride: 1
       });
-      expect(component.getFaltante(item)).toBe(2984);
+      expect(component.getFaltante(item)).toBe(2500);
     });
   });
 
@@ -587,6 +674,40 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.error()).toBe('No autorizado');
       expect(component.excluyendoMedId()).toBeNull();
     });
+
+    it('also removes the medicamento from modalFormItems when excluded from inside the dispensar modal', async () => {
+      // El botón de eliminar ahora vive dentro del modal "Dispensar formulación"
+      // (ya no en la tabla de fuera) — al confirmar la exclusión ahí, la fila
+      // debe desaparecer del modal sin esperar a cerrarlo y reabrirlo.
+      const med = makeMed({ id_med_formulacion: 11, nombre_medicamento: 'ABACAVIR 300 MG' });
+      const otroMed = makeMed({ id_med_formulacion: 22, nombre_medicamento: 'CETIRIZINA 10 MG' });
+      component.medAExcluir.set(med);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.showModal.set(true);
+      component.modalFormItems.set([makeItem({ med }), makeItem({ med: otroMed })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [] } });
+
+      await component.confirmarExclusion();
+
+      const remaining = component.modalFormItems();
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].med.id_med_formulacion).toBe(22);
+    });
+
+    it('does not touch modalFormItems when the dispensar modal is closed', async () => {
+      const med = makeMed({ id_med_formulacion: 11 });
+      component.medAExcluir.set(med);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.showModal.set(false);
+      component.modalFormItems.set([makeItem({ med })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [] } });
+
+      await component.confirmarExclusion();
+
+      expect(component.modalFormItems().length).toBe(1);
+    });
   });
 
   describe('abrirAgregarMedModal / seleccionarMedicamento / cambiarMedicamentoSeleccionado (agregar mx manual)', () => {
@@ -742,6 +863,45 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.agregarMedError()).toBe('El medicamento seleccionado no existe en el Maestro de productos.');
       expect(component.showAgregarMedModal()).toBe(true);
       expect(component.agregarMedSaving()).toBe(false);
+    });
+
+    it('also appends the new medicamento to modalFormItems when added from inside the dispensar modal', async () => {
+      // "Agregar medicamento" ahora también se puede abrir desde dentro del
+      // modal "Dispensar formulación" — la fila nueva debe aparecer ahí sin
+      // esperar a cerrar/reabrir el modal.
+      const existente = makeMed({ id_med_formulacion: 1, nombre_medicamento: 'ABACAVIR 300 MG' });
+      const nuevoDesdeBackend = makeMed({ id_med_formulacion: 900000001, nombre_medicamento: 'RIFAXIMINA 550 MG', esManual: true });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed = { presentacion: 'Tableta', via_administracion: 'Oral', cantidad: 3 };
+      component.showModal.set(true);
+      component.modalFormItems.set([makeItem({ med: existente })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [existente, nuevoDesdeBackend] } });
+
+      await component.confirmarAgregarMed();
+
+      const items = component.modalFormItems();
+      expect(items.length).toBe(2);
+      expect(items[1].med.id_med_formulacion).toBe(900000001);
+      expect(items[1].cantidad).toBe(0);
+      expect(items[1].cantidadDispensadaOverride).toBe(0);
+    });
+
+    it('does not touch modalFormItems when the dispensar modal is closed', async () => {
+      const existente = makeMed({ id_med_formulacion: 1 });
+      const nuevo = makeMed({ id_med_formulacion: 900000001, esManual: true });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed.cantidad = 1;
+      component.showModal.set(false);
+      component.modalFormItems.set([makeItem({ med: existente })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [existente, nuevo] } });
+
+      await component.confirmarAgregarMed();
+
+      expect(component.modalFormItems().length).toBe(1);
     });
   });
 

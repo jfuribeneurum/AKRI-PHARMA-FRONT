@@ -7,8 +7,13 @@
     .inner-table tr:last-child td { border-bottom:none; }
     .btn-icon { background:none; border:none; cursor:pointer; font-size:0.9rem; color:#64748b; padding:2px 6px; border-radius:4px; }
     .btn-icon:hover { background:#e2e8f0; }
-    .disp-historial__delete-btn { background:none; border:none; cursor:pointer; font-size:0.85rem; font-weight:700; color:#94a3b8; padding:2px 8px; border-radius:4px; line-height:1; }
-    .disp-historial__delete-btn:hover { background:#fee2e2; color:#dc2626; }
+    .disp-historial__delete-btn {
+      background:#f1f5f9; border:1px solid #e2e8f0; cursor:pointer; font-size:0.8rem; font-weight:700; color:#64748b;
+      width:26px; height:26px; min-width:26px; border-radius:50%; line-height:1; flex-shrink:0;
+      display:inline-flex; align-items:center; justify-content:center; padding:0;
+    }
+    .disp-historial__delete-btn:hover:not(:disabled) { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
+    .disp-historial__delete-btn:disabled { opacity:0.5; cursor:not-allowed; }
     .btn-small { padding:0.25rem 0.65rem; font-size:0.8rem; }
     .acciones-fecha { margin-top:0.3rem; font-size:0.72rem; color:#94a3b8; white-space:nowrap; display:flex; align-items:center; gap:0.3rem; }
     .btn-icon--soporte { font-size:0.85rem; padding:0 2px; line-height:1; }
@@ -141,6 +146,7 @@
     }
 
     /* Lista de medicamentos */
+    .disp-med-list__toolbar { display: flex; justify-content: flex-end; }
     .disp-med-list { display: flex; flex-direction: column; gap: 0.6rem; }
 
     /* Tarjeta de medicamento */
@@ -166,7 +172,9 @@
     .disp-med-card__info { flex: 1; min-width: 0; }
     .disp-med-card__info--clickable {
       display: flex; align-items: flex-start; gap: 0.4rem; cursor: pointer; user-select: none;
+      min-width: 0;
     }
+    .disp-med-card__info-text { min-width: 0; overflow: hidden; }
     .disp-med-card__caret {
       color: #7c3aed; font-size: 0.75rem; margin-top: 2px; flex-shrink: 0;
     }
@@ -400,8 +408,8 @@
     :host-context([data-theme="dark"]) .inner-table th { background: var(--surface-muted); color: var(--muted); }
     :host-context([data-theme="dark"]) .inner-table td { border-bottom-color: var(--line); }
     :host-context([data-theme="dark"]) .btn-icon { color: var(--muted); }
-    :host-context([data-theme="dark"]) .disp-historial__delete-btn { color: var(--muted); }
-    :host-context([data-theme="dark"]) .disp-historial__delete-btn:hover { background: rgba(220,38,38,0.15); color: #f87171; }
+    :host-context([data-theme="dark"]) .disp-historial__delete-btn { color: var(--muted); background: var(--surface-muted); border-color: var(--line); }
+    :host-context([data-theme="dark"]) .disp-historial__delete-btn:hover:not(:disabled) { background: rgba(220,38,38,0.15); color: #f87171; border-color: rgba(248,113,113,0.35); }
     :host-context([data-theme="dark"]) .btn-icon:hover { background: var(--line); }
     :host-context([data-theme="dark"]) .loading-state,
     :host-context([data-theme="dark"]) .empty-state { color: var(--muted); }
