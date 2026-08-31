@@ -554,10 +554,35 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
-    it('is false when a pending medicamento has zero stock available', () => {
+    it('is false when the only pending medicamento has zero stock available (nothing dispensable)', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
       component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5 })]);
       component.stockByMed.set({ 10: [] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      expect(component.hasItemsToDispense()).toBe(false);
+    });
+
+    it('a med with MX but zero stock does NOT block the others — is true when another item has stock and is ready', () => {
+      const sinStock = makeItem({ med: makeMed({ id_med_formulacion: 1, idProductoLocal: 20, cantidad: 600 }), cantidadDispensadaOverride: 0 });
+      const conStock = makeItem({
+        med: makeMed({ id_med_formulacion: 2, idProductoLocal: 10, cantidad: 10, control: null }),
+        cantidadDispensadaOverride: 5,
+        loteSeleccion: { '3:1': 5 }
+      });
+      component.modalFormItems.set([sinStock, conStock]);
+      component.stockByMed.set({ 20: [], 10: [{ cantidad_disponible: 5 }] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      expect(component.hasItemsToDispense()).toBe(true);
+    });
+
+    it('a med whose stock is still loading does not block nor enable — is false while it is the only pending one', () => {
+      const cargando = makeItem({ med: makeMed({ idProductoLocal: 30, cantidad: 10 }), cantidadDispensadaOverride: 0 });
+      component.modalFormItems.set([cargando]);
+      component.stockLoading.set(new Set([30]));
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
@@ -966,7 +991,7 @@ describe('DispensacionPharmaComponent', () => {
     });
   });
 
-  describe('saveDispensacion — medicamentos "Sin MX" no bloquean la entrega de los demás', () => {
+  describe('saveDispensacion — medicamentos "Sin MX" o sin stock no bloquean la entrega de los demás', () => {
     it('saves the dispensable item, registers the Sin MX one with cantidad_dispensada 0 for real DB traceability, and documents both in the soporte', async () => {
       const conMx = makeItem({
         med: makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 }),
@@ -979,6 +1004,7 @@ describe('DispensacionPharmaComponent', () => {
       });
       component.selectedDetail.set({ id_formulacion: 7 } as any);
       component.modalFormItems.set([conMx, sinMx]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 30 }] });
       component.modalContrato = 'contrato_1';
       component.modalRegimen = 'contributivo';
       (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 30 } });
@@ -1021,6 +1047,36 @@ describe('DispensacionPharmaComponent', () => {
       const data = (component as any).soporteData;
       expect(data.pendientesNuevos).toContainEqual(
         expect.objectContaining({ nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad_pendiente: 10 })
+      );
+    });
+
+    it('registers a med with MX but zero stock the same way, with a "sin stock" observación', async () => {
+      const conStock = makeItem({
+        med: makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 }),
+        cantidad: 30, cantidadDispensadaOverride: 30, dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 30 }
+      });
+      const sinStock = makeItem({
+        med: makeMed({ id_med_formulacion: 2, idProductoLocal: 20, nombre_medicamento: 'IRBESARTAN 300 MG', cantidad: 90 }),
+        cantidad: 20, cantidadDispensadaOverride: 0, dispensadaOriginal: 0
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([conStock, sinStock]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 30 }], 20: [] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 30 } });
+
+      await component.saveDispensacion();
+
+      expect(api.post).toHaveBeenCalledWith('/dispensacion-hs', expect.objectContaining({
+        id_med_formulacion_hs: 2,
+        cantidad_dispensada: 0,
+        observaciones: 'Sin stock disponible en inventario — queda pendiente.'
+      }));
+      const data = (component as any).soporteData;
+      expect(data.pendientesNuevos).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'IRBESARTAN 300 MG', cantidad_dispensada: 0, cantidad_pendiente: 20 })
       );
     });
   });

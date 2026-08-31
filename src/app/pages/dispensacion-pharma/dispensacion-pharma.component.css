@@ -181,6 +181,34 @@
     .disp-med-card__name {
       font-weight: 700; font-size: 0.88rem; color: #1e293b;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      position: relative;
+    }
+    /* Nombre largo: en reposo se ve con "..."; al pasar el cursor, se
+       desplaza como una cinta continua para poder leerlo completo sin
+       necesitar un tooltip. El texto va duplicado y se anima -50% del
+       ancho total (= 100% de una copia), así el loop siempre cierra
+       perfecto sin importar cuánto mida el nombre. */
+    .disp-med-card__name-track {
+      display: inline-flex;
+    }
+    /* La animación solo se aplica dentro de :hover (en vez de armarla siempre
+       y pausarla) para que cada vez que se pasa el cursor arranque desde el
+       principio, no desde donde quedó la última vez. */
+    .disp-med-card__name:hover .disp-med-card__name-track {
+      animation: disp-med-name-scroll 9s linear infinite;
+    }
+    .disp-med-card__name-track > span { padding-right: 3rem; white-space: nowrap; }
+    /* La copia duplicada solo debe aportar al recorrido de la animación —
+       si queda visible en reposo, un nombre corto (que ni necesita cinta)
+       se vería repetido dos veces seguidas dentro del espacio disponible. */
+    .disp-med-card__name-track > span:last-child { visibility: hidden; }
+    .disp-med-card__name:hover .disp-med-card__name-track > span:last-child { visibility: visible; }
+    @keyframes disp-med-name-scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .disp-med-card__name-track { animation: none; }
     }
     .disp-med-card__meta {
       display: flex; align-items: center; gap: 0.25rem;

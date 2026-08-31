@@ -415,20 +415,24 @@ export class DispensacionPharmaComponent implements OnInit {
     }));
   }
 
+  // Un medicamento nunca puede dispensarse de verdad en esta ronda si no
+  // tiene MX vinculado en el maestro, o si sí lo tiene pero confirmadamente
+  // no hay stock. Mientras el stock todavía está cargando no cuenta ni a
+  // favor ni en contra, para no bloquear ni habilitar antes de tiempo.
+  private esNoDispensableAhora(item: ModalFormItem): boolean {
+    if (!item.med.idProductoLocal) return true;
+    if (this.stockLoading().has(item.med.idProductoLocal)) return false;
+    return this.getMedStockTotal(item.med.idProductoLocal) === 0;
+  }
+
   hasItemsToDispense(): boolean {
     if (!this.modalContrato || !this.modalRegimen) return false;
-    // Los medicamentos "Sin MX" (sin producto vinculado en el maestro) nunca
-    // se pueden dispensar de verdad y no deben bloquear la entrega de los
-    // demás — quedan documentados como pendientes en el soporte (ver
-    // saveDispensacion), sin exigir stock ni lote.
-    const items = this.modalFormItems().filter(i => !!i.med.idProductoLocal);
-    const pendingItems = items.filter(i => this.tienePendientePorFormular(i));
+    // Los medicamentos sin MX o sin stock disponible no deben bloquear la
+    // entrega de los demás — quedan documentados como pendientes en el
+    // soporte (ver saveDispensacion), sin exigir stock ni lote.
+    const accionables = this.modalFormItems().filter(i => !this.esNoDispensableAhora(i));
+    const pendingItems = accionables.filter(i => this.tienePendientePorFormular(i));
     if (!pendingItems.length) return false;
-    const anyPendingWithNoStock = pendingItems.some(i =>
-      !this.stockLoading().has(i.med.idProductoLocal!) &&
-      this.getMedStockTotal(i.med.idProductoLocal!) === 0
-    );
-    if (anyPendingWithNoStock) return false;
     return pendingItems.some(i => i.cantidadDispensadaOverride > 0 && this.getAsignadoValido(i));
   }
 
@@ -963,18 +967,24 @@ export class DispensacionPharmaComponent implements OnInit {
         }
       }
 
-      // Medicamentos "Sin MX" (sin producto vinculado en el maestro): no se
-      // pueden dispensar de verdad porque no hay a qué producto/stock
-      // descontar, pero no deben bloquear la entrega de los demás. Se
-      // registran igual con cantidad_dispensada: 0 (no exige lotes, ver
-      // dispensarMedicamento en el backend) para que quede una fila real en
-      // dispensacion_hs_control + su traza de auditoría — no solo una nota
-      // en el PDF. Si esta llamada informativa falla, no debe tumbar el
-      // guardado de los demás medicamentos que sí se lograron dispensar.
-      const sinMx = this.modalFormItems().filter(i => !i.med.idProductoLocal && this.tienePendientePorFormular(i));
-      for (const item of sinMx) {
+      // Medicamentos sin MX vinculado, o con MX pero sin stock disponible: no
+      // se pueden dispensar de verdad en esta ronda, pero no deben bloquear
+      // la entrega de los demás. Se registran igual con cantidad_dispensada: 0
+      // (no exige lotes, ver dispensarMedicamento en el backend) para que
+      // quede una fila real en dispensacion_hs_control + su traza de
+      // auditoría — no solo una nota en el PDF. Si esta llamada informativa
+      // falla, no debe tumbar el guardado de los demás medicamentos que sí se
+      // lograron dispensar.
+      const idsGuardados = new Set(toSave.map(i => i.med.id_med_formulacion));
+      const noDispensablesAhora = this.modalFormItems().filter(i =>
+        !idsGuardados.has(i.med.id_med_formulacion) && this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i)
+      );
+      for (const item of noDispensablesAhora) {
         const pendienteDeHoy = Number(item.cantidad || 0);
         if (pendienteDeHoy <= 0) continue;
+        const motivo = item.med.idProductoLocal
+          ? 'Sin stock disponible en inventario — queda pendiente.'
+          : 'Sin MX vinculado en el maestro — queda pendiente.';
         try {
           await this.api.post('/dispensacion-hs', {
             id_formulacion_hs:         detail.id_formulacion,
@@ -982,7 +992,7 @@ export class DispensacionPharmaComponent implements OnInit {
             cantidad_dispensada:       0,
             cantidad_pendiente_antes:  this.getPendiente(item),
             cantidad_faltante:         this.getFaltante(item),
-            observaciones:             'Sin MX vinculado en el maestro — queda pendiente.',
+            observaciones:             motivo,
             contrato:                  this.modalContrato || null,
             regimen:                   this.modalRegimen || null
           });

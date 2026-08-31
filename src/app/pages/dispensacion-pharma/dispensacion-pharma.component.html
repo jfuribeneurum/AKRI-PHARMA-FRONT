@@ -82,7 +82,12 @@
                     <div class="disp-med-card__info disp-med-card__info--clickable" (click)="toggleMedCard(item)">
                       <span class="disp-med-card__caret">{{ isMedExpanded(item) ? '▾' : '▸' }}</span>
                       <div class="disp-med-card__info-text">
-                        <div class="disp-med-card__name">{{ item.med.nombre_medicamento }}</div>
+                        <div class="disp-med-card__name" title="{{ item.med.nombre_medicamento }}">
+                          <span class="disp-med-card__name-track">
+                            <span>{{ item.med.nombre_medicamento }}</span>
+                            <span aria-hidden="true">{{ item.med.nombre_medicamento }}</span>
+                          </span>
+                        </div>
                         <div class="disp-med-card__meta">
                           @if (item.med.presentacion) {
                             <span>{{ item.med.presentacion }}</span>
@@ -158,10 +163,14 @@
                         <span class="disp-med-stock__msg disp-med-stock__msg--warn">
                           ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX. No bloquea la entrega de los demás — quedará como pendiente en el comprobante.
                         </span>
-                      } @else if (item.cantidadDispensadaOverride === 0) {
-                        <span class="disp-med-stock__msg">Escribe una cantidad en "Cant. dispensada" para ver los lotes disponibles.</span>
                       } @else if (stockLoading().has(item.med.idProductoLocal)) {
                         <span class="disp-med-stock__msg">Cargando stock…</span>
+                      } @else if (getMedStockTotal(item.med.idProductoLocal) === 0) {
+                        <span class="disp-med-stock__msg disp-med-stock__msg--empty">
+                          ⚠ Sin stock disponible en inventario. No bloquea la entrega de los demás — quedará como pendiente en el comprobante.
+                        </span>
+                      } @else if (item.cantidadDispensadaOverride === 0) {
+                        <span class="disp-med-stock__msg">Escribe una cantidad en "Cant. dispensada" para ver los lotes disponibles.</span>
                       } @else if (getMedStock(item.med.idProductoLocal).length === 0) {
                         <span class="disp-med-stock__msg disp-med-stock__msg--empty">Sin stock disponible en inventario</span>
                       } @else {
