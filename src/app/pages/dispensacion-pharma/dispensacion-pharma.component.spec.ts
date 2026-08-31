@@ -524,11 +524,27 @@ describe('DispensacionPharmaComponent', () => {
   });
 
   describe('hasItemsToDispense', () => {
-    it('is false when any item is missing its MX product link', () => {
+    it('is false when the only item is missing its MX product link (nothing dispensable) even with contrato/régimen set', () => {
       component.modalFormItems.set([
-        makeItem({ med: makeMed({ idProductoLocal: null }), cantidadDispensadaOverride: 1 })
+        makeItem({ med: makeMed({ idProductoLocal: null, cantidad: 10 }), cantidadDispensadaOverride: 1 })
       ]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
       expect(component.hasItemsToDispense()).toBe(false);
+    });
+
+    it('a Sin MX item does NOT block the others — is true when another item with MX is ready', () => {
+      const sinMx = makeItem({ med: makeMed({ idProductoLocal: null, cantidad: 600 }), cantidadDispensadaOverride: 0 });
+      const conMx = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 10, control: null }),
+        cantidadDispensadaOverride: 5,
+        loteSeleccion: { '3:1': 5 }
+      });
+      component.modalFormItems.set([sinMx, conMx]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      expect(component.hasItemsToDispense()).toBe(true);
     });
 
     it('is false when every medicamento is already fully dispensed', () => {
@@ -947,6 +963,65 @@ describe('DispensacionPharmaComponent', () => {
       await component.saveDispensacion();
 
       expect((component as any).soporteData.items[0].cantidad_pendiente).toBe(0);
+    });
+  });
+
+  describe('saveDispensacion — medicamentos "Sin MX" no bloquean la entrega de los demás', () => {
+    it('saves the dispensable item, registers the Sin MX one with cantidad_dispensada 0 for real DB traceability, and documents both in the soporte', async () => {
+      const conMx = makeItem({
+        med: makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 }),
+        cantidad: 30, cantidadDispensadaOverride: 30, dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 30 }
+      });
+      const sinMx = makeItem({
+        med: makeMed({ id_med_formulacion: 2, idProductoLocal: null, nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad: 600 }),
+        cantidad: 10, cantidadDispensadaOverride: 0, dispensadaOriginal: 0
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([conMx, sinMx]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 30 } });
+
+      await component.saveDispensacion();
+
+      expect(api.post).toHaveBeenCalledTimes(2);
+      expect(api.post).toHaveBeenCalledWith('/dispensacion-hs', expect.objectContaining({
+        id_med_formulacion_hs: 2,
+        cantidad_dispensada: 0
+      }));
+      expect(component.modalError()).toBe('');
+      const data = (component as any).soporteData;
+      expect(data.pendientesNuevos).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad_dispensada: 0, cantidad_pendiente: 10 })
+      );
+    });
+
+    it('still documents the Sin MX item as pending even if the informational API call fails', async () => {
+      const conMx = makeItem({
+        med: makeMed({ id_med_formulacion: 1, idProductoLocal: 10, cantidad: 100 }),
+        cantidad: 30, cantidadDispensadaOverride: 30, dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 30 }
+      });
+      const sinMx = makeItem({
+        med: makeMed({ id_med_formulacion: 2, idProductoLocal: null, nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad: 600 }),
+        cantidad: 10, cantidadDispensadaOverride: 0, dispensadaOriginal: 0
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([conMx, sinMx]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any)
+        .mockResolvedValueOnce({ data: { cantidad_dispensada: 30 } })
+        .mockRejectedValueOnce(new Error('network error'));
+
+      await component.saveDispensacion();
+
+      expect(component.modalError()).toBe('');
+      const data = (component as any).soporteData;
+      expect(data.pendientesNuevos).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad_pendiente: 10 })
+      );
     });
   });
 

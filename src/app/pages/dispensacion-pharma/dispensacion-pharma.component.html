@@ -156,7 +156,7 @@
                     <div class="disp-med-stock">
                       @if (!item.med.idProductoLocal) {
                         <span class="disp-med-stock__msg disp-med-stock__msg--warn">
-                          ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX.
+                          ⚠ Este medicamento no se puede dispensar hasta que se actualice su información en el maestro de MX. No bloquea la entrega de los demás — quedará como pendiente en el comprobante.
                         </span>
                       } @else if (item.cantidadDispensadaOverride === 0) {
                         <span class="disp-med-stock__msg">Escribe una cantidad en "Cant. dispensada" para ver los lotes disponibles.</span>
