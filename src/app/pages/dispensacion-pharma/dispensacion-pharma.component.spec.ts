@@ -289,7 +289,7 @@ describe('DispensacionPharmaComponent', () => {
       expect(updated.cantidadDispensadaOverride).toBe(0);
     });
 
-    it('still clamps Control de entrega to what is pending formulado (upper sanity bound)', () => {
+    it('does not cap Control de entrega to lo formulado — accepts any value at the user\'s discretion', () => {
       const item = makeItem({
         med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
         dispensadaOriginal: 0
@@ -300,7 +300,7 @@ describe('DispensacionPharmaComponent', () => {
       component.updateControlDeEntrega(item, 999);
 
       const updated = component.modalFormItems()[0];
-      expect(updated.cantidad).toBe(24);
+      expect(updated.cantidad).toBe(999);
       expect(updated.cantidadDispensadaOverride).toBe(0);
     });
   });
@@ -339,10 +339,10 @@ describe('DispensacionPharmaComponent', () => {
       expect(updated.cantidadDispensadaOverride).toBe(30);
     });
 
-    it('still clamps "Control de entrega" down to lo pendiente formulado if it exceeds it', async () => {
+    it('does not clamp "Control de entrega" even when it exceeds lo formulado', async () => {
       const item = makeItem({
         med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
-        cantidad: 24,
+        cantidad: 999,
         dispensadaOriginal: 0
       });
       component.modalFormItems.set([item]);
@@ -351,7 +351,7 @@ describe('DispensacionPharmaComponent', () => {
       await (component as any).loadStockForMed(10);
 
       const updated = component.modalFormItems()[0];
-      expect(updated.cantidad).toBe(24);
+      expect(updated.cantidad).toBe(999);
     });
   });
 
@@ -524,13 +524,13 @@ describe('DispensacionPharmaComponent', () => {
   });
 
   describe('hasItemsToDispense', () => {
-    it('is false when the only item is missing its MX product link (nothing dispensable) even with contrato/régimen set', () => {
+    it('is still true when the only item is missing its MX product link — lets the user confirm to leave it documented as pending', () => {
       component.modalFormItems.set([
         makeItem({ med: makeMed({ idProductoLocal: null, cantidad: 10 }), cantidadDispensadaOverride: 1 })
       ]);
       component.modalContrato = 'contrato_1';
       component.modalRegimen = 'contributivo';
-      expect(component.hasItemsToDispense()).toBe(false);
+      expect(component.hasItemsToDispense()).toBe(true);
     });
 
     it('a Sin MX item does NOT block the others — is true when another item with MX is ready', () => {
@@ -554,13 +554,13 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.hasItemsToDispense()).toBe(false);
     });
 
-    it('is false when the only pending medicamento has zero stock available (nothing dispensable)', () => {
+    it('is still true when the only pending medicamento has zero stock available — lets the user confirm to leave it documented as pending', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
       component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 5 })]);
       component.stockByMed.set({ 10: [] });
       component.modalContrato = 'contrato_1';
       component.modalRegimen = 'contributivo';
-      expect(component.hasItemsToDispense()).toBe(false);
+      expect(component.hasItemsToDispense()).toBe(true);
     });
 
     it('a med with MX but zero stock does NOT block the others — is true when another item has stock and is ready', () => {
@@ -1021,6 +1021,10 @@ describe('DispensacionPharmaComponent', () => {
       expect(data.pendientesNuevos).toContainEqual(
         expect.objectContaining({ nombre_medicamento: 'TIRAS DE GLUCOMETRIA', cantidad_dispensada: 0, cantidad_pendiente: 10 })
       );
+      // El medicamento con MX sí recibió algo (30 de 100) — aunque queda un
+      // remanente, la página "Pendiente" es solo para lo que no recibió NADA.
+      expect(data.pendientesNuevos.length).toBe(1);
+      expect(data.pendientesContinuados.length).toBe(0);
     });
 
     it('still documents the Sin MX item as pending even if the informational API call fails', async () => {
@@ -1077,6 +1081,35 @@ describe('DispensacionPharmaComponent', () => {
       const data = (component as any).soporteData;
       expect(data.pendientesNuevos).toContainEqual(
         expect.objectContaining({ nombre_medicamento: 'IRBESARTAN 300 MG', cantidad_dispensada: 0, cantidad_pendiente: 20 })
+      );
+    });
+
+    it('confirms successfully even when EVERY medicamento is Sin MX — nothing blocks documenting them all as pending', async () => {
+      const sinMx1 = makeItem({
+        med: makeMed({ id_med_formulacion: 1, idProductoLocal: null, nombre_medicamento: 'LEVOTIROXINA 125 MCG CAPSULA', cantidad: 120 }),
+        cantidad: 10, cantidadDispensadaOverride: 0, dispensadaOriginal: 0
+      });
+      const sinMx2 = makeItem({
+        med: makeMed({ id_med_formulacion: 2, idProductoLocal: null, nombre_medicamento: 'CITRATO DE CALCIO 1500 MG + VITAMINA D3 800 UI TABLETA', cantidad: 60 }),
+        cantidad: 5, cantidadDispensadaOverride: 0, dispensadaOriginal: 0
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([sinMx1, sinMx2]);
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+
+      expect(component.hasItemsToDispense()).toBe(true);
+
+      await component.saveDispensacion();
+
+      expect(component.modalError()).toBe('');
+      expect(api.post).toHaveBeenCalledTimes(2);
+      const data = (component as any).soporteData;
+      expect(data.pendientesNuevos).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'LEVOTIROXINA 125 MCG CAPSULA', cantidad_dispensada: 0, cantidad_pendiente: 10 })
+      );
+      expect(data.pendientesNuevos).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'CITRATO DE CALCIO 1500 MG + VITAMINA D3 800 UI TABLETA', cantidad_dispensada: 0, cantidad_pendiente: 5 })
       );
     });
   });

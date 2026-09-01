@@ -369,11 +369,11 @@ export class DispensacionPharmaComponent implements OnInit {
   // backend. A propósito no toca "Cant. dispensada" para nada (es el campo
   // aparte que sí mueve inventario, ver setDispensadaOverride).
   updateControlDeEntrega(item: ModalFormItem, value: number) {
-    // Solo referencia/planeación — se limita a lo pendiente formulado, NO al
-    // stock físico disponible (ese límite es exclusivo de "Cant. dispensada",
-    // el campo que sí saca inventario; ver setDispensadaOverride/getMedEntregaMax).
-    const max = this.getMedRestante(item.med);
-    const cantidad = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
+    // Solo referencia/planeación — no exige lote ni descuenta inventario
+    // (ese límite es exclusivo de "Cant. dispensada", el campo que sí saca
+    // inventario; ver setDispensadaOverride/getMedEntregaMax). No se limita
+    // ni siquiera a lo formulado: es un campo libre a criterio del usuario.
+    const cantidad = Math.max(0, Math.floor(Number(value) || 0));
     this.modalFormItems.update(items => items.map(i =>
       i !== item ? i : { ...i, cantidad }
     ));
@@ -481,8 +481,13 @@ export class DispensacionPharmaComponent implements OnInit {
     // soporte (ver saveDispensacion), sin exigir stock ni lote.
     const accionables = this.modalFormItems().filter(i => !this.esNoDispensableAhora(i));
     const pendingItems = accionables.filter(i => this.tienePendientePorFormular(i));
-    if (!pendingItems.length) return false;
-    return pendingItems.some(i => i.cantidadDispensadaOverride > 0 && this.getAsignadoValido(i));
+    const puedeDispensarAlgo = pendingItems.some(i => i.cantidadDispensadaOverride > 0 && this.getAsignadoValido(i));
+    if (puedeDispensarAlgo) return true;
+
+    // Aunque nada sea realmente dispensable ahora mismo (todo "Sin MX" o sin
+    // stock), igual se debe poder confirmar para dejar constancia de que
+    // quedó pendiente — el botón no puede quedar bloqueado para siempre.
+    return this.modalFormItems().some(i => this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i));
   }
 
   getMedStock(idProductoLocal: number): any[] {
@@ -500,17 +505,15 @@ export class DispensacionPharmaComponent implements OnInit {
       const res = await this.api.get<any>(`/inventory/stock/product/${idProductoLocal}`);
       const lots = Array.isArray(res) ? res : (res?.data ?? []);
       this.stockByMed.update(m => ({ ...m, [idProductoLocal]: lots }));
-      // El stock llega después de fijar la cantidad inicial (= pendiente).
-      // "Cant. dispensada" sí saca inventario, así que se recorta al stock
-      // real disponible. "Control de entrega" es solo referencia/planeación
-      // y no depende del stock — solo se limita a lo pendiente formulado.
+      // El stock llega después de fijar la cantidad inicial. "Cant.
+      // dispensada" sí saca inventario, así que se recorta al stock real
+      // disponible. "Control de entrega" es solo referencia/planeación y no
+      // se recorta a nada — el usuario puede dejarlo en cualquier valor.
       this.modalFormItems.update(items => items.map(item => {
         if (item.med.idProductoLocal !== idProductoLocal) return item;
         const entregaMax = this.getMedEntregaMax(item.med);
-        const pendiente = this.getMedRestante(item.med);
         return {
           ...item,
-          cantidad: Math.min(item.cantidad, pendiente),
           cantidadDispensadaOverride: Math.min(item.cantidadDispensadaOverride, entregaMax)
         };
       }));
@@ -974,7 +977,16 @@ export class DispensacionPharmaComponent implements OnInit {
     const toSave = this.modalFormItems().filter(
       i => !!i.med.idProductoLocal && this.tienePendientePorFormular(i) && Number(i.cantidadDispensadaOverride) > 0
     );
-    if (!toSave.length) {
+    // Medicamentos sin MX vinculado, o con MX pero sin stock disponible: no
+    // se pueden dispensar de verdad en esta ronda, pero no deben bloquear la
+    // confirmación — se documentan igual como pendientes (ver más abajo). Si
+    // TODOS los medicamentos están en este caso, igual se debe poder
+    // confirmar para dejar constancia de que quedaron pendientes.
+    const idsGuardados = new Set(toSave.map(i => i.med.id_med_formulacion));
+    const noDispensablesAhora = this.modalFormItems().filter(i =>
+      !idsGuardados.has(i.med.id_med_formulacion) && this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i)
+    );
+    if (!toSave.length && !noDispensablesAhora.length) {
       this.modalError.set('No hay medicamentos pendientes por dispensar.');
       return;
     }
@@ -988,21 +1000,20 @@ export class DispensacionPharmaComponent implements OnInit {
     this.modalSuccess.set('');
     try {
       const soporteItems: any[] = [];
-      // Si esta entrega deja algo pendiente por primera vez (el medicamento
-      // no tenía nada dispensado antes), va en la página "Pendiente". Si en
-      // cambio esta entrega está resolviendo/continuando un pendiente que ya
-      // existía de una visita anterior, va en "Dispensación pendiente".
+      // Las páginas "Pendiente" / "Dispensación pendiente" del comprobante
+      // solo listan medicamentos que no recibieron NADA en esta ronda (ver
+      // bloque noDispensablesAhora más abajo) — un medicamento parcialmente
+      // dispensado ya queda documentado en soporteItems.
       const pendientesNuevos: any[] = [];
       const pendientesContinuados: any[] = [];
       for (const item of toSave) {
-        const dispensadaOriginal = item.dispensadaOriginal;
         const lotes = Object.entries(item.loteSeleccion)
           .filter(([, cantidad]) => Number(cantidad) > 0)
           .map(([key, cantidad]) => {
             const [id_lote, id_ubicacion] = key.split(':').map(Number);
             return { id_lote, id_ubicacion, cantidad };
           });
-        const res = await this.api.post<{ success: boolean; data: any }>('/dispensacion-hs', {
+        await this.api.post('/dispensacion-hs', {
           id_formulacion_hs:                  detail.id_formulacion,
           id_med_formulacion_hs:              item.med.id_med_formulacion,
           cantidad_dispensada:                Number(item.cantidadDispensadaOverride),
@@ -1013,13 +1024,9 @@ export class DispensacionPharmaComponent implements OnInit {
           contrato:                           this.modalContrato || null,
           regimen:                            this.modalRegimen || null
         });
-        const nuevoTotal = Number(res?.data?.cantidad_dispensada ?? item.cantidadDispensadaOverride);
-        const pendienteFinal = Math.max(0, Number(item.med.cantidad ?? 0) - nuevoTotal);
         // "Cantidad pendiente" en el soporte de esta entrega puntual es
         // Control de entrega - Cant. dispensada (lo que quedó debiendo de lo
-        // que se planeó entregar HOY) — no confundir con pendienteFinal, que
-        // es el faltante GLOBAL de toda la formulación (usado para decidir
-        // si el medicamento va a las páginas de "Pendiente").
+        // que se planeó entregar HOY).
         const pendienteDeHoy = Math.max(0, Number(item.cantidad || 0) - Number(item.cantidadDispensadaOverride || 0));
         for (const l of lotes) {
           soporteItems.push({
@@ -1029,37 +1036,18 @@ export class DispensacionPharmaComponent implements OnInit {
             cantidad_pendiente: pendienteDeHoy
           });
         }
-        if (pendienteFinal > 0) {
-          const resumenPendiente = {
-            nombre_medicamento: item.med.nombre_medicamento,
-            cantidad_dispensada: Number(item.cantidadDispensadaOverride),
-            cantidad_pendiente: pendienteFinal
-          };
-          if (dispensadaOriginal === 0) pendientesNuevos.push(resumenPendiente);
-          else pendientesContinuados.push(resumenPendiente);
-        } else if (dispensadaOriginal > 0) {
-          // Se terminó de pagar un pendiente anterior: igual documenta esta
-          // entrega en la página de "Dispensación pendiente" (con 0 restante).
-          pendientesContinuados.push({
-            nombre_medicamento: item.med.nombre_medicamento,
-            cantidad_dispensada: Number(item.cantidadDispensadaOverride),
-            cantidad_pendiente: 0
-          });
-        }
+        // Las páginas "Pendiente" / "Dispensación pendiente" del comprobante
+        // son solo para lo que NO se pudo entregar nada de nada en esta
+        // ronda (ver bloque noDispensablesAhora más abajo). Un medicamento
+        // que sí recibió algo (aunque quede un remanente) ya queda
+        // documentado arriba en soporteItems — no se repite aquí.
       }
 
-      // Medicamentos sin MX vinculado, o con MX pero sin stock disponible: no
-      // se pueden dispensar de verdad en esta ronda, pero no deben bloquear
-      // la entrega de los demás. Se registran igual con cantidad_dispensada: 0
-      // (no exige lotes, ver dispensarMedicamento en el backend) para que
-      // quede una fila real en dispensacion_hs_control + su traza de
-      // auditoría — no solo una nota en el PDF. Si esta llamada informativa
-      // falla, no debe tumbar el guardado de los demás medicamentos que sí se
-      // lograron dispensar.
-      const idsGuardados = new Set(toSave.map(i => i.med.id_med_formulacion));
-      const noDispensablesAhora = this.modalFormItems().filter(i =>
-        !idsGuardados.has(i.med.id_med_formulacion) && this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i)
-      );
+      // Se registran con cantidad_dispensada: 0 (no exige lotes, ver
+      // dispensarMedicamento en el backend) para que quede una fila real en
+      // dispensacion_hs_control + su traza de auditoría — no solo una nota
+      // en el PDF. Si esta llamada informativa falla, no debe tumbar el
+      // guardado de los demás medicamentos que sí se lograron dispensar.
       for (const item of noDispensablesAhora) {
         const pendienteDeHoy = Number(item.cantidad || 0);
         if (pendienteDeHoy <= 0) continue;
@@ -1089,7 +1077,11 @@ export class DispensacionPharmaComponent implements OnInit {
         else pendientesContinuados.push(resumen);
       }
 
-      this.modalSuccess.set(`Dispensación registrada (${toSave.length} medicamento${toSave.length > 1 ? 's' : ''}).`);
+      this.modalSuccess.set(
+        toSave.length
+          ? `Dispensación registrada (${toSave.length} medicamento${toSave.length > 1 ? 's' : ''}).`
+          : 'Sin medicamentos dispensables por ahora — quedaron registrados como pendientes.'
+      );
       this.soporteData = {
         detail,
         pendientesNuevos,
@@ -1245,12 +1237,10 @@ export class DispensacionPharmaComponent implements OnInit {
     const idx = cronologico.findIndex(g => g.fecha.getTime() === grupo.fecha.getTime());
     const formuladaPorMed = Object.fromEntries(detail.medicamentos.map(m => [m.nombre_medicamento, Number(m.cantidad ?? 0)]));
 
-    const acumuladoAntes: Record<string, number> = {};
     const acumuladoDespues: Record<string, number> = {};
     for (let i = 0; i <= idx; i++) {
       for (const it of cronologico[i].items) {
         const nombre = it.nombre_medicamento;
-        if (i < idx) acumuladoAntes[nombre] = (acumuladoAntes[nombre] ?? 0) + Number(it.cantidad);
         acumuladoDespues[nombre] = (acumuladoDespues[nombre] ?? 0) + Number(it.cantidad);
       }
     }
@@ -1262,24 +1252,13 @@ export class DispensacionPharmaComponent implements OnInit {
       cantidad_pendiente: Math.max(0, (formuladaPorMed[it.nombre_medicamento] ?? 0) - (acumuladoDespues[it.nombre_medicamento] ?? 0))
     }));
 
+    // La página "Pendiente" solo es para medicamentos que no recibieron NADA
+    // en la ronda (ver noDispensablesAhora en saveDispensacion). Un soporte
+    // regenerado desde el histórico solo tiene datos de movimientos reales
+    // (siempre con cantidad > 0), así que nunca corresponde mostrar aquí
+    // ningún medicamento como "pendiente nuevo".
     const pendientesNuevos: any[] = [];
     const pendientesContinuados: any[] = [];
-    const vistos = new Set<string>();
-    for (const it of grupo.items) {
-      const nombre = it.nombre_medicamento;
-      if (vistos.has(nombre)) continue;
-      vistos.add(nombre);
-      const formulada = formuladaPorMed[nombre] ?? 0;
-      const antes = acumuladoAntes[nombre] ?? 0;
-      const despues = acumuladoDespues[nombre] ?? 0;
-      const pendienteFinal = Math.max(0, formulada - despues);
-      const resumen = { nombre_medicamento: nombre, cantidad_dispensada: despues - antes, cantidad_pendiente: pendienteFinal };
-      if (pendienteFinal > 0) {
-        if (antes === 0) pendientesNuevos.push(resumen); else pendientesContinuados.push(resumen);
-      } else if (antes > 0) {
-        pendientesContinuados.push({ ...resumen, cantidad_pendiente: 0 });
-      }
-    }
 
     this.generarSoporteEntrega({
       detail,

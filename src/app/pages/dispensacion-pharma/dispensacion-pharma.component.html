@@ -114,8 +114,7 @@
                             <input class="dsm__input" type="number" min="0"
                                    [ngModel]="item.cantidad"
                                    (ngModelChange)="updateControlDeEntrega(item, $event)"
-                                   [max]="getMedRestante(item.med)"
-                                   title="Solo referencia — no exige lote ni descuenta inventario">
+                                   title="Solo referencia — no exige lote ni descuenta inventario. Admite cualquier cantidad, incluso mayor a lo formulado.">
                             <span class="dsm__l">Control de entrega <em>(referencia)</em></span>
                           </div>
                           <div class="dsm dsm--blue">
