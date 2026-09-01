@@ -284,10 +284,26 @@
                   <strong>{{ h.numero_lote || '—' }}</strong> registrada el
                   {{ h.fecha_hora | date:'dd/MM/yyyy HH:mm' }}.
                 </p>
-                <p>El inventario descontado se repondrá y esa cantidad volverá a quedar pendiente por entregar.</p>
+                <p>El inventario descontado se repondrá y esa cantidad volverá a quedar pendiente por entregar. Quedará marcada como <strong>Anulado</strong> en el histórico, no se borra.</p>
                 <div class="disp-modal__soporte-actions">
                   <button class="disp-modal__btn-cancel" (click)="cancelarAnulacion()">Cancelar</button>
                   <button class="disp-modal__btn-confirm disp-modal__btn-confirm--danger" (click)="confirmarAnulacion()">Sí, anular</button>
+                </div>
+              </div>
+            </div>
+          } @else if (grupoAAnular(); as g) {
+            <div class="disp-modal__soporte-overlay">
+              <div class="disp-modal__soporte-card">
+                <div class="disp-modal__soporte-icon">⚠️</div>
+                <h3>¿Anular toda esta entrega?</h3>
+                <p>
+                  Se anularán las <strong>{{ g.items.length }}</strong> entregas (lotes) registradas el
+                  {{ g.fecha_hora | date:'dd/MM/yyyy HH:mm' }}, por un total de <strong>{{ g.cantidadTotal }}</strong> unidad(es).
+                </p>
+                <p>El inventario descontado se repondrá y esas cantidades volverán a quedar pendientes por entregar. Quedarán marcadas como <strong>Anulado</strong> en el histórico, no se borran.</p>
+                <div class="disp-modal__soporte-actions">
+                  <button class="disp-modal__btn-cancel" (click)="cancelarAnulacion()">Cancelar</button>
+                  <button class="disp-modal__btn-confirm disp-modal__btn-confirm--danger" (click)="confirmarAnulacion()">Sí, anular todo</button>
                 </div>
               </div>
             </div>
@@ -303,6 +319,7 @@
                 <thead>
                   <tr>
                     <th>Fecha</th>
+                    <th>Medicamento</th>
                     <th>Lote</th>
                     <th>Almacén</th>
                     <th>Cantidad</th>
@@ -311,22 +328,69 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (h of historial(); track h.id_movimiento) {
-                    <tr>
-                      <td>{{ h.fecha_hora | date:'dd/MM/yyyy HH:mm' }}</td>
-                      <td>{{ h.numero_lote || '—' }}</td>
-                      <td>{{ h.almacen || '—' }}</td>
-                      <td style="text-align:center; font-weight:700;">{{ h.cantidad }}</td>
-                      <td>{{ h.usuario || '—' }}</td>
+                  @for (g of historialAgrupado(); track g.key) {
+                    <tr class="disp-historial__group-row"
+                        [class.disp-historial__group-row--expandible]="g.items.length > 1"
+                        [class.disp-historial__row--anulado]="g.anuladoTotal"
+                        (click)="g.items.length > 1 && toggleHistorialGrupo(g.key)">
+                      <td>{{ g.fecha_hora | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td>{{ g.medicamento || (g.items.length > 1 ? 'Varios medicamentos' : '—') }}</td>
+                      <td>
+                        @if (g.items.length > 1) {
+                          <span class="disp-historial__lote-toggle">
+                            {{ historialExpandido().has(g.key) ? '▾' : '▸' }} {{ g.items.length }} lotes
+                          </span>
+                        } @else {
+                          {{ g.items[0].numero_lote || '—' }}
+                        }
+                      </td>
+                      <td>{{ g.almacen || 'Varios' }}</td>
+                      <td style="text-align:center; font-weight:700;">{{ g.cantidadTotal }}</td>
+                      <td>{{ g.usuario || '—' }}</td>
                       <td style="text-align:center;">
-                        <button type="button" class="disp-historial__delete-btn"
-                                [disabled]="historialAnulando() === h.id_movimiento"
-                                title="Anular esta entrega"
-                                (click)="pedirAnulacion(h)">
-                          {{ historialAnulando() === h.id_movimiento ? '…' : '✕' }}
-                        </button>
+                        @if (g.anuladoTotal) {
+                          <span class="disp-historial__badge-anulado">Anulado</span>
+                        } @else if (g.items.length === 1) {
+                          <button type="button" class="disp-historial__delete-btn"
+                                  [disabled]="historialAnulando() === g.items[0].id_movimiento"
+                                  title="Anular esta entrega"
+                                  (click)="pedirAnulacion(g.items[0]); $event.stopPropagation()">
+                            {{ historialAnulando() === g.items[0].id_movimiento ? '…' : '✕' }}
+                          </button>
+                        } @else {
+                          <button type="button" class="disp-historial__delete-btn"
+                                  [disabled]="historialAnulandoGrupo() === g.key"
+                                  title="Anular toda esta entrega"
+                                  (click)="pedirAnulacionGrupo(g); $event.stopPropagation()">
+                            {{ historialAnulandoGrupo() === g.key ? '…' : '✕' }}
+                          </button>
+                        }
                       </td>
                     </tr>
+                    @if (g.items.length > 1 && historialExpandido().has(g.key)) {
+                      @for (h of g.items; track h.id_movimiento) {
+                        <tr class="disp-historial__sub-row" [class.disp-historial__row--anulado]="h.anulado">
+                          <td></td>
+                          <td>{{ h.nombre_medicamento || '—' }}</td>
+                          <td>{{ h.numero_lote || '—' }}</td>
+                          <td>{{ h.almacen || '—' }}</td>
+                          <td style="text-align:center;">{{ h.cantidad }}</td>
+                          <td></td>
+                          <td style="text-align:center;">
+                            @if (h.anulado) {
+                              <span class="disp-historial__badge-anulado">Anulado</span>
+                            } @else {
+                              <button type="button" class="disp-historial__delete-btn"
+                                      [disabled]="historialAnulando() === h.id_movimiento"
+                                      title="Anular esta entrega"
+                                      (click)="pedirAnulacion(h)">
+                                {{ historialAnulando() === h.id_movimiento ? '…' : '✕' }}
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    }
                   }
                 </tbody>
               </table>

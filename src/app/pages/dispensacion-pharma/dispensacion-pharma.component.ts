@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
@@ -132,7 +132,56 @@ export class DispensacionPharmaComponent implements OnInit {
   historial       = signal<any[]>([]);
   historialLoading = signal(false);
   historialAnulando = signal<number | null>(null);
+  historialAnulandoGrupo = signal<string | null>(null);
   entregaAAnular    = signal<any | null>(null);
+  grupoAAnular      = signal<any | null>(null);
+  historialExpandido = signal<Set<string>>(new Set());
+
+  // Agrupa los movimientos de una misma acción de dispensación (puede
+  // repartirse en varios lotes/medicamentos). Los INSERT de una sola acción
+  // no siempre comparten el fecha_hora exacto (cada uno toma su propio NOW()
+  // y puede caer 1s después del anterior), así que se agrupan movimientos
+  // consecutivos del mismo usuario que caen dentro de una ventana corta,
+  // igual que en abrirSoportesLista().
+  historialAgrupado = computed(() => {
+    const UMBRAL_MS = 2000;
+    const ordenAsc = [...this.historial()].sort(
+      (a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime()
+    );
+    const grupos: any[] = [];
+    for (const h of ordenAsc) {
+      const t = new Date(h.fecha_hora).getTime();
+      const actual = grupos[grupos.length - 1];
+      const ultimo = actual ? actual.items[actual.items.length - 1] : null;
+      const ultimoT = ultimo ? new Date(ultimo.fecha_hora).getTime() : null;
+      if (actual && ultimoT !== null && t - ultimoT <= UMBRAL_MS && actual.usuario === h.usuario) {
+        actual.items.push(h);
+        if (actual.almacen !== h.almacen) actual.almacen = null;
+        if (actual.medicamento !== h.nombre_medicamento) actual.medicamento = null;
+        actual.cantidadTotal += Number(h.cantidad) || 0;
+        if (!h.anulado) actual.anuladoTotal = false;
+      } else {
+        grupos.push({
+          key: String(h.id_movimiento),
+          fecha_hora: h.fecha_hora,
+          almacen: h.almacen,
+          medicamento: h.nombre_medicamento,
+          usuario: h.usuario,
+          cantidadTotal: Number(h.cantidad) || 0,
+          anuladoTotal: !!h.anulado,
+          items: [h]
+        });
+      }
+    }
+    grupos.sort((a, b) => new Date(b.fecha_hora).getTime() - new Date(a.fecha_hora).getTime());
+    return grupos;
+  });
+
+  toggleHistorialGrupo(key: string) {
+    const set = new Set(this.historialExpandido());
+    if (set.has(key)) set.delete(key); else set.add(key);
+    this.historialExpandido.set(set);
+  }
 
   medAExcluir     = signal<MedicamentoFormulacion | null>(null);
   excluyendoMedId = signal<number | null>(null);
@@ -478,6 +527,7 @@ export class DispensacionPharmaComponent implements OnInit {
     this.showHistorial.set(true);
     this.historialLoading.set(true);
     this.historial.set([]);
+    this.historialExpandido.set(new Set());
     try {
       const res = await this.api.get<any>(`/dispensacion-hs/formulacion/${detail.id_formulacion}/historial`);
       this.historial.set(Array.isArray(res) ? res : (res?.data ?? []));
@@ -498,29 +548,60 @@ export class DispensacionPharmaComponent implements OnInit {
   // Se pide confirmación con el mismo estilo de modal que el resto de la
   // app (en vez del confirm() nativo del navegador, poco amigable).
   pedirAnulacion(h: any) {
-    if (this.historialAnulando() != null) return;
+    if (this.historialAnulando() != null || this.historialAnulandoGrupo() != null) return;
     this.entregaAAnular.set(h);
+  }
+
+  // Anula de una sola vez todos los movimientos de un grupo (una misma
+  // acción de dispensación repartida en varios lotes/medicamentos). El
+  // movimiento original nunca se borra: cada uno queda marcado "anulado" en
+  // el histórico para conservar la trazabilidad completa.
+  pedirAnulacionGrupo(g: any) {
+    if (this.historialAnulando() != null || this.historialAnulandoGrupo() != null) return;
+    this.grupoAAnular.set(g);
   }
 
   cancelarAnulacion() {
     this.entregaAAnular.set(null);
+    this.grupoAAnular.set(null);
   }
 
   async confirmarAnulacion() {
     const h = this.entregaAAnular();
-    if (!h) return;
-    this.entregaAAnular.set(null);
+    const g = this.grupoAAnular();
 
-    this.historialAnulando.set(h.id_movimiento);
-    try {
-      await this.api.post(`/dispensacion-hs/movimiento/${h.id_movimiento}/anular`, {});
-      await this.abrirHistorial();
-      const detail = this.selectedDetail();
-      if (detail) await this.loadDetail(detail.id_formulacion);
-    } catch (error: any) {
-      this.error.set(error?.error?.message ?? 'No fue posible anular esta entrega.');
-    } finally {
-      this.historialAnulando.set(null);
+    if (h) {
+      this.entregaAAnular.set(null);
+      this.historialAnulando.set(h.id_movimiento);
+      try {
+        await this.api.post(`/dispensacion-hs/movimiento/${h.id_movimiento}/anular`, {});
+        await this.abrirHistorial();
+        const detail = this.selectedDetail();
+        if (detail) await this.loadDetail(detail.id_formulacion);
+      } catch (error: any) {
+        this.error.set(error?.error?.message ?? 'No fue posible anular esta entrega.');
+      } finally {
+        this.historialAnulando.set(null);
+      }
+      return;
+    }
+
+    if (g) {
+      this.grupoAAnular.set(null);
+      this.historialAnulandoGrupo.set(g.key);
+      try {
+        for (const item of g.items) {
+          if (item.anulado) continue;
+          await this.api.post(`/dispensacion-hs/movimiento/${item.id_movimiento}/anular`, {});
+        }
+        await this.abrirHistorial();
+        const detail = this.selectedDetail();
+        if (detail) await this.loadDetail(detail.id_formulacion);
+      } catch (error: any) {
+        this.error.set(error?.error?.message ?? 'No fue posible anular esta entrega.');
+      } finally {
+        this.historialAnulandoGrupo.set(null);
+      }
     }
   }
 
@@ -724,7 +805,7 @@ export class DispensacionPharmaComponent implements OnInit {
   generarPdfHistorialGeneral() {
     const detail = this.selectedDetail();
     if (!detail) return;
-    const html = this.buildHistorialGeneralHtml(detail, this.historial());
+    const html = this.buildHistorialGeneralHtml(detail, this.historial().filter(h => !h.anulado));
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
