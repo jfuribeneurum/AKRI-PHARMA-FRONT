@@ -53,7 +53,11 @@ export class BodegasComponent implements OnInit {
   }
 
   editBodega(row: any) {
-    this.form = { ...row };
+    // MySQL devuelve `activo`/`es_principal` como TINYINT (0/1), pero el
+    // backend los valida como boolean estricto: sin normalizar, cada
+    // edición fallaba con "Validación fallida". `es_principal` no se edita
+    // desde este formulario, pero igual viaja oculto en el spread de `row`.
+    this.form = { ...row, activo: !!row.activo, es_principal: !!row.es_principal };
     this.formMessage.set('');
     this.formError.set('');
     this.showModal.set(true);

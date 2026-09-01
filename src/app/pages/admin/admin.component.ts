@@ -140,7 +140,10 @@ export class AdminComponent implements OnInit {
   }
 
   editSite(row: any) {
-    this.siteForm = { ...row };
+    // MySQL devuelve `activo`/`es_principal` como TINYINT (0/1), pero el
+    // backend los valida como boolean estricto: sin normalizar, cada
+    // edición fallaba con "Validación fallida".
+    this.siteForm = { ...row, activo: !!row.activo, es_principal: !!row.es_principal };
   }
 
   editProfile(row: any) {
@@ -151,6 +154,13 @@ export class AdminComponent implements OnInit {
       }
     }
     next.id_rol = row.id_rol;
+    // MySQL devuelve `es_activo` y cada perm_* como TINYINT (0/1), pero el
+    // backend los valida como boolean estricto: sin normalizar, cada
+    // edición de perfil fallaba con "Validación fallida".
+    next.es_activo = !!next.es_activo;
+    for (const option of this.permissionOptions) {
+      next[option.key] = !!next[option.key];
+    }
     this.profileForm = next;
   }
 
@@ -170,7 +180,10 @@ export class AdminComponent implements OnInit {
       numero_empleado: row.numero_empleado,
       cedula_profesional: row.cedula_profesional,
       fecha_ingreso: row.fecha_ingreso,
-      es_activo: row.es_activo,
+      // MySQL devuelve `es_activo` como TINYINT (0/1), pero el backend lo
+      // valida como boolean estricto: sin normalizar, cada edición de
+      // usuario fallaba con "Validación fallida".
+      es_activo: !!row.es_activo,
       requiere_cambio_password: false,
       puede_admin_sede: Boolean(row.access?.some((item: any) => item.puede_admin_sede)),
       site_ids: (row.access ?? []).map((item: any) => Number(item.id_sede))
