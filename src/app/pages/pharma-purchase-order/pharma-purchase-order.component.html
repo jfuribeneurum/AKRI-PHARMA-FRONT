@@ -175,8 +175,8 @@
                 Bodega de destino
                 <select [(ngModel)]="order.id_almacen" (ngModelChange)="onWarehouseChange($event)">
                   <option [ngValue]="null" disabled>Seleccione bodega...</option>
-                  @for (wh of allWarehouses(); track wh.id_almacen) {
-                    <option [value]="wh.id_almacen">{{ wh.sede_nombre }} — {{ wh.nombre }}</option>
+                  @for (wh of sedeWarehouses(); track wh.id_sede) {
+                    <option [value]="wh.id_almacen">{{ wh.sede_nombre }}</option>
                   }
                 </select>
               </label>

@@ -36,6 +36,18 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   readonly filtered = signal<any[]>([]);
   readonly allProviders = signal<any[]>([]);
   readonly allWarehouses = signal<any[]>([]);
+  // El desplegable de "Bodega de destino" es por sede, no por almacén — una
+  // sede con varios almacenes (ej. Cali con general + cadena de frío) no debe
+  // duplicar la opción. allWarehouses ya viene ordenado con el almacén
+  // es_principal primero por sede, así que basta con quedarse con el primero.
+  readonly sedeWarehouses = computed(() => {
+    const seen = new Set<number>();
+    return this.allWarehouses().filter((wh) => {
+      if (seen.has(wh.id_sede)) return false;
+      seen.add(wh.id_sede);
+      return true;
+    });
+  });
   readonly labProducts = signal<any[]>([]);
   readonly showSuccessModal = signal(false);
   readonly createdOcNumber = signal('');
