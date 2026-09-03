@@ -588,26 +588,12 @@ export class PharmaPurchaseOrderComponent implements OnInit {
     const items: any[] = Array.isArray(oc.items) ? oc.items : [];
     const money = (n: number) => Number(n ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const identificacion = prov
-      ? `${prov.tipo_identificacion ?? ''} ${prov.numero_identificacion ?? ''}${prov.digito_verificacion ? '-' + prov.digito_verificacion : ''}`.trim()
-      : '—';
-
     const totalItems = items.reduce((s, it) => s + Number(it.cantidad ?? 0) * Number(it.precio_unitario ?? 0), 0);
 
-    // Bod. / % Dct / % IVA / % INC / % Csm no se registran hoy por ítem en
-    // el módulo de órdenes de compra (impuesto/descuento siempre se guardan
-    // en 0, ver buildPayload) — se muestran en 0.00 reflejando el dato real
-    // guardado, no un valor inventado.
     const filasHtml = items.map(it => `
       <tr>
-        <td>${it.codigo ?? '—'}</td>
-        <td>${it.nombre_comercial ?? '—'}${it.concentracion ? ' ' + it.concentracion : ''}</td>
+        <td>${it.nombre_medicamento_hs || it.nombre_comercial || '—'}${it.concentracion ? ' ' + it.concentracion : ''}</td>
         <td>${it.laboratorio_nombre ?? '—'}</td>
-        <td style="text-align:center;">—</td>
-        <td style="text-align:right;">0.00</td>
-        <td style="text-align:right;">0.00</td>
-        <td style="text-align:right;">0.00</td>
-        <td style="text-align:right;">0.00</td>
         <td style="text-align:right;">${Number(it.cantidad ?? 0).toFixed(2)}</td>
         <td style="text-align:right;">${money(it.precio_unitario)}</td>
         <td style="text-align:right;">${money(Number(it.cantidad ?? 0) * Number(it.precio_unitario ?? 0))}</td>
@@ -677,54 +663,55 @@ export class PharmaPurchaseOrderComponent implements OnInit {
     <table class="info">
       <tr>
         <th>Consecutivo :</th><td>${oc.numero_oc ?? '—'}</td>
-        <th>Consecutivo BU :</th><td>—</td>
-        <th>BU :</th><td>—</td>
-      </tr>
-      <tr>
         <th>Fecha :</th><td>${fechaOc}</td>
-        <th>Fecha Entrega :</th><td>—</td>
-        <th>Días de Plazo :</th><td>—</td>
+      </tr>
+    </table>
+
+    <table class="info">
+      <tr>
+        <th>Sede :</th><td>${oc.sede_nombre ?? '—'}</td>
+        <th>Ciudad :</th><td>${oc.sede_ciudad ?? '—'}</td>
       </tr>
       <tr>
-        <th>Forma de Pago :</th><td>—</td>
-        <th>Moneda :</th><td>COP - PESO COLOMBIANO</td>
-        <th>Estado :</th><td>${oc.estado ?? '—'}</td>
-      </tr>
-      <tr>
-        <th>Requisición :</th><td>—</td>
-        <th>Doc/Rel :</th><td>—</td>
-        <td colspan="2"></td>
-      </tr>
-      <tr>
-        <th>Detalles :</th><td colspan="5">${oc.sede_direccion ?? '—'} — ${oc.sede_ciudad ?? '—'}</td>
+        <th>Dirección :</th><td colspan="3">${oc.sede_direccion ?? '—'}</td>
       </tr>
     </table>
 
     <table class="info">
       <tr><th>Observaciones :</th><td colspan="3">${notas || '—'}</td></tr>
-      <tr><th>Proveedor :</th><td colspan="3">${oc.proveedor_nombre ?? '—'}</td></tr>
       <tr>
-        <th>Nit :</th><td>${identificacion}</td>
+        <th>Proveedor :</th><td>${oc.proveedor_nombre ?? '—'}</td>
+        <th>Tipo identificación :</th><td>${prov?.tipo_identificacion ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Número de identificación :</th><td>${prov?.numero_identificacion ?? '—'}</td>
+        <th>Dígito de verificación :</th><td>${prov?.digito_verificacion ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Razón social :</th><td>${prov?.razon_social ?? '—'}</td>
+        <th>Nombres :</th><td>${prov?.nombres ?? '—'}</td>
+      </tr>
+      <tr>
+        <th>Apellidos :</th><td>${prov?.apellidos ?? '—'}</td>
         <th>Teléfono :</th><td>${prov?.telefono ?? '—'}</td>
       </tr>
       <tr>
-        <th>Dirección :</th><td>${prov?.direccion ?? '—'}${prov?.ciudad ? ' · ' + prov.ciudad : ''}</td>
-        <th>Fax :</th><td>—</td>
+        <th>Ciudad :</th><td>${prov?.ciudad ?? '—'}</td>
+        <th>Dirección proveedor :</th><td>${prov?.direccion ?? '—'}</td>
       </tr>
     </table>
 
     <table class="items">
       <thead>
         <tr>
-          <th>Código</th><th>Nombre</th><th>Presentación</th><th>Bod.</th>
-          <th>% Dct</th><th>% IVA</th><th>% INC</th><th>% Csm</th>
+          <th>Nombre</th><th>Laboratorio</th>
           <th>Cantidad</th><th>V. Unidad</th><th>Total</th>
         </tr>
       </thead>
       <tbody>${filasHtml}</tbody>
       <tfoot>
         <tr>
-          <td colspan="10">Total Items</td>
+          <td colspan="4">Total Items</td>
           <td style="text-align:right;">${money(totalItems)}</td>
         </tr>
       </tfoot>
