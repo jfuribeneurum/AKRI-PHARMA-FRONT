@@ -944,6 +944,65 @@ describe('DispensacionPharmaComponent', () => {
 
       expect(component.modalFormItems().length).toBe(1);
     });
+
+    it('loads stock for the newly added medicamento right away — no cerrar/reabrir el modal para que aparezca', async () => {
+      // Bug real reportado: la fila nueva aparecía en la lista del modal
+      // pero se quedaba en "Sin stock disponible" hasta cerrar y volver a
+      // abrir el modal, porque solo al ABRIR el modal se recorría la lista
+      // pidiendo el stock de cada ítem — el ítem agregado en caliente nunca
+      // disparaba esa consulta.
+      const existente = makeMed({ id_med_formulacion: 1, idProductoLocal: 10, nombre_medicamento: 'ABACAVIR 300 MG' });
+      const nuevoDesdeBackend = makeMed({
+        id_med_formulacion: 900000001,
+        idProductoLocal: 77,
+        idsProductoCandidatos: [77],
+        nombre_medicamento: 'RIFAXIMINA 550 MG',
+        esManual: true
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed = { presentacion: 'Tableta', via_administracion: 'Oral', cantidad: 3 };
+      component.showModal.set(true);
+      component.modalFormItems.set([makeItem({ med: existente })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockImplementation(async (url: string) => {
+        if (url.startsWith('/inventory/stock/product/')) {
+          return { data: [{ id_lote: 5, cantidad_disponible: 40 }] };
+        }
+        return { data: { id_formulacion: 7, medicamentos: [existente, nuevoDesdeBackend] } };
+      });
+
+      await component.confirmarAgregarMed();
+
+      expect(api.get).toHaveBeenCalledWith('/inventory/stock/product/77');
+      expect(component.stockByMed()[77]).toEqual([{ id_lote: 5, cantidad_disponible: 40 }]);
+      expect(component.getMedStockTotal(77)).toBe(40);
+    });
+
+    it('queries every candidate producto (not just the winner) when the new medicamento is an ambiguous catalog duplicate', async () => {
+      const existente = makeMed({ id_med_formulacion: 1, idProductoLocal: 10 });
+      const nuevoDesdeBackend = makeMed({
+        id_med_formulacion: 900000001,
+        idProductoLocal: 90,
+        idsProductoCandidatos: [89, 90, 91],
+        nombre_medicamento: 'APIXABAN 2,5 MG TABLETA RECUBIERTA',
+        esManual: true
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.medSeleccionado.set({ id_producto: 42 });
+      component.nuevoMed.cantidad = 1;
+      component.showModal.set(true);
+      component.modalFormItems.set([makeItem({ med: existente })]);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockImplementation(async (url: string) => {
+        if (url.startsWith('/inventory/stock/product/')) return { data: [] };
+        return { data: { id_formulacion: 7, medicamentos: [existente, nuevoDesdeBackend] } };
+      });
+
+      await component.confirmarAgregarMed();
+
+      expect(api.get).toHaveBeenCalledWith('/inventory/stock/product/89,90,91');
+    });
   });
 
   describe('saveDispensacion — "Cantidad pendiente" del soporte de entrega', () => {

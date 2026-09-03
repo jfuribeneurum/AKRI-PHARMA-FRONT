@@ -30,6 +30,13 @@ interface MedicamentoFormulacion {
   // productos.id_medicamento_hs. idMedicamento es un id de HealthSphere y
   // NUNCA debe usarse para consultar/descontar inventario local.
   idProductoLocal: number | null;
+  // Cuando un mismo genérico de HealthSphere corresponde a más de un
+  // producto local (duplicados de catálogo: mismo medicamento cargado en
+  // más de una fila de productos), idProductoLocal es solo el "ganador"
+  // (el de mayor stock en la sede). idsProductoCandidatos trae TODOS los
+  // productos locales equivalentes, para poder sumar/mostrar el stock real
+  // repartido entre ellos en vez de perder el de los demás.
+  idsProductoCandidatos?: number[];
   nombre_medicamento: string;
   viaAdministracion: string;
   unidadDosificacion: string;
@@ -498,11 +505,15 @@ export class DispensacionPharmaComponent implements OnInit {
     return this.getMedStock(idProductoLocal).reduce((s, l) => s + Number(l.cantidad_disponible ?? 0), 0);
   }
 
-  private async loadStockForMed(idProductoLocal: number) {
+  private async loadStockForMed(idProductoLocal: number, idsProductoCandidatos?: number[]) {
     if (!idProductoLocal) return;
+    // Consulta TODOS los productos locales candidatos (no solo el
+    // "ganador") para no perder stock real que haya quedado repartido
+    // entre duplicados del catálogo en la misma sede.
+    const ids = idsProductoCandidatos?.length ? idsProductoCandidatos : [idProductoLocal];
     this.stockLoading.update(s => new Set([...s, idProductoLocal]));
     try {
-      const res = await this.api.get<any>(`/inventory/stock/product/${idProductoLocal}`);
+      const res = await this.api.get<any>(`/inventory/stock/product/${ids.join(',')}`);
       const lots = Array.isArray(res) ? res : (res?.data ?? []);
       this.stockByMed.update(m => ({ ...m, [idProductoLocal]: lots }));
       // El stock llega después de fijar la cantidad inicial. "Cant.
@@ -792,6 +803,12 @@ export class DispensacionPharmaComponent implements OnInit {
               loteSeleccion: {}
             }))
           ]);
+          // La fila nueva llega sin su stock cargado — sin esto queda en
+          // "Sin stock disponible" hasta cerrar y reabrir el modal (que sí
+          // recorre todos los ítems y dispara la consulta).
+          for (const m of nuevos) {
+            if (m.idProductoLocal) this.loadStockForMed(m.idProductoLocal, m.idsProductoCandidatos);
+          }
         }
       }
     } catch (error: any) {
@@ -953,7 +970,7 @@ export class DispensacionPharmaComponent implements OnInit {
     this.showModal.set(true);
 
     for (const item of items) {
-      if (item.med.idProductoLocal) this.loadStockForMed(item.med.idProductoLocal);
+      if (item.med.idProductoLocal) this.loadStockForMed(item.med.idProductoLocal, item.med.idsProductoCandidatos);
     }
   }
 
