@@ -214,6 +214,66 @@ export class DispensacionPharmaComponent implements OnInit {
 
   contratoOptions: { valor: string; etiqueta: string }[] = [];
   regimenOptions: { valor: string; etiqueta: string }[] = [];
+  // Ambos catálogos pueden traer decenas de opciones (ej. contratos por
+  // ciudad/EPS/régimen) — en vez de un <select> nativo, esto es un
+  // combobox: se escribe directo en el campo, filtra la lista de abajo, y
+  // al hacer clic en una fila queda seleccionado el valor real.
+  contratoFiltro = '';
+  regimenFiltro = '';
+  contratoDropdownOpen = signal(false);
+  regimenDropdownOpen  = signal(false);
+
+  get contratoOptionsFiltrados(): { valor: string; etiqueta: string }[] {
+    return this.filtrarOpciones(this.contratoOptions, this.contratoFiltro);
+  }
+
+  get regimenOptionsFiltrados(): { valor: string; etiqueta: string }[] {
+    return this.filtrarOpciones(this.regimenOptions, this.regimenFiltro);
+  }
+
+  private filtrarOpciones(
+    opciones: { valor: string; etiqueta: string }[],
+    filtro: string
+  ): { valor: string; etiqueta: string }[] {
+    const termino = filtro.trim().toLowerCase();
+    if (!termino) return opciones;
+    return opciones.filter(o => o.etiqueta.toLowerCase().includes(termino));
+  }
+
+  abrirContratoDropdown() { this.contratoDropdownOpen.set(true); }
+  abrirRegimenDropdown()  { this.regimenDropdownOpen.set(true); }
+
+  seleccionarContrato(o: { valor: string; etiqueta: string }) {
+    this.modalContrato = o.valor;
+    this.contratoFiltro = o.etiqueta;
+    this.contratoDropdownOpen.set(false);
+  }
+
+  seleccionarRegimen(o: { valor: string; etiqueta: string }) {
+    this.modalRegimen = o.valor;
+    this.regimenFiltro = o.etiqueta;
+    this.regimenDropdownOpen.set(false);
+  }
+
+  // El blur llega antes que el click de la fila del listado — el pequeño
+  // delay deja que seleccionarContrato/Regimen corra primero. Si el usuario
+  // se sale sin escoger nada de la lista, el texto vuelve a reflejar lo que
+  // de verdad quedó seleccionado (o queda vacío si no había nada).
+  cerrarContratoDropdown() {
+    setTimeout(() => {
+      this.contratoDropdownOpen.set(false);
+      const actual = this.contratoOptions.find(o => o.valor === this.modalContrato);
+      this.contratoFiltro = actual ? actual.etiqueta : '';
+    }, 150);
+  }
+
+  cerrarRegimenDropdown() {
+    setTimeout(() => {
+      this.regimenDropdownOpen.set(false);
+      const actual = this.regimenOptions.find(o => o.valor === this.modalRegimen);
+      this.regimenFiltro = actual ? actual.etiqueta : '';
+    }, 150);
+  }
 
   readonly stockByMed   = signal<Record<number, any[]>>({});
   readonly stockLoading = signal<Set<number>>(new Set());
@@ -964,6 +1024,8 @@ export class DispensacionPharmaComponent implements OnInit {
     this.modalObs = '';
     this.modalContrato = '';
     this.modalRegimen = '';
+    this.contratoFiltro = '';
+    this.regimenFiltro = '';
     this.modalError.set('');
     this.modalSuccess.set('');
     this.stockByMed.set({});

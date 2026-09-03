@@ -159,6 +159,20 @@
       background: var(--surface-muted); border-color: var(--line); color: var(--text);
     }
 
+    /* Combobox de Contrato/Régimen: se escribe directo en el input y las
+       coincidencias aparecen flotando debajo, sin empujar el resto del
+       modal (a diferencia del listado del buscador de medicamento). */
+    .disp-modal__combo { position: relative; }
+    .disp-modal__combo-dropdown {
+      position: absolute; top: calc(100% + 0.3rem); left: 0; right: 0; z-index: 20;
+      max-height: 220px; overflow-y: auto;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
+    :host-context([data-theme="dark"]) .disp-modal__combo-dropdown {
+      background: var(--surface); border-color: var(--line);
+    }
+
     /* Lista de medicamentos */
     .disp-med-list__toolbar { display: flex; justify-content: flex-end; }
     .disp-med-list { display: flex; flex-direction: column; gap: 0.6rem; }

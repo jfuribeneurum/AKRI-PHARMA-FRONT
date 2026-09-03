@@ -1173,6 +1173,137 @@ describe('DispensacionPharmaComponent', () => {
     });
   });
 
+  describe('contratoOptionsFiltrados / regimenOptionsFiltrados (filtro del selector, catálogos largos)', () => {
+    beforeEach(() => {
+      component.contratoOptions = [
+        { valor: 'c1', etiqueta: 'CONTRIBUTIVO' },
+        { valor: 'c2', etiqueta: 'SUBSIDIADO' },
+        { valor: 'c3', etiqueta: 'PARTICULAR - CONTADO' }
+      ];
+      component.regimenOptions = [
+        { valor: 'r1', etiqueta: 'CONTRIBUTIVO' },
+        { valor: 'r2', etiqueta: 'SUBSIDIADO PARCIAL' }
+      ];
+    });
+
+    it('returns every option unfiltered when the filtro box is empty', () => {
+      expect(component.contratoOptionsFiltrados.length).toBe(3);
+      expect(component.regimenOptionsFiltrados.length).toBe(2);
+    });
+
+    it('filters by etiqueta, case-insensitively', () => {
+      component.contratoFiltro = 'contrib';
+      expect(component.contratoOptionsFiltrados).toEqual([{ valor: 'c1', etiqueta: 'CONTRIBUTIVO' }]);
+
+      component.contratoFiltro = 'PARTICULAR';
+      expect(component.contratoOptionsFiltrados).toEqual([{ valor: 'c3', etiqueta: 'PARTICULAR - CONTADO' }]);
+    });
+
+    it('ignores leading/trailing whitespace in the filtro', () => {
+      component.regimenFiltro = '  subsidiado  ';
+      expect(component.regimenOptionsFiltrados).toEqual([{ valor: 'r2', etiqueta: 'SUBSIDIADO PARCIAL' }]);
+    });
+
+    it('returns an empty list (not an error) when nothing matches', () => {
+      component.contratoFiltro = 'zzz-no-existe';
+      expect(component.contratoOptionsFiltrados).toEqual([]);
+    });
+
+    it('contrato and régimen filter independently of each other', () => {
+      component.contratoFiltro = 'subsidiado';
+      component.regimenFiltro = 'contrib';
+      expect(component.contratoOptionsFiltrados).toEqual([{ valor: 'c2', etiqueta: 'SUBSIDIADO' }]);
+      expect(component.regimenOptionsFiltrados).toEqual([{ valor: 'r1', etiqueta: 'CONTRIBUTIVO' }]);
+    });
+  });
+
+  describe('seleccionarContrato / seleccionarRegimen / cerrarContrato-RegimenDropdown (combobox: se escribe y se escoge de la lista)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      component.contratoOptions = [
+        { valor: 'c1', etiqueta: 'CONTRIBUTIVO' },
+        { valor: 'c2', etiqueta: 'SUBSIDIADO' }
+      ];
+      component.regimenOptions = [
+        { valor: 'r1', etiqueta: 'CONTRIBUTIVO' },
+        { valor: 'r2', etiqueta: 'SUBSIDIADO PARCIAL' }
+      ];
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('abrirContratoDropdown / abrirRegimenDropdown open their own dropdown independently', () => {
+      component.abrirContratoDropdown();
+      expect(component.contratoDropdownOpen()).toBe(true);
+      expect(component.regimenDropdownOpen()).toBe(false);
+    });
+
+    it('seleccionarContrato sets the real valor, mirrors the etiqueta into the input, and closes the dropdown', () => {
+      component.contratoDropdownOpen.set(true);
+      component.contratoFiltro = 'contrib';
+
+      component.seleccionarContrato({ valor: 'c1', etiqueta: 'CONTRIBUTIVO' });
+
+      expect(component.modalContrato).toBe('c1');
+      expect(component.contratoFiltro).toBe('CONTRIBUTIVO');
+      expect(component.contratoDropdownOpen()).toBe(false);
+    });
+
+    it('seleccionarRegimen does the same for régimen, independently of contrato', () => {
+      component.regimenDropdownOpen.set(true);
+      component.regimenFiltro = 'subsid';
+
+      component.seleccionarRegimen({ valor: 'r2', etiqueta: 'SUBSIDIADO PARCIAL' });
+
+      expect(component.modalRegimen).toBe('r2');
+      expect(component.regimenFiltro).toBe('SUBSIDIADO PARCIAL');
+      expect(component.regimenDropdownOpen()).toBe(false);
+    });
+
+    it('cerrarContratoDropdown restores the filtro text to match the already-selected valor when the user clicks away without picking', () => {
+      // Escribió algo distinto pero no hizo clic en ninguna fila — el campo
+      // no debe quedar con texto suelto que no corresponde a nada elegido.
+      component.modalContrato = 'c2';
+      component.contratoFiltro = 'texto suelto sin seleccionar';
+      component.contratoDropdownOpen.set(true);
+
+      component.cerrarContratoDropdown();
+      vi.advanceTimersByTime(150);
+
+      expect(component.contratoDropdownOpen()).toBe(false);
+      expect(component.contratoFiltro).toBe('SUBSIDIADO');
+    });
+
+    it('cerrarContratoDropdown clears the filtro text when nothing was ever selected', () => {
+      component.modalContrato = '';
+      component.contratoFiltro = 'algo que no eligió';
+      component.contratoDropdownOpen.set(true);
+
+      component.cerrarContratoDropdown();
+      vi.advanceTimersByTime(150);
+
+      expect(component.contratoFiltro).toBe('');
+    });
+
+    it('cerrarRegimenDropdown keeps the picked etiqueta when the click on the row ran first (mousedown beats blur)', () => {
+      // Simula el orden real de eventos: seleccionarRegimen (mousedown de la
+      // fila) corre antes de que el timeout de cerrarRegimenDropdown (blur
+      // del input) se cumpla.
+      component.regimenDropdownOpen.set(true);
+      component.regimenFiltro = 'contrib';
+      component.cerrarRegimenDropdown();
+
+      component.seleccionarRegimen({ valor: 'r1', etiqueta: 'CONTRIBUTIVO' });
+      vi.advanceTimersByTime(150);
+
+      expect(component.modalRegimen).toBe('r1');
+      expect(component.regimenFiltro).toBe('CONTRIBUTIVO');
+      expect(component.regimenDropdownOpen()).toBe(false);
+    });
+  });
+
   describe('getEstadoLabel / getEstadoClass (por medicamento)', () => {
     it('maps every known estado to its label and class', () => {
       expect(component.getEstadoLabel('pendiente')).toBe('Pendiente');

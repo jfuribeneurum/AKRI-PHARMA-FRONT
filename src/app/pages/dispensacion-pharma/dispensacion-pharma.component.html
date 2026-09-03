@@ -48,21 +48,37 @@
             <div class="disp-modal__patient-fields">
               <label class="disp-modal__field">
                 <span>Contrato *</span>
-                <select [(ngModel)]="modalContrato">
-                  <option value="">-- Seleccionar --</option>
-                  @for (o of contratoOptions; track o.valor) {
-                    <option [value]="o.valor">{{ o.etiqueta }}</option>
+                <div class="disp-modal__combo">
+                  <input type="text" class="disp-modal__obs-input" placeholder="Escribe para buscar…"
+                         [(ngModel)]="contratoFiltro" autocomplete="off"
+                         (focus)="abrirContratoDropdown()" (blur)="cerrarContratoDropdown()">
+                  @if (contratoDropdownOpen()) {
+                    <div class="disp-modal__combo-dropdown">
+                      @for (o of contratoOptionsFiltrados; track o.valor) {
+                        <div class="med-buscador__fila" (mousedown)="seleccionarContrato(o)">{{ o.etiqueta }}</div>
+                      } @empty {
+                        <div class="med-buscador__fila muted">Sin resultados</div>
+                      }
+                    </div>
                   }
-                </select>
+                </div>
               </label>
               <label class="disp-modal__field">
                 <span>Régimen *</span>
-                <select [(ngModel)]="modalRegimen">
-                  <option value="">-- Seleccionar --</option>
-                  @for (o of regimenOptions; track o.valor) {
-                    <option [value]="o.valor">{{ o.etiqueta }}</option>
+                <div class="disp-modal__combo">
+                  <input type="text" class="disp-modal__obs-input" placeholder="Escribe para buscar…"
+                         [(ngModel)]="regimenFiltro" autocomplete="off"
+                         (focus)="abrirRegimenDropdown()" (blur)="cerrarRegimenDropdown()">
+                  @if (regimenDropdownOpen()) {
+                    <div class="disp-modal__combo-dropdown">
+                      @for (o of regimenOptionsFiltrados; track o.valor) {
+                        <div class="med-buscador__fila" (mousedown)="seleccionarRegimen(o)">{{ o.etiqueta }}</div>
+                      } @empty {
+                        <div class="med-buscador__fila muted">Sin resultados</div>
+                      }
+                    </div>
                   }
-                </select>
+                </div>
               </label>
             </div>
 
