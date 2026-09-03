@@ -14,6 +14,9 @@ interface OrderItem {
   valor_unitario: number;
   precio_venta: number;
   costo_referencia: number;
+  // Texto que el usuario va escribiendo en el buscador de MX — separado de
+  // "nombre" porque mientras se escribe aún no hay producto seleccionado.
+  productoFiltro: string;
 }
 
 const EDITABLE_STATES = ['borrador', 'enviada', 'editada'];
@@ -104,15 +107,21 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   };
 
   readonly uniqueProducts = computed(() => {
-    const seen = new Map<string, { key: string; nombre_comercial: string; nombre_medicamento_hs: string | null; concentracion: string }>();
+    // Se agrupa por nombre + concentracion + principio_activo (no solo
+    // nombre + concentracion) para que dos MX que compartan el mismo nombre
+    // comercial y concentración pero sean en realidad principios activos
+    // distintos no se tapen entre sí en el listado — cada combinación real
+    // queda visible, y labsForProduct() reutiliza la misma llave completa.
+    const seen = new Map<string, { key: string; nombre_comercial: string; nombre_medicamento_hs: string | null; concentracion: string; principio_activo: string }>();
     for (const p of this.labProducts()) {
-      const key = `${p.nombre_comercial}|${p.concentracion ?? ''}`;
+      const key = `${p.nombre_comercial}|${p.concentracion ?? ''}|${p.principio_activo ?? ''}`;
       if (!seen.has(key)) {
         seen.set(key, {
           key,
           nombre_comercial: p.nombre_comercial,
           nombre_medicamento_hs: p.nombre_medicamento_hs ?? null,
-          concentracion: p.concentracion
+          concentracion: p.concentracion,
+          principio_activo: p.principio_activo ?? ''
         });
       }
     }
@@ -120,12 +129,58 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   });
 
   labsForProduct(key: string) {
-    const [nombre, concentracion] = key.split('|');
+    const [nombre, concentracion, principioActivo] = key.split('|');
     return this.labProducts().filter(
       (p) =>
         p.nombre_comercial === nombre &&
-        (p.concentracion ?? '') === concentracion
+        (p.concentracion ?? '') === concentracion &&
+        (p.principio_activo ?? '') === principioActivo
     );
+  }
+
+  productoLabel(p: { nombre_medicamento_hs: string | null; nombre_comercial: string; concentracion: string; principio_activo?: string }): string {
+    const base = `${p.nombre_medicamento_hs || p.nombre_comercial}${p.concentracion ? ' · ' + p.concentracion : ''}`;
+    return p.principio_activo ? `${base} — ${p.principio_activo}` : base;
+  }
+
+  // Buscador de MX por fila: cada fila de la tabla de items tiene su propio
+  // texto de búsqueda y su propio estado de dropdown abierto/cerrado — no se
+  // puede compartir un único signal global porque puede haber varias filas.
+  readonly mxDropdownOpenIndex = signal<number | null>(null);
+  // La tabla de items vive dentro de un contenedor con overflow-x:auto (para
+  // scroll horizontal en pantallas chicas), lo que recorta cualquier
+  // dropdown position:absolute que se salga verticalmente de esa caja. Se
+  // posiciona en su lugar con position:fixed usando las coordenadas reales
+  // del input al abrirlo, así el dropdown flota libre sobre toda la página.
+  readonly mxDropdownPos = signal<{ top: number; left: number; width: number } | null>(null);
+
+  productosFiltrados(item: OrderItem) {
+    const q = (item.productoFiltro ?? '').trim().toLowerCase();
+    const all = this.uniqueProducts();
+    if (!q) return all;
+    return all.filter((p) => this.productoLabel(p).toLowerCase().includes(q));
+  }
+
+  abrirMxDropdown(index: number, event: FocusEvent) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    this.mxDropdownPos.set({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    this.mxDropdownOpenIndex.set(index);
+  }
+
+  // Retraso antes de cerrar: el (mousedown) de la fila de opciones debe
+  // poder dispararse antes de que el (blur) del input cierre el dropdown.
+  cerrarMxDropdown(item: OrderItem) {
+    setTimeout(() => {
+      this.mxDropdownOpenIndex.set(null);
+      const seleccionado = this.uniqueProducts().find((p) => p.key === item.product_key);
+      item.productoFiltro = seleccionado ? this.productoLabel(seleccionado) : '';
+    }, 150);
+  }
+
+  seleccionarProducto(item: OrderItem, p: { key: string; nombre_medicamento_hs: string | null; nombre_comercial: string; concentracion: string }) {
+    this.onProductKeySelect(item, p.key);
+    item.productoFiltro = this.productoLabel(p);
+    this.mxDropdownOpenIndex.set(null);
   }
 
   isEditable(estado: string) {
@@ -133,7 +188,7 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   }
 
   items: OrderItem[] = [
-    { id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }
+    { id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0, productoFiltro: '' }
   ];
 
   constructor(private readonly api: ApiService) {}
@@ -196,6 +251,8 @@ export class PharmaPurchaseOrderComponent implements OnInit {
       item.codigo = '';
       item.nombre = '';
       item.laboratorio = '';
+      item.product_key = '';
+      item.productoFiltro = '';
     }
 
     if (this.items.length === 0) this.addItem();
@@ -296,7 +353,7 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   }
 
   addItem() {
-    this.items.push({ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 });
+    this.items.push({ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0, productoFiltro: '' });
   }
 
   removeItem(index: number) {
@@ -317,7 +374,7 @@ export class PharmaPurchaseOrderComponent implements OnInit {
       proveedor_telefono: '', proveedor_ciudad: '',
       proveedor_direccion: '', observaciones: ''
     };
-    this.items = [{ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0 }];
+    this.items = [{ id_producto: 0, product_key: '', codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0, precio_venta: 0, costo_referencia: 0, productoFiltro: '' }];
   }
 
   async toggleForm() {
@@ -376,14 +433,18 @@ export class PharmaPurchaseOrderComponent implements OnInit {
 
       this.items = (oc.items ?? []).map((item: any) => ({
         id_producto: item.id_producto,
-        product_key: `${item.nombre_comercial}|${item.concentracion ?? ''}`,
+        product_key: `${item.nombre_comercial}|${item.concentracion ?? ''}|${item.principio_activo ?? ''}`,
         codigo: item.codigo ?? '',
         nombre: item.nombre_comercial ?? '',
         laboratorio: item.laboratorio_nombre ?? '',
         cantidad: item.cantidad,
         valor_unitario: item.precio_unitario,
         precio_venta: item.precio_venta ?? 0,
-        costo_referencia: item.costo_referencia ?? 0
+        costo_referencia: item.costo_referencia ?? 0,
+        // uniqueProducts() aún puede no estar cargado con el nombre HS en
+        // este punto — se resuelve al vuelo apenas loadAllProducts() llene
+        // labProducts(); mientras tanto se usa el nombre comercial guardado.
+        productoFiltro: `${item.nombre_comercial ?? ''}${item.concentracion ? ' · ' + item.concentracion : ''}${item.principio_activo ? ' — ' + item.principio_activo : ''}`
       }));
       if (this.items.length === 0) this.addItem();
 
@@ -414,6 +475,11 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   async saveOrder() {
     this.error.set('');
     this.message.set('');
+
+    if (!Number(this.order.id_proveedor)) {
+      this.error.set('Debe seleccionar un proveedor.');
+      return;
+    }
 
     const validItems = this.items.filter(i => Number(i.cantidad) > 0 && Number(i.id_producto) > 0);
     if (validItems.length === 0) {
@@ -721,12 +787,18 @@ export class PharmaPurchaseOrderComponent implements OnInit {
 
     return {
       numero_oc: this.order.consecutivo,
-      id_proveedor: Number(this.order.id_proveedor) || 1,
+      id_proveedor: Number(this.order.id_proveedor),
       observaciones: notes,
+      // Mismo criterio que el guard de saveOrder() (cantidad Y producto
+      // válidos) — antes este filtro solo miraba cantidad > 0, así que una
+      // fila con cantidad escrita pero sin MX seleccionado (id_producto = 0)
+      // se colaba igual y el "|| 1" de abajo la mandaba silenciosamente
+      // como si fuera el producto id 1, generando una orden de compra del
+      // medicamento equivocado sin ningún aviso.
       items: this.items
-        .filter(i => i.cantidad > 0)
+        .filter(i => i.cantidad > 0 && Number(i.id_producto) > 0)
         .map(i => ({
-          id_producto: Number(i.id_producto) || 1,
+          id_producto: Number(i.id_producto),
           cantidad: Number(i.cantidad),
           precio_unitario: Number(i.valor_unitario),
           precio_venta: Number(i.precio_venta ?? 0),

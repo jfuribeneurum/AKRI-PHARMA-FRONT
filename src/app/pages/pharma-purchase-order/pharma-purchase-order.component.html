@@ -275,14 +275,26 @@
                         <td style="color:#9ca3af; font-size:0.8rem;">{{ $index + 1 }}</td>
                         <td><input [ngModel]="item.codigo" readonly placeholder="—"></td>
                         <td>
-                          <select (change)="onProductKeySelect(item, $any($event.target).value)" style="min-width:220px">
-                            <option value="">— Seleccionar MX —</option>
-                            @for (p of uniqueProducts(); track p.key) {
-                              <option [value]="p.key" [selected]="item.product_key === p.key">
-                                {{ p.nombre_medicamento_hs || p.nombre_comercial }}{{ p.concentracion ? ' · ' + p.concentracion : '' }}
-                              </option>
+                          <div class="po-mx-combo">
+                            <input type="text" class="po-mx-combo__input" placeholder="— Seleccionar MX —"
+                                   style="min-width:220px" autocomplete="off"
+                                   [(ngModel)]="item.productoFiltro"
+                                   (focus)="abrirMxDropdown($index, $event)"
+                                   (blur)="cerrarMxDropdown(item)">
+                            @if (mxDropdownOpenIndex() === $index && mxDropdownPos(); as pos) {
+                              <div class="po-mx-combo__dropdown"
+                                   [style.top.px]="pos.top" [style.left.px]="pos.left" [style.width.px]="pos.width">
+                                @for (p of productosFiltrados(item); track p.key) {
+                                  <div class="po-mx-combo__row" [class.po-mx-combo__row--selected]="item.product_key === p.key"
+                                       (mousedown)="seleccionarProducto(item, p)">
+                                    {{ productoLabel(p) }}
+                                  </div>
+                                } @empty {
+                                  <div class="po-mx-combo__row po-mx-combo__row--empty">Sin resultados</div>
+                                }
+                              </div>
                             }
-                          </select>
+                          </div>
                         </td>
                         <td>
                           @if (item.product_key) {
