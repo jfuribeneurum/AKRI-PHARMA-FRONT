@@ -398,7 +398,14 @@ export class PharmaIngresosComponent implements OnInit {
     this.modo.set('sin_orden');
     this.ordenSeleccionada.set(null);
     this.limpiar();
-    this.ocMeta.consecutivo = `ING-PHARMA-${Date.now()}`;
+    void this.cargarSiguienteConsecutivo();
+  }
+
+  private async cargarSiguienteConsecutivo() {
+    try {
+      const res: any = await this.api.get('/ingresos/next-number');
+      this.ocMeta.consecutivo = res?.data?.numero_ingreso ?? '';
+    } catch { /* non-fatal */ }
   }
 
   agregarItem() {

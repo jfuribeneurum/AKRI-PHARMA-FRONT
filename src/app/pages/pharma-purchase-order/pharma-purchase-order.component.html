@@ -279,7 +279,7 @@
                             <option value="">— Seleccionar MX —</option>
                             @for (p of uniqueProducts(); track p.key) {
                               <option [value]="p.key" [selected]="item.product_key === p.key">
-                                {{ p.nombre_comercial }}{{ p.concentracion ? ' · ' + p.concentracion : '' }}
+                                {{ p.nombre_medicamento_hs || p.nombre_comercial }}{{ p.concentracion ? ' · ' + p.concentracion : '' }}
                               </option>
                             }
                           </select>

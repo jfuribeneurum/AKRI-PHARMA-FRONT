@@ -104,10 +104,17 @@ export class PharmaPurchaseOrderComponent implements OnInit {
   };
 
   readonly uniqueProducts = computed(() => {
-    const seen = new Map<string, { key: string; nombre_comercial: string; concentracion: string }>();
+    const seen = new Map<string, { key: string; nombre_comercial: string; nombre_medicamento_hs: string | null; concentracion: string }>();
     for (const p of this.labProducts()) {
       const key = `${p.nombre_comercial}|${p.concentracion ?? ''}`;
-      if (!seen.has(key)) seen.set(key, { key, nombre_comercial: p.nombre_comercial, concentracion: p.concentracion });
+      if (!seen.has(key)) {
+        seen.set(key, {
+          key,
+          nombre_comercial: p.nombre_comercial,
+          nombre_medicamento_hs: p.nombre_medicamento_hs ?? null,
+          concentracion: p.concentracion
+        });
+      }
     }
     return Array.from(seen.values());
   });
