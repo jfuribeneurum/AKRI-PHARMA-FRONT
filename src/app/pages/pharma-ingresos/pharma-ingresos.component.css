@@ -1,3 +1,27 @@
+/* ── buscador de MX (igual que Ordenes de Compra) ─────────── */
+    .po-mx-combo { position: relative; }
+    .po-mx-combo__input { width: 100%; }
+    .po-mx-combo__dropdown {
+      position: fixed; z-index: 1000;
+      max-height: 260px; overflow-y: auto;
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border, #d1d5db);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .po-mx-combo__row {
+      padding: 0.4rem 0.65rem; font-size: 0.83rem; cursor: pointer; white-space: normal;
+    }
+    .po-mx-combo__row:hover { background: var(--color-surface-2, #f3f4f6); }
+    .po-mx-combo__row--selected { background: var(--color-surface-2, #f3f4f6); font-weight: 600; }
+    .po-mx-combo__row--empty { color: #9ca3af; cursor: default; }
+    .po-mx-combo__row--empty:hover { background: transparent; }
+    :host-context([data-theme="dark"]) .po-mx-combo__dropdown {
+      background: var(--color-surface, #1f2937); border-color: rgba(255,255,255,0.15);
+    }
+    :host-context([data-theme="dark"]) .po-mx-combo__row:hover,
+    :host-context([data-theme="dark"]) .po-mx-combo__row--selected { background: rgba(255,255,255,0.08); }
+
 /* ── tabla de totales ingreso ───────────────────────────── */
     .po-items-footer {
       display: flex; justify-content: space-between; align-items: flex-start;

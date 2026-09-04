@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, computed, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
@@ -40,6 +40,152 @@ export class PharmaIngresosComponent implements OnInit {
   ingreso: any = this.emptyIngreso();
   factura: any = this.emptyFactura();
 
+  // Bodegas/sedes que esta sesión puede gestionar (mismo grupo por ciudad
+  // que Ordenes de Compra) — reemplaza los campos de texto libre de
+  // "Datos de la sede" por selectores reales.
+  readonly allWarehouses = signal<any[]>([]);
+  readonly sedesDisponibles = computed(() => {
+    const seen = new Set<number>();
+    return this.allWarehouses().filter((wh) => {
+      if (seen.has(wh.id_sede)) return false;
+      seen.add(wh.id_sede);
+      return true;
+    });
+  });
+
+  readonly allProviders = signal<any[]>([]);
+
+  // Buscador de MX para "Nombre"/"Laboratorio" — mismo mecanismo que en
+  // Ordenes de Compra: labProducts trae todos los productos activos
+  // (uno por combinación producto+laboratorio), uniqueProducts los agrupa
+  // por nombre+concentracion+principio_activo para el desplegable de
+  // búsqueda, y labsForProduct() resuelve los laboratorios de esa MX.
+  readonly labProducts = signal<any[]>([]);
+  readonly uniqueProducts = computed(() => {
+    const seen = new Map<string, { key: string; nombre_comercial: string; nombre_medicamento_hs: string | null; concentracion: string; principio_activo: string }>();
+    for (const p of this.labProducts()) {
+      const key = `${p.nombre_comercial}|${p.concentracion ?? ''}|${p.principio_activo ?? ''}`;
+      if (!seen.has(key)) {
+        seen.set(key, {
+          key,
+          nombre_comercial: p.nombre_comercial,
+          nombre_medicamento_hs: p.nombre_medicamento_hs ?? null,
+          concentracion: p.concentracion,
+          principio_activo: p.principio_activo ?? ''
+        });
+      }
+    }
+    return Array.from(seen.values());
+  });
+
+  labsForProduct(key: string) {
+    const [nombre, concentracion, principioActivo] = key.split('|');
+    return this.labProducts().filter(
+      (p) =>
+        p.nombre_comercial === nombre &&
+        (p.concentracion ?? '') === concentracion &&
+        (p.principio_activo ?? '') === principioActivo
+    );
+  }
+
+  productoLabel(p: { nombre_medicamento_hs: string | null; nombre_comercial: string; concentracion: string; principio_activo?: string }): string {
+    const base = `${p.nombre_medicamento_hs || p.nombre_comercial}${p.concentracion ? ' · ' + p.concentracion : ''}`;
+    return p.principio_activo ? `${base} — ${p.principio_activo}` : base;
+  }
+
+  readonly mxDropdownOpenIndex = signal<number | null>(null);
+  readonly mxDropdownPos = signal<{ top: number; left: number; width: number } | null>(null);
+
+  productosFiltrados(item: any) {
+    const q = (item.productoFiltro ?? '').trim().toLowerCase();
+    const all = this.uniqueProducts();
+    if (!q) return all;
+    return all.filter((p) => this.productoLabel(p).toLowerCase().includes(q));
+  }
+
+  abrirMxDropdown(index: number, event: FocusEvent) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    this.mxDropdownPos.set({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    this.mxDropdownOpenIndex.set(index);
+  }
+
+  cerrarMxDropdown(item: any) {
+    setTimeout(() => {
+      this.mxDropdownOpenIndex.set(null);
+      const seleccionado = this.uniqueProducts().find((p) => p.key === item.product_key);
+      item.productoFiltro = seleccionado ? this.productoLabel(seleccionado) : '';
+    }, 150);
+  }
+
+  seleccionarProducto(item: any, p: { key: string }) {
+    this.onProductKeySelect(item, p.key);
+    const sel = this.uniqueProducts().find((x) => x.key === p.key);
+    item.productoFiltro = sel ? this.productoLabel(sel) : '';
+    this.mxDropdownOpenIndex.set(null);
+  }
+
+  onProductKeySelect(item: any, key: string) {
+    item.product_key = key;
+    item.id_producto = 0;
+    item.codigo = '';
+    item.nombre = '';
+    item.laboratorio = '';
+
+    const labs = this.labsForProduct(key);
+    if (labs.length === 1) {
+      this.onLabSelect(item, String(labs[0].id_producto));
+    }
+  }
+
+  onLabSelect(item: any, idProducto: string) {
+    const prod = this.labProducts().find((p) => String(p.id_producto) === String(idProducto));
+    if (!prod) return;
+    item.id_producto = prod.id_producto;
+    item.codigo = prod.codigo_control ?? prod.sku ?? '';
+    // Mismo criterio que el PDF de la Orden de Compra: nombre_medicamento_hs
+    // (el nombre completo vinculado a HealthSphere) por encima del nombre
+    // comercial corto — así el listado de Ingresos y el acta de recepción
+    // muestran el mismo nombre que ya se ve al generar una OC, en vez del
+    // nombre local abreviado (ej. "XULTOPHY" en vez de "SEMAGLUTIDA...").
+    const nombreBase = prod.nombre_medicamento_hs || prod.nombre_comercial || '';
+    item.nombre = prod.concentracion ? `${nombreBase} ${prod.concentracion}` : nombreBase;
+    item.laboratorio = prod.laboratorio_nombre ?? '';
+    if (prod.costo_referencia != null) item.valor_unitario = Number(prod.costo_referencia) || item.valor_unitario;
+    void this.fillMedDetailsFromProduct(item, prod.id_producto);
+  }
+
+  private async fillMedDetailsFromProduct(item: any, idProducto: number) {
+    try {
+      const detResp: any = await this.api.get<any>(`/products/${idProducto}`);
+      const p: any = detResp?.data ?? detResp;
+      if (p.registro_invima) item.registro_invima = p.registro_invima;
+      if (p.cum != null) item.cum = String(p.cum);
+      if (p.consecutivo_cum != null) item.consecutivo_cum = String(p.consecutivo_cum);
+      if (p.iva_tasa != null) item.iva = p.iva_tasa;
+      if (p.temp_min != null || p.temp_max != null) {
+        item.temperatura = p.temp_min != null && p.temp_max != null
+          ? `${p.temp_min} - ${p.temp_max}°C`
+          : p.temp_min != null ? `${p.temp_min}°C` : `${p.temp_max}°C`;
+      } else if (!p.requiere_cadena_frio) {
+        // La mayoría del catálogo no tiene temp_min/temp_max cargado en el
+        // maestro, pero sí tiene requiere_cadena_frio correctamente en false
+        // — para esos (no refrigerados) "Ambiente" es un default seguro.
+        // Los que sí requieren cadena de frío se dejan en blanco a propósito:
+        // ahí la temperatura real importa clínicamente y debe diligenciarse.
+        item.temperatura = 'Ambiente';
+      }
+      if (p.forma_farmaceutica) item.presentacion = p.forma_farmaceutica;
+      this.cdr.markForCheck();
+    } catch { /* non-fatal */ }
+  }
+
+  private async loadAllProducts() {
+    try {
+      const res: any = await this.api.get('/products/for-po');
+      this.labProducts.set(res?.data ?? []);
+    } catch { /* non-fatal */ }
+  }
+
   constructor(
     private readonly api: ApiService,
     private readonly cdr: ChangeDetectorRef,
@@ -49,6 +195,56 @@ export class PharmaIngresosComponent implements OnInit {
   ngOnInit() {
     this.cargarIngresos();
     this.cargarOrdenes();
+    void this.loadWarehouses();
+    void this.loadProviders();
+    void this.loadAllProducts();
+  }
+
+  private async loadWarehouses() {
+    try {
+      const res: any = await this.api.get('/purchases/warehouses');
+      this.allWarehouses.set(res?.data ?? []);
+    } catch { /* non-fatal */ }
+  }
+
+  private async loadProviders() {
+    try {
+      const resp: any = await this.api.get('/providers');
+      this.allProviders.set(Array.isArray(resp) ? resp : (resp?.data ?? []));
+    } catch { /* non-fatal */ }
+  }
+
+  onProveedorChange(id: string) {
+    const prov = this.allProviders().find((p) => String(p.id_proveedor) === String(id));
+    if (!prov) return;
+    this.ocMeta.id_proveedor = prov.id_proveedor;
+    this.ocMeta.proveedor_nombre = prov.razon_social ?? prov.nombre ?? '';
+    this.ocMeta.proveedor_nit = prov.numero_identificacion ?? '';
+    this.ocMeta.proveedor_contacto = [prov.nombres, prov.apellidos].filter(Boolean).join(' ');
+    this.ocMeta.proveedor_telefono = prov.telefono ?? '';
+    this.ocMeta.proveedor_direccion = prov.direccion ?? '';
+  }
+
+  bodegasDeSede(idSede: number | null) {
+    if (!idSede) return [];
+    return this.allWarehouses().filter((wh) => Number(wh.id_sede) === Number(idSede));
+  }
+
+  onSedeChange(idSede: string) {
+    const wh = this.allWarehouses().find((w) => String(w.id_sede) === String(idSede));
+    this.ocMeta.id_sede = wh ? wh.id_sede : null;
+    this.ocMeta.id_almacen = wh ? wh.id_almacen : null;
+    this.ocMeta.bodega = wh ? wh.nombre : '';
+    this.ocMeta.sede = wh ? (wh.sede_nombre ?? '') : '';
+    this.ocMeta.direccion_sede = wh ? (wh.sede_direccion ?? '') : '';
+    this.ocMeta.ciudad_sede = wh ? (wh.sede_ciudad ?? '') : '';
+  }
+
+  onBodegaChange(idAlmacen: string) {
+    const wh = this.allWarehouses().find((w) => String(w.id_almacen) === String(idAlmacen));
+    if (!wh) return;
+    this.ocMeta.id_almacen = wh.id_almacen;
+    this.ocMeta.bodega = wh.nombre;
   }
 
   // ── Carga y filtrado de ingresos existentes ───────────────────
@@ -417,18 +613,36 @@ export class PharmaIngresosComponent implements OnInit {
     const obs = String(oc.observaciones ?? '');
     const meta = this.parseObservaciones(obs);
 
+    // La OC solo guarda la sede/bodega como texto libre en observaciones (no
+    // un id_almacen real) — intentamos emparejar ese texto con una bodega
+    // real de las que esta sesión puede gestionar; si no calza, queda para
+    // que el usuario la seleccione a mano.
+    const sedeTexto = (meta['sede'] || '').trim().toUpperCase();
+    const whMatch = sedeTexto
+      ? this.allWarehouses().find((w) => String(w.sede_nombre ?? '').trim().toUpperCase() === sedeTexto)
+      : null;
+
+    // La OC sí guarda un id_proveedor real (a diferencia de la sede, que solo
+    // queda como texto libre) — se usa directo en vez de intentar emparejar texto.
+    const provMatch = oc.id_proveedor
+      ? this.allProviders().find((p) => Number(p.id_proveedor) === Number(oc.id_proveedor))
+      : null;
+
     this.ocMeta = {
       consecutivo: oc.numero_oc ?? '',
       fecha: oc.fecha ? String(oc.fecha).slice(0, 10) : '',
-      sede: meta['sede'] || '',
-      bodega: meta['bodega'] || '',
-      direccion_sede: meta['direccion_sede'] || '',
-      ciudad_sede: meta['ciudad'] || '',
-      proveedor_nombre: meta['proveedor'] || oc.proveedor || '',
-      proveedor_nit: meta['nit'] || '',
-      proveedor_contacto: meta['contacto'] || '',
-      proveedor_telefono: meta['telefono'] || '',
-      proveedor_direccion: meta['direccion_proveedor'] || '',
+      id_sede: whMatch ? whMatch.id_sede : null,
+      id_almacen: whMatch ? whMatch.id_almacen : null,
+      sede: whMatch ? whMatch.sede_nombre : (meta['sede'] || ''),
+      bodega: whMatch ? whMatch.nombre : (meta['bodega'] || ''),
+      direccion_sede: whMatch ? (whMatch.sede_direccion ?? '') : (meta['direccion_sede'] || ''),
+      ciudad_sede: whMatch ? (whMatch.sede_ciudad ?? '') : (meta['ciudad'] || ''),
+      id_proveedor: provMatch ? provMatch.id_proveedor : null,
+      proveedor_nombre: provMatch ? (provMatch.razon_social ?? provMatch.nombre ?? '') : (meta['proveedor'] || oc.proveedor || ''),
+      proveedor_nit: provMatch ? (provMatch.numero_identificacion ?? '') : (meta['nit'] || ''),
+      proveedor_contacto: provMatch ? [provMatch.nombres, provMatch.apellidos].filter(Boolean).join(' ') : (meta['contacto'] || ''),
+      proveedor_telefono: provMatch ? (provMatch.telefono ?? '') : (meta['telefono'] || ''),
+      proveedor_direccion: provMatch ? (provMatch.direccion ?? '') : (meta['direccion_proveedor'] || ''),
     };
 
     const parsedItems: any[] = [];
@@ -437,6 +651,7 @@ export class PharmaIngresosComponent implements OnInit {
       const item = this.parseItem(obs, i);
       if (!item) break;
       parsedItems.push({
+        id_producto: 0, product_key: '', productoFiltro: '',
         codigo: item['codigo'] ?? '',
         nombre: item['nombre'] ?? '',
         laboratorio: item['laboratorio'] ?? '',
@@ -521,6 +736,16 @@ export class PharmaIngresosComponent implements OnInit {
       if (!item.nombre && found.nombre_comercial) item.nombre = found.nombre_comercial;
       if (!item.laboratorio && found.laboratorio_nombre) item.laboratorio = found.laboratorio_nombre;
 
+      // Vincula también con el buscador de MX (mismo criterio que la OC) para
+      // que la celda "Laboratorio" quede consistente sin importar si el
+      // producto se identificó por código o por nombre.
+      if (!item.id_producto) {
+        item.id_producto = found.id_producto;
+        item.product_key = `${found.nombre_comercial}|${found.concentracion ?? ''}|${found.principio_activo ?? ''}`;
+        const sel = this.uniqueProducts().find((x) => x.key === item.product_key);
+        item.productoFiltro = sel ? this.productoLabel(sel) : (found.nombre_comercial ?? '');
+      }
+
       // campos MX vienen del detalle del producto
       const detResp: any = await this.api.get<any>(`/products/${found.id_producto}`);
       const p: any = detResp?.data ?? detResp;
@@ -528,10 +753,14 @@ export class PharmaIngresosComponent implements OnInit {
       if (!item.cum && p.cum != null) item.cum = String(p.cum);
       if (!item.consecutivo_cum && p.consecutivo_cum != null) item.consecutivo_cum = String(p.consecutivo_cum);
       if (!item.iva && p.iva_tasa != null) item.iva = p.iva_tasa;
-      if (!item.temperatura && (p.temp_min != null || p.temp_max != null)) {
-        item.temperatura = p.temp_min != null && p.temp_max != null
-          ? `${p.temp_min} - ${p.temp_max}°C`
-          : p.temp_min != null ? `${p.temp_min}°C` : `${p.temp_max}°C`;
+      if (!item.temperatura) {
+        if (p.temp_min != null || p.temp_max != null) {
+          item.temperatura = p.temp_min != null && p.temp_max != null
+            ? `${p.temp_min} - ${p.temp_max}°C`
+            : p.temp_min != null ? `${p.temp_min}°C` : `${p.temp_max}°C`;
+        } else if (!p.requiere_cadena_frio) {
+          item.temperatura = 'Ambiente';
+        }
       }
       if (!item.presentacion && p.forma_farmaceutica) item.presentacion = p.forma_farmaceutica;
       // fallback: laboratorio desde detalle si el listado no lo trajo
@@ -650,7 +879,7 @@ export class PharmaIngresosComponent implements OnInit {
       numero_orden_compra: this.ocMeta.consecutivo || null,
       sede:                this.ocMeta.sede || null,
       bodega:              this.ocMeta.bodega || null,
-      id_almacen:          this.siteContext.activeAlmacenId(),
+      id_almacen:          this.ocMeta.id_almacen ?? this.siteContext.activeAlmacenId(),
       // Proveedor
       proveedor_nombre:    this.ocMeta.proveedor_nombre || null,
       proveedor_nit:       this.ocMeta.proveedor_nit || null,
@@ -690,10 +919,13 @@ export class PharmaIngresosComponent implements OnInit {
     return {
       consecutivo: '',
       fecha: '',
+      id_sede: null,
+      id_almacen: null,
       sede: '',
       bodega: '',
       direccion_sede: '',
       ciudad_sede: '',
+      id_proveedor: null,
       proveedor_nombre: '',
       proveedor_nit: '',
       proveedor_contacto: '',
@@ -704,6 +936,7 @@ export class PharmaIngresosComponent implements OnInit {
 
   private emptyOcItem() {
     return {
+      id_producto: 0, product_key: '', productoFiltro: '',
       codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0,
       lote: '', fecha_vencimiento: '',
       _showMed: false,

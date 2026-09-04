@@ -195,10 +195,26 @@
           <div class="po-section">
             <div class="po-section-title">Datos de la sede</div>
             <div class="form-grid">
-              <label>Sede<input [(ngModel)]="ocMeta.sede" placeholder="Nombre de la sede"></label>
-              <label>Bodega<input [(ngModel)]="ocMeta.bodega" placeholder="Bodega de destino"></label>
-              <label>Direccion<input [(ngModel)]="ocMeta.direccion_sede" placeholder="Direccion de la sede"></label>
-              <label>Ciudad<input [(ngModel)]="ocMeta.ciudad_sede" placeholder="Ciudad"></label>
+              <label>
+                Sede
+                <select [ngModel]="ocMeta.id_sede" (ngModelChange)="onSedeChange($event)">
+                  <option [ngValue]="null" disabled>Seleccione sede...</option>
+                  @for (wh of sedesDisponibles(); track wh.id_sede) {
+                    <option [value]="wh.id_sede">{{ wh.sede_nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Bodega
+                <select [ngModel]="ocMeta.id_almacen" (ngModelChange)="onBodegaChange($event)" [disabled]="!ocMeta.id_sede">
+                  <option [ngValue]="null" disabled>Seleccione bodega...</option>
+                  @for (wh of bodegasDeSede(ocMeta.id_sede); track wh.id_almacen) {
+                    <option [value]="wh.id_almacen">{{ wh.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>Direccion<input [ngModel]="ocMeta.direccion_sede" readonly placeholder="—"></label>
+              <label>Ciudad<input [ngModel]="ocMeta.ciudad_sede" readonly placeholder="—"></label>
             </div>
           </div>
 
@@ -206,11 +222,19 @@
           <div class="po-section">
             <div class="po-section-title">Datos del proveedor</div>
             <div class="form-grid">
-              <label>Nombre<input [(ngModel)]="ocMeta.proveedor_nombre" placeholder="Nombre del proveedor"></label>
-              <label>NIT<input [(ngModel)]="ocMeta.proveedor_nit"></label>
-              <label>Contacto<input [(ngModel)]="ocMeta.proveedor_contacto"></label>
-              <label>Telefono<input [(ngModel)]="ocMeta.proveedor_telefono"></label>
-              <label class="full">Direccion proveedor<input [(ngModel)]="ocMeta.proveedor_direccion"></label>
+              <label>
+                Nombre
+                <select [ngModel]="ocMeta.id_proveedor" (ngModelChange)="onProveedorChange($event)">
+                  <option [ngValue]="null" disabled>Seleccione proveedor...</option>
+                  @for (p of allProviders(); track p.id_proveedor) {
+                    <option [value]="p.id_proveedor">{{ p.razon_social || p.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>NIT<input [ngModel]="ocMeta.proveedor_nit" readonly placeholder="—"></label>
+              <label>Contacto<input [ngModel]="ocMeta.proveedor_contacto" readonly placeholder="—"></label>
+              <label>Telefono<input [ngModel]="ocMeta.proveedor_telefono" readonly placeholder="—"></label>
+              <label class="full">Direccion proveedor<input [ngModel]="ocMeta.proveedor_direccion" readonly placeholder="—"></label>
             </div>
           </div>
 
@@ -238,8 +262,42 @@
                       <tr>
                         <td class="num-toggle" [class.num-toggle-pending]="item.cumple == null" [class.num-toggle-done]="item.cumple === true" [class.num-toggle-no]="item.cumple === false" (click)="item._showMed = !item._showMed" title="Datos del medicamento">{{ $index + 1 }}</td>
                         <td><input [(ngModel)]="item.codigo" placeholder="Cod." (blur)="autoFillMedFromCodigo(item)"></td>
-                        <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
-                        <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                        <td>
+                          <div class="po-mx-combo">
+                            <input type="text" class="po-mx-combo__input" placeholder="— Seleccionar MX —"
+                                   style="min-width:220px" autocomplete="off"
+                                   [(ngModel)]="item.productoFiltro"
+                                   (focus)="abrirMxDropdown($index, $event)"
+                                   (blur)="cerrarMxDropdown(item)">
+                            @if (mxDropdownOpenIndex() === $index && mxDropdownPos(); as pos) {
+                              <div class="po-mx-combo__dropdown"
+                                   [style.top.px]="pos.top" [style.left.px]="pos.left" [style.width.px]="pos.width">
+                                @for (p of productosFiltrados(item); track p.key) {
+                                  <div class="po-mx-combo__row" [class.po-mx-combo__row--selected]="item.product_key === p.key"
+                                       (mousedown)="seleccionarProducto(item, p)">
+                                    {{ productoLabel(p) }}
+                                  </div>
+                                } @empty {
+                                  <div class="po-mx-combo__row po-mx-combo__row--empty">Sin resultados</div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </td>
+                        <td>
+                          @if (item.product_key) {
+                            <select (change)="onLabSelect(item, $any($event.target).value)" style="min-width:180px">
+                              <option value="">— Laboratorio —</option>
+                              @for (p of labsForProduct(item.product_key); track p.id_producto) {
+                                <option [value]="p.id_producto" [selected]="item.id_producto === p.id_producto">
+                                  {{ p.laboratorio_nombre ?? 'Sin laboratorio' }}
+                                </option>
+                              }
+                            </select>
+                          } @else {
+                            <input [ngModel]="item.laboratorio" readonly placeholder="— Seleccione MX primero —" style="min-width:180px; color:#6b7280">
+                          }
+                        </td>
                         <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
                         <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
                         <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
@@ -377,10 +435,26 @@
           <div class="po-section">
             <div class="po-section-title">Datos de la sede</div>
             <div class="form-grid">
-              <label>Sede<input [(ngModel)]="ocMeta.sede" placeholder="Nombre de la sede"></label>
-              <label>Bodega<input [(ngModel)]="ocMeta.bodega" placeholder="Bodega de destino"></label>
-              <label>Direccion<input [(ngModel)]="ocMeta.direccion_sede" placeholder="Direccion de la sede"></label>
-              <label>Ciudad<input [(ngModel)]="ocMeta.ciudad_sede" placeholder="Ciudad"></label>
+              <label>
+                Sede
+                <select [ngModel]="ocMeta.id_sede" (ngModelChange)="onSedeChange($event)">
+                  <option [ngValue]="null" disabled>Seleccione sede...</option>
+                  @for (wh of sedesDisponibles(); track wh.id_sede) {
+                    <option [value]="wh.id_sede">{{ wh.sede_nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Bodega
+                <select [ngModel]="ocMeta.id_almacen" (ngModelChange)="onBodegaChange($event)" [disabled]="!ocMeta.id_sede">
+                  <option [ngValue]="null" disabled>Seleccione bodega...</option>
+                  @for (wh of bodegasDeSede(ocMeta.id_sede); track wh.id_almacen) {
+                    <option [value]="wh.id_almacen">{{ wh.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>Direccion<input [ngModel]="ocMeta.direccion_sede" readonly placeholder="—"></label>
+              <label>Ciudad<input [ngModel]="ocMeta.ciudad_sede" readonly placeholder="—"></label>
             </div>
           </div>
 
@@ -388,11 +462,19 @@
           <div class="po-section">
             <div class="po-section-title">Datos del proveedor</div>
             <div class="form-grid">
-              <label>Nombre<input [(ngModel)]="ocMeta.proveedor_nombre" placeholder="Nombre del proveedor"></label>
-              <label>NIT<input [(ngModel)]="ocMeta.proveedor_nit"></label>
-              <label>Contacto<input [(ngModel)]="ocMeta.proveedor_contacto"></label>
-              <label>Telefono<input [(ngModel)]="ocMeta.proveedor_telefono"></label>
-              <label class="full">Direccion proveedor<input [(ngModel)]="ocMeta.proveedor_direccion"></label>
+              <label>
+                Nombre
+                <select [ngModel]="ocMeta.id_proveedor" (ngModelChange)="onProveedorChange($event)">
+                  <option [ngValue]="null" disabled>Seleccione proveedor...</option>
+                  @for (p of allProviders(); track p.id_proveedor) {
+                    <option [value]="p.id_proveedor">{{ p.razon_social || p.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label>NIT<input [ngModel]="ocMeta.proveedor_nit" readonly placeholder="—"></label>
+              <label>Contacto<input [ngModel]="ocMeta.proveedor_contacto" readonly placeholder="—"></label>
+              <label>Telefono<input [ngModel]="ocMeta.proveedor_telefono" readonly placeholder="—"></label>
+              <label class="full">Direccion proveedor<input [ngModel]="ocMeta.proveedor_direccion" readonly placeholder="—"></label>
             </div>
           </div>
 
@@ -420,8 +502,42 @@
                       <tr>
                         <td class="num-toggle" [class.num-toggle-pending]="item.cumple == null" [class.num-toggle-done]="item.cumple === true" [class.num-toggle-no]="item.cumple === false" (click)="item._showMed = !item._showMed" title="Datos del medicamento">{{ $index + 1 }}</td>
                         <td><input [(ngModel)]="item.codigo" placeholder="Cod." (blur)="autoFillMedFromCodigo(item)"></td>
-                        <td><input [(ngModel)]="item.nombre" placeholder="Nombre del producto"></td>
-                        <td><input [(ngModel)]="item.laboratorio" placeholder="Laboratorio"></td>
+                        <td>
+                          <div class="po-mx-combo">
+                            <input type="text" class="po-mx-combo__input" placeholder="— Seleccionar MX —"
+                                   style="min-width:220px" autocomplete="off"
+                                   [(ngModel)]="item.productoFiltro"
+                                   (focus)="abrirMxDropdown($index, $event)"
+                                   (blur)="cerrarMxDropdown(item)">
+                            @if (mxDropdownOpenIndex() === $index && mxDropdownPos(); as pos) {
+                              <div class="po-mx-combo__dropdown"
+                                   [style.top.px]="pos.top" [style.left.px]="pos.left" [style.width.px]="pos.width">
+                                @for (p of productosFiltrados(item); track p.key) {
+                                  <div class="po-mx-combo__row" [class.po-mx-combo__row--selected]="item.product_key === p.key"
+                                       (mousedown)="seleccionarProducto(item, p)">
+                                    {{ productoLabel(p) }}
+                                  </div>
+                                } @empty {
+                                  <div class="po-mx-combo__row po-mx-combo__row--empty">Sin resultados</div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </td>
+                        <td>
+                          @if (item.product_key) {
+                            <select (change)="onLabSelect(item, $any($event.target).value)" style="min-width:180px">
+                              <option value="">— Laboratorio —</option>
+                              @for (p of labsForProduct(item.product_key); track p.id_producto) {
+                                <option [value]="p.id_producto" [selected]="item.id_producto === p.id_producto">
+                                  {{ p.laboratorio_nombre ?? 'Sin laboratorio' }}
+                                </option>
+                              }
+                            </select>
+                          } @else {
+                            <input [ngModel]="item.laboratorio" readonly placeholder="— Seleccione MX primero —" style="min-width:180px; color:#6b7280">
+                          }
+                        </td>
                         <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
                         <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
                         <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>

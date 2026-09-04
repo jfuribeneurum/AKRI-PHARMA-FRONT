@@ -137,7 +137,9 @@ export class MaestroMxComponent implements OnInit {
       id_laboratorio:       full.id_laboratorio ?? null,
       iva:                  Number(full.iva_tasa ?? 0),
       mx_control:           !!full.mx_control,
-      requiere_cadena_frio: !!full.requiere_cadena_frio
+      requiere_cadena_frio: !!full.requiere_cadena_frio,
+      temp_min:             full.temp_min ?? null,
+      temp_max:             full.temp_max ?? null
     };
     this.showModal.set(true);
   }
@@ -197,6 +199,9 @@ export class MaestroMxComponent implements OnInit {
     if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
     if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
     if (!this.form.consecutivo_cum || String(this.form.consecutivo_cum).trim() === '') return 'El campo Consecutivo CUM es obligatorio.';
+    if (this.form.requiere_cadena_frio && (this.form.temp_min == null || this.form.temp_max == null)) {
+      return 'Debes indicar la temperatura mínima y máxima para un producto de cadena de frío.';
+    }
     return null;
   }
 
@@ -338,7 +343,9 @@ export class MaestroMxComponent implements OnInit {
       id_laboratorio:       this.form.id_laboratorio || null,
       iva_tasa:             Number(this.form.iva ?? 0),
       mx_control:           !!this.form.mx_control,
-      requiere_cadena_frio: !!this.form.requiere_cadena_frio
+      requiere_cadena_frio: !!this.form.requiere_cadena_frio,
+      temp_min:             this.form.requiere_cadena_frio && this.form.temp_min != null && this.form.temp_min !== '' ? Number(this.form.temp_min) : null,
+      temp_max:             this.form.requiere_cadena_frio && this.form.temp_max != null && this.form.temp_max !== '' ? Number(this.form.temp_max) : null
     };
   }
 
@@ -491,7 +498,9 @@ export class MaestroMxComponent implements OnInit {
       id_laboratorio:       null,
       iva:                  0,
       mx_control:           false,
-      requiere_cadena_frio: false
+      requiere_cadena_frio: false,
+      temp_min:             null,
+      temp_max:             null
     };
   }
 

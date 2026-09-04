@@ -248,6 +248,20 @@
                   <input type="checkbox" [(ngModel)]="form.requiere_cadena_frio"> Cadena de frío
                 </label>
               </div>
+              @if (form.requiere_cadena_frio) {
+                <div class="form-grid form-grid-2" style="margin-top:0.75rem;">
+                  <label>
+                    Temperatura mínima (°C)
+                    <input type="number" step="0.1" [(ngModel)]="form.temp_min" placeholder="Ej: 2"
+                      [class.field-error]="submitted() && form.requiere_cadena_frio && form.temp_min == null">
+                  </label>
+                  <label>
+                    Temperatura máxima (°C)
+                    <input type="number" step="0.1" [(ngModel)]="form.temp_max" placeholder="Ej: 8"
+                      [class.field-error]="submitted() && form.requiere_cadena_frio && form.temp_max == null">
+                  </label>
+                </div>
+              }
             </div>
           </div>
 
