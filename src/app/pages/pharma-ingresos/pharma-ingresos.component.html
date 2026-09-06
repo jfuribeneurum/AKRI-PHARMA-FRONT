@@ -177,8 +177,12 @@
             <div class="po-section-title">Encabezado</div>
             <div class="form-grid">
               <label>
+                Consecutivo
+                <input [ngModel]="ocMeta.consecutivo" readonly style="background:var(--color-surface-2,#f3f4f6);color:#6b7280">
+              </label>
+              <label>
                 Orden de compra
-                <input [(ngModel)]="ocMeta.consecutivo" readonly style="background:var(--color-surface-2,#f3f4f6);color:#6b7280">
+                <input [(ngModel)]="ocMeta.numero_oc" readonly style="background:var(--color-surface-2,#f3f4f6);color:#6b7280">
               </label>
               <label>
                 Fecha OC

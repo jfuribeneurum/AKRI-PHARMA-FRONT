@@ -610,6 +610,15 @@ export class PharmaIngresosComponent implements OnInit {
 
   private async precargarDesdeOrden(oc: any) {
     this.limpiar();
+    // El ingreso necesita su propio consecutivo ING-XXX — antes se usaba por
+    // error el número de la OC (ej. "OC-0000003") como referencia del
+    // ingreso, dejando dos registros distintos compartiendo el mismo folio.
+    let nuevoConsecutivo = '';
+    try {
+      const res: any = await this.api.get('/ingresos/next-number');
+      nuevoConsecutivo = res?.data?.numero_ingreso ?? '';
+    } catch { /* non-fatal */ }
+
     const obs = String(oc.observaciones ?? '');
     const meta = this.parseObservaciones(obs);
 
@@ -629,7 +638,8 @@ export class PharmaIngresosComponent implements OnInit {
       : null;
 
     this.ocMeta = {
-      consecutivo: oc.numero_oc ?? '',
+      consecutivo: nuevoConsecutivo,
+      numero_oc: oc.numero_oc ?? '',
       fecha: oc.fecha ? String(oc.fecha).slice(0, 10) : '',
       id_sede: whMatch ? whMatch.id_sede : null,
       id_almacen: whMatch ? whMatch.id_almacen : null,
@@ -876,7 +886,7 @@ export class PharmaIngresosComponent implements OnInit {
       fecha_recepcion:     this.ingresoExtra.fecha_recepcion || null,
       observaciones:       this.ingresoExtra.observaciones || null,
       // Orden / sede
-      numero_orden_compra: this.ocMeta.consecutivo || null,
+      numero_orden_compra: this.ocMeta.numero_oc || null,
       sede:                this.ocMeta.sede || null,
       bodega:              this.ocMeta.bodega || null,
       id_almacen:          this.ocMeta.id_almacen ?? this.siteContext.activeAlmacenId(),
@@ -918,6 +928,7 @@ export class PharmaIngresosComponent implements OnInit {
   private emptyOcMeta() {
     return {
       consecutivo: '',
+      numero_oc: '',
       fecha: '',
       id_sede: null,
       id_almacen: null,
