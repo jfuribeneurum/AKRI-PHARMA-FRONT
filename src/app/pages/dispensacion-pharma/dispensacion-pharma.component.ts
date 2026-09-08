@@ -1074,6 +1074,25 @@ export class DispensacionPharmaComponent implements OnInit {
       return;
     }
 
+    // "Control de entrega" es solo referencia visual y no se envía al backend
+    // ni descuenta inventario — si alguien le escribe una cantidad ahí pero
+    // deja "Cant. dispensada" en 0 (los dos campos se ven casi iguales, uno
+    // al lado del otro), ese medicamento no se guardaría de NINGUNA forma —
+    // ni como entregado ni como pendiente — sin ningún aviso. Con varios
+    // medicamentos en la misma formulación es fácil escribir en el campo
+    // equivocado en una de las filas y no notarlo.
+    const conReferenciaSinEntrega = this.modalFormItems().filter(i =>
+      !this.esNoDispensableAhora(i) &&
+      Number(i.cantidad || 0) > 0 && Number(i.cantidadDispensadaOverride || 0) === 0 && this.tienePendientePorFormular(i)
+    );
+    if (conReferenciaSinEntrega.length) {
+      const nombres = conReferenciaSinEntrega.map(i => i.med.nombre_medicamento).join(', ');
+      this.modalError.set(
+        `Falta indicar "Cant. dispensada" para: ${nombres}. "Control de entrega" es solo una referencia y no registra la entrega — si no completas "Cant. dispensada", ese medicamento no queda guardado.`
+      );
+      return;
+    }
+
     this.modalSaving.set(true);
     this.modalError.set('');
     this.modalSuccess.set('');

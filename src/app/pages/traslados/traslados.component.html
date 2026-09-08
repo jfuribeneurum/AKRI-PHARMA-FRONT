@@ -45,8 +45,8 @@
               <td style="min-width:220px">
                 <select [(ngModel)]="idAlmacenDestino">
                   <option [value]="0">-- Seleccionar bodega --</option>
-                  @for (b of todasBodegas(); track b.id_almacen) {
-                    <option [value]="b.id_almacen">{{ b.nombre }}</option>
+                  @for (b of bodegasDestino(); track b.id_almacen) {
+                    <option [value]="b.id_almacen">{{ b.nombre }} — {{ b.sede_nombre }}</option>
                   }
                 </select>
               </td>

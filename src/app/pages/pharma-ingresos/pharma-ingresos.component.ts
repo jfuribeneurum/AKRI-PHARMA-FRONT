@@ -29,6 +29,9 @@ export class PharmaIngresosComponent implements OnInit {
   readonly ingresosFiltrados = signal<any[]>([]);
   readonly expandedIngreso = signal<number | null>(null);
   readonly actaGenerando = signal<number | null>(null);
+  readonly anulando = signal<number | null>(null);
+  readonly ingresoAAnular = signal<any | null>(null);
+  motivoAnulacion = '';
 
   filter = { numero_oc: '', fecha_desde: '', fecha_hasta: '', laboratorio: '' };
   ocSearch = '';
@@ -358,6 +361,38 @@ export class PharmaIngresosComponent implements OnInit {
       this.error.set(err?.error?.message ?? 'No fue posible generar el acta de recepción técnica.');
     } finally {
       this.actaGenerando.set(null);
+    }
+  }
+
+  pedirAnulacion(ing: any, event: Event) {
+    event.stopPropagation();
+    this.motivoAnulacion = '';
+    this.ingresoAAnular.set(ing);
+  }
+
+  cancelarAnulacion() {
+    this.ingresoAAnular.set(null);
+    this.motivoAnulacion = '';
+  }
+
+  // Anular no borra el ingreso (se necesita trazabilidad del ingreso
+  // errado) — el backend lo deja en estado "anulado" y revierte el
+  // inventario que había movido al crearse (ver POST /ingresos/:id/anular).
+  async confirmarAnulacion(ing: any) {
+    this.error.set('');
+    this.anulando.set(ing.id_ingreso);
+    try {
+      await this.api.post(`/ingresos/${ing.id_ingreso}/anular`, {
+        motivo: this.motivoAnulacion || null
+      });
+      this.ingresoAAnular.set(null);
+      this.motivoAnulacion = '';
+      this.message.set(`Ingreso ${ing.referencia} anulado correctamente.`);
+      await this.cargarIngresos();
+    } catch (err: any) {
+      this.error.set(err?.error?.message ?? 'No fue posible anular el ingreso.');
+    } finally {
+      this.anulando.set(null);
     }
   }
 
@@ -742,8 +777,15 @@ export class PharmaIngresosComponent implements OnInit {
       const found = lista.find((f: any) => f.sku === codigo || f.codigo_control === codigo);
       if (!found) return;
 
-      // nombre y laboratorio vienen del listado (tiene laboratorio_nombre)
-      if (!item.nombre && found.nombre_comercial) item.nombre = found.nombre_comercial;
+      // Mismo criterio de nombre que el buscador de MX (onLabSelect): preferir
+      // nombre_medicamento_hs sobre el comercial corto. /products?search= no
+      // trae ese campo, así que se resuelve contra labProducts() (que sí lo
+      // trae vía /products/for-po) — si no, se cae al nombre comercial.
+      if (!item.nombre) {
+        const labMatch = this.labProducts().find((p) => String(p.id_producto) === String(found.id_producto));
+        const nombreBase = labMatch?.nombre_medicamento_hs || found.nombre_comercial || '';
+        item.nombre = found.concentracion ? `${nombreBase} ${found.concentracion}` : nombreBase;
+      }
       if (!item.laboratorio && found.laboratorio_nombre) item.laboratorio = found.laboratorio_nombre;
 
       // Vincula también con el buscador de MX (mismo criterio que la OC) para

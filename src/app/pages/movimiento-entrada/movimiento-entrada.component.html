@@ -28,6 +28,7 @@
               <tr>
                 <td style="min-width:180px">
                   <select [(ngModel)]="form.tipo">
+                    <option value="">-- Seleccionar tipo --</option>
                     @for (t of tiposMovimiento; track t.valor) {
                       <option [value]="t.valor">{{ t.etiqueta }}</option>
                     }
@@ -74,28 +75,56 @@
               @for (item of items; track $index) {
                 <tr>
                   <td style="color:#9ca3af; font-size:0.8rem">{{ $index + 1 }}</td>
-                  <td style="min-width:280px">
-                    <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
-                      <option [ngValue]="null">-- Seleccionar producto/lote --</option>
-                      @for (i of filteredStock(); track i.id_lote) {
-                        <option [ngValue]="i.id_lote">
-                          {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (actual: {{ i.cantidad_disponible }})
-                        </option>
+                  <td style="min-width:320px">
+                    <div style="display:flex; gap:0.4rem; margin-bottom:0.3rem; font-size:0.72rem;">
+                      <button type="button" class="btn secondary" style="padding:0.15rem 0.5rem; font-size:0.7rem;"
+                              [class.active]="item.modo === 'existente'" (click)="toggleModo(item, 'existente')">Lote existente</button>
+                      <button type="button" class="btn secondary" style="padding:0.15rem 0.5rem; font-size:0.7rem;"
+                              [class.active]="item.modo === 'nuevo'" (click)="toggleModo(item, 'nuevo')">+ Producto/lote nuevo</button>
+                    </div>
+                    @if (item.modo === 'existente') {
+                      <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
+                        <option [ngValue]="null">-- Seleccionar producto/lote --</option>
+                        @for (i of filteredStock(); track i.id_lote) {
+                          <option [ngValue]="i.id_lote">
+                            {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (actual: {{ i.cantidad_disponible }})
+                          </option>
+                        }
+                      </select>
+                    } @else {
+                      <input type="text" [(ngModel)]="item.productoFiltro" placeholder="Buscar producto por nombre o SKU..." style="margin-bottom:0.3rem;">
+                      <select [ngModel]="item.id_producto" (ngModelChange)="onProductoNuevoSelect(item, $event)">
+                        <option [ngValue]="null">-- Seleccionar producto --</option>
+                        @for (p of productosFiltrados(item); track p.id_producto) {
+                          <option [ngValue]="p.id_producto">{{ p.nombre_medicamento_hs || p.nombre_comercial }} · SKU {{ p.sku }}</option>
+                        }
+                      </select>
+                      @if (item.id_producto) {
+                        <div style="display:flex; gap:0.4rem; margin-top:0.3rem;">
+                          <input type="text" [(ngModel)]="item.numero_lote" placeholder="N° de lote (opcional)">
+                          <input type="date" [(ngModel)]="item.fecha_vencimiento" placeholder="Vencimiento">
+                        </div>
                       }
-                    </select>
+                    }
                   </td>
                   <td>
-                    @if (loteFor(item.id_lote); as lote) {
-                      <strong>{{ lote.cantidad_disponible }}</strong>
+                    @if (item.modo === 'existente') {
+                      @if (loteFor(item.id_lote); as lote) {
+                        <strong>{{ lote.cantidad_disponible }}</strong>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
                     } @else {
-                      <span class="text-muted">—</span>
+                      <span class="text-muted">Nuevo</span>
                     }
                   </td>
                   <td style="min-width:120px">
-                    <input type="number" [(ngModel)]="item.cantidad" min="0.001" step="1" [disabled]="!item.id_lote">
+                    <input type="number" [(ngModel)]="item.cantidad" min="0.001" step="1"
+                           [disabled]="item.modo === 'existente' ? !item.id_lote : !item.id_producto">
                   </td>
                   <td style="min-width:120px">
-                    <input type="number" [(ngModel)]="item.costo_unitario" min="0" step="0.01" placeholder="0.00" [disabled]="!item.id_lote">
+                    <input type="number" [(ngModel)]="item.costo_unitario" min="0" step="0.01" placeholder="0.00"
+                           [disabled]="item.modo === 'existente' ? !item.id_lote : !item.id_producto">
                   </td>
                   <td>
                     <button class="btn-deselect" (click)="removeItem($index)" title="Quitar línea">✕</button>

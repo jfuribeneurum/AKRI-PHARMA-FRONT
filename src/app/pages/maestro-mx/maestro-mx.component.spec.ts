@@ -32,6 +32,7 @@ describe('MaestroMxComponent', () => {
       component.selectHsMed({
         id: 1,
         codigo: 'MX01',
+        nombre: 'ABACAVIR 300 MG TABLETA',
         principioActivo: 'Abacavir',
         concentracion: '300 mg',
         atc: 'J05AF06',
@@ -42,6 +43,7 @@ describe('MaestroMxComponent', () => {
 
       expect(component.form.id_medicamento_hs).toBe(1);
       expect(component.form.codigo_interno).toBe('MX01');
+      expect(component.form.nombre_comercial).toBe('ABACAVIR 300 MG TABLETA');
       expect(component.form.principio_activo).toBe('Abacavir');
       expect(component.form.concentracion).toBe('300 mg');
       expect(component.form.atc).toBe('J05AF06');
@@ -49,10 +51,20 @@ describe('MaestroMxComponent', () => {
       expect(component.form.codigo_dci).toBe('7544');
     });
 
-    it('does not touch nombre_comercial (the user types it manually)', () => {
-      component.form.nombre_comercial = 'Ya escrito por el usuario';
-      component.selectHsMed({ id: 1, forma_farmaceutica: null });
-      expect(component.form.nombre_comercial).toBe('Ya escrito por el usuario');
+    it('prefills nombre_comercial with the full HealthSphere description (med.nombre)', () => {
+      component.selectHsMed({ id: 1, forma_farmaceutica: null, nombre: 'TELMISARTAN 80 MG + AMLODIPINO 10 MG TABLETA' });
+      expect(component.form.nombre_comercial).toBe('TELMISARTAN 80 MG + AMLODIPINO 10 MG TABLETA');
+    });
+
+    it('falls back to nombreComercial when HS has no full "medicamento" description', () => {
+      component.selectHsMed({ id: 1, forma_farmaceutica: null, nombreComercial: 'MARCA HS' });
+      expect(component.form.nombre_comercial).toBe('MARCA HS');
+    });
+
+    it('overwrites whatever was previously typed when a new HS medicamento is selected', () => {
+      component.form.nombre_comercial = 'Texto anterior';
+      component.selectHsMed({ id: 1, forma_farmaceutica: null, nombre: 'NUEVO MEDICAMENTO SELECCIONADO' });
+      expect(component.form.nombre_comercial).toBe('NUEVO MEDICAMENTO SELECCIONADO');
     });
 
     it('resolves an exact forma match regardless of other longer candidates', () => {

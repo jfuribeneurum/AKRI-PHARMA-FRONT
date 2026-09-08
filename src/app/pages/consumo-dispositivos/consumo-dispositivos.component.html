@@ -1,8 +1,8 @@
 <section class="page">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Movimiento de Salida</h1>
-          <p class="page-subtitle">Registra egresos de stock: ventas, mermas, destrucciones o devoluciones a proveedor.</p>
+          <h1 class="page-title">Consumo de dispositivos</h1>
+          <p class="page-subtitle">Registra el uso interno de dispositivos médicos (jeringas, agujas, catéteres, gasas, etc.) fuera de una dispensación por formulación.</p>
         </div>
         <div class="toolbar" style="margin-bottom:0">
           <button class="btn secondary" (click)="cargarStock()">Actualizar</button>
@@ -19,22 +19,13 @@
           <table class="items-table">
             <thead>
               <tr>
-                <th>Tipo de movimiento</th>
                 <th>Motivo / Referencia</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="min-width:200px">
-                  <select [(ngModel)]="form.tipo">
-                    <option value="">-- Seleccionar tipo --</option>
-                    @for (t of tiposMovimiento; track t.valor) {
-                      <option [value]="t.valor">{{ t.etiqueta }}</option>
-                    }
-                  </select>
-                </td>
-                <td style="min-width:250px">
-                  <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Venta al mostrador, merma por deterioro...">
+                <td style="min-width:320px">
+                  <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: Procedimiento, paciente, área que consumió...">
                 </td>
               </tr>
             </tbody>
@@ -55,9 +46,9 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>Producto / Lote</th>
+                <th>Dispositivo / Lote</th>
                 <th>Disponible</th>
-                <th>Cantidad a retirar</th>
+                <th>Cantidad consumida</th>
                 <th></th>
               </tr>
             </thead>
@@ -67,7 +58,7 @@
                   <td style="color:#9ca3af; font-size:0.8rem">{{ $index + 1 }}</td>
                   <td style="min-width:280px">
                     <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
-                      <option [ngValue]="null">-- Seleccionar producto/lote --</option>
+                      <option [ngValue]="null">-- Seleccionar dispositivo/lote --</option>
                       @for (i of filteredStock(); track i.id_lote) {
                         <option [ngValue]="i.id_lote">
                           {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (disp: {{ i.cantidad_disponible }})
@@ -94,6 +85,9 @@
               }
             </tbody>
           </table>
+          @if (!loading() && filteredStock().length === 0) {
+            <p class="empty-msg">No hay dispositivos con stock disponible en tu bodega activa.</p>
+          }
         </div>
 
         <div class="toolbar" style="margin-top:0.75rem">
@@ -103,7 +97,7 @@
 
       <div class="toolbar">
         <button class="btn btn-accent" [disabled]="saving()" (click)="registrar()">
-          {{ saving() ? 'Registrando...' : 'Registrar salida' }}
+          {{ saving() ? 'Registrando...' : 'Registrar consumo' }}
         </button>
       </div>
     </section>

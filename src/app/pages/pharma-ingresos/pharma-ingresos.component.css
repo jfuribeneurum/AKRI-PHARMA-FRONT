@@ -243,6 +243,7 @@
     .badge-pendiente  { background: #fef3c7; color: #92400e; }
     .badge-almacenado { background: #dbeafe; color: #1e40af; }
     .badge-cancelado  { background: #fee2e2; color: #991b1b; }
+    .badge-anulado    { background: #f3f4f6; color: #4b5563; text-decoration: line-through; }
     .ing-expand-panel { padding: 0.65rem 0.9rem 0.8rem; border-top: 1px solid var(--color-border, #e5e7eb); background: var(--color-surface-2, #f9fafb); }
     .acta-btn {
       padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600;
@@ -251,6 +252,23 @@
     }
     .acta-btn:hover:not(:disabled) { opacity: 0.75; }
     .acta-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .anular-btn {
+      padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600;
+      border: 1.5px solid #b91c1c; color: #b91c1c; background: transparent;
+      cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+    }
+    .anular-btn:hover:not(:disabled) { opacity: 0.75; }
+    .anular-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .anular-confirm {
+      margin-top: 0.6rem; padding: 0.7rem 0.9rem; border-radius: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .anular-confirm p { margin: 0; font-size: 0.82rem; color: #991b1b; font-weight: 600; }
+    .anular-confirm input {
+      padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid var(--color-border, #e5e7eb);
+      font-size: 0.82rem; background: var(--color-surface, #fff); color: inherit;
+    }
+    .anular-confirm .anular-confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .preview-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
     .preview-table th { background: var(--color-surface, #fff); padding: 0.3rem 0.5rem; text-align: left; font-weight: 600; font-size: 0.76rem; color: #6b7280; border-bottom: 1px solid var(--color-border, #e5e7eb); }
     .preview-table td { padding: 0.28rem 0.5rem; border-bottom: 1px solid var(--color-border, #f3f4f6); }
@@ -277,7 +295,11 @@
     :host-context([data-theme="dark"]) .badge-pendiente  { background: rgba(251,191,36,0.12);  color: #FCD34D; }
     :host-context([data-theme="dark"]) .badge-almacenado { background: rgba(96,165,250,0.12);  color: #93C5FD; }
     :host-context([data-theme="dark"]) .badge-cancelado  { background: rgba(248,113,113,0.12); color: #FCA5A5; }
+    :host-context([data-theme="dark"]) .badge-anulado    { background: rgba(255,255,255,0.06); color: #9CA3AF; }
     :host-context([data-theme="dark"]) .ing-expand-panel { background: rgba(255,255,255,0.03); }
     :host-context([data-theme="dark"]) .acta-btn { border-color: #6EE7B7; color: #6EE7B7; }
+    :host-context([data-theme="dark"]) .anular-btn { border-color: #FCA5A5; color: #FCA5A5; }
+    :host-context([data-theme="dark"]) .anular-confirm { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); }
+    :host-context([data-theme="dark"]) .anular-confirm p { color: #FCA5A5; }
     :host-context([data-theme="dark"]) .preview-table th { background: transparent; }
     :host-context([data-theme="dark"]) .empty-msg { color: var(--muted); }

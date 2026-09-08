@@ -43,10 +43,8 @@ export class MaestroMxComponent implements OnInit {
 
   codigoControlPreview = signal<string>('');
   codigoControlDuplicateCum = signal<string | null>(null);
-  presentacionDuplicate = signal<string | null>(null);
   submitted = signal(false);
   private controlCodeDebounce: ReturnType<typeof setTimeout> | null = null;
-  private presentacionDebounce: ReturnType<typeof setTimeout> | null = null;
 
   mediaForm: { tipo_origen: MediaSourceType; descripcion: string } = {
     tipo_origen: 'importada',
@@ -89,7 +87,6 @@ export class MaestroMxComponent implements OnInit {
     this.formError.set('');
     this.codigoControlPreview.set('');
     this.codigoControlDuplicateCum.set(null);
-    this.presentacionDuplicate.set(null);
     this.submitted.set(false);
     this.showModal.set(true);
   }
@@ -114,7 +111,6 @@ export class MaestroMxComponent implements OnInit {
 
     this.codigoControlPreview.set('');
     this.codigoControlDuplicateCum.set(null);
-    this.presentacionDuplicate.set(null);
     this.submitted.set(false);
     this.editingId.set(full.id_producto);
     this.form = {
@@ -194,7 +190,6 @@ export class MaestroMxComponent implements OnInit {
     if (this.form.tipo_producto === 'dispositivo' && !this.form.clasificacion) return 'El campo Clasificación es obligatorio para dispositivos médicos.';
     if (!this.form.tipo_producto) return 'El campo Tipo de producto es obligatorio.';
     if (!this.form.presentacion) return 'El campo Presentación es obligatorio.';
-    if (this.presentacionDuplicate()) return `La presentación ya está asociada a "${this.presentacionDuplicate()}". No se puede duplicar.`;
     if (!this.form.registro_invima) return 'El campo Registro INVIMA es obligatorio.';
     if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
     if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
@@ -266,7 +261,12 @@ export class MaestroMxComponent implements OnInit {
   selectHsMed(med: any) {
     this.form.id_medicamento_hs = med.id;
     this.form.codigo_interno    = med.codigo ?? '';
-    // nombre_comercial lo escribe el usuario manualmente
+    // Se precarga con la descripción completa de HealthSphere (med.nombre =
+    // suhc_new_tbl_medicine.medicamento, la misma que se ve en la columna
+    // "Medicamento" del buscador) en vez de dejarlo vacío — HS casi nunca
+    // trae un nombreComercial propio cargado. Sigue siendo editable: el
+    // usuario puede reemplazarlo libremente por la marca comercial real.
+    this.form.nombre_comercial  = med.nombre || med.nombreComercial || '';
     this.form.principio_activo  = med.principioActivo ?? '';
     this.form.concentracion     = med.concentracion ?? '';
     this.form.atc               = med.atc ?? '';
@@ -395,12 +395,11 @@ export class MaestroMxComponent implements OnInit {
   }
 
   onCodigoOrLabChange() {
-    this.onPresentacionChange();
     if (this.editingId()) return;
 
     const sku   = (this.form.codigo_interno ?? '').trim();
     const idLab = this.form.id_laboratorio;
-    const cum   = this.form.consecutivo_cum;
+    const consecutivoCum = this.form.consecutivo_cum;
 
     if (!sku) {
       this.codigoControlPreview.set('');
@@ -409,52 +408,30 @@ export class MaestroMxComponent implements OnInit {
       return;
     }
 
-    // Construir preview: MX01 → MX01-1 → MX01-1.9 (solo último número del CUM)
+    // Construir preview: MX01 → MX01-1 → MX01-1.9 (solo último número del consecutivo CUM)
     let preview = sku;
     if (idLab != null) {
       preview += `-${idLab}`;
     }
-    const cumStr = cum != null ? String(cum).trim() : '';
-    if (cumStr !== '') {
-      preview += `.${this.extractLastCumPart(cum)}`;
+    const consecutivoCumStr = consecutivoCum != null ? String(consecutivoCum).trim() : '';
+    if (consecutivoCumStr !== '') {
+      preview += `.${this.extractLastCumPart(consecutivoCum)}`;
     }
     this.codigoControlPreview.set(preview);
 
-    // API solo para verificar duplicado (debounced)
+    // El duplicado real solo se puede detectar por el CUM completo (cum +
+    // consecutivo_cum) — el identificador que asigna INVIMA — no por el
+    // código de control local (que siempre empieza con el SKU propio del
+    // producto y por eso nunca puede coincidir entre dos MX distintos) ni
+    // por el laboratorio o la presentación, que se repiten constantemente
+    // entre productos que no tienen nada que ver entre sí (ver
+    // checkCumDuplicate en product.service.js).
     if (this.controlCodeDebounce) clearTimeout(this.controlCodeDebounce);
-    if (cumStr !== '') {
+    if (this.form.cum != null && this.form.cum !== '') {
       this.controlCodeDebounce = setTimeout(() => void this.checkControlCode(), 400);
     } else {
       this.codigoControlDuplicateCum.set(null);
     }
-  }
-
-  onPresentacionChange() {
-    if (this.presentacionDebounce) clearTimeout(this.presentacionDebounce);
-    const presentacion = this.form.presentacion;
-    if (presentacion == null || presentacion === '') {
-      this.presentacionDuplicate.set(null);
-      return;
-    }
-    this.presentacionDebounce = setTimeout(() => void this.checkPresentacionDuplicate(), 400);
-  }
-
-  async checkPresentacionDuplicate() {
-    const presentacion = this.form.presentacion;
-    const idLab = this.form.id_laboratorio;
-    if (presentacion == null || presentacion === '') return;
-    try {
-      const params = [
-        `presentacion=${encodeURIComponent(presentacion)}`,
-        idLab ? `id_laboratorio=${idLab}` : '',
-        this.editingId() ? `exclude_id=${this.editingId()}` : ''
-      ].filter(Boolean).join('&');
-      const resp = await this.api.get<{
-        success: boolean;
-        data: { codigo_control: string | null };
-      }>(`/products/check-presentacion?${params}`);
-      this.presentacionDuplicate.set(resp.data.codigo_control);
-    } catch { /* non-fatal */ }
   }
 
   async checkControlCode() {
@@ -462,11 +439,13 @@ export class MaestroMxComponent implements OnInit {
     if (!sku) return;
     try {
       const idLab = this.form.id_laboratorio;
-      const cum = this.form.consecutivo_cum;
+      const cum = this.form.cum;
+      const consecutivoCum = this.form.consecutivo_cum;
       const params = [
         `sku=${encodeURIComponent(sku)}`,
         idLab ? `id_laboratorio=${idLab}` : '',
-        cum != null && cum !== '' ? `consecutivo_cum=${cum}` : ''
+        cum != null && cum !== '' ? `cum=${cum}` : '',
+        consecutivoCum != null && consecutivoCum !== '' ? `consecutivo_cum=${consecutivoCum}` : ''
       ].filter(Boolean).join('&');
       const resp = await this.api.get<{
         success: boolean;

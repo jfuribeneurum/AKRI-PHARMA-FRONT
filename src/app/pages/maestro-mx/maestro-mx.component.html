@@ -167,13 +167,7 @@
                 <label>
                   Presentación
                   <input type="number" min="1" [(ngModel)]="form.presentacion" placeholder="Ej: 30"
-                    (ngModelChange)="onPresentacionChange()"
-                    [class.field-error]="submitted() && !form.presentacion || !!presentacionDuplicate()">
-                  @if (presentacionDuplicate()) {
-                    <span class="field-hint" style="color:var(--error, #ef4444);">
-                      ⚠ Esta presentación ya se asoció a <strong>{{ presentacionDuplicate() }}</strong>. No se puede crear.
-                    </span>
-                  }
+                    [class.field-error]="submitted() && !form.presentacion">
                 </label>
                 <label>
                   Código DCI
@@ -194,7 +188,7 @@
                     <input [value]="codigoControlPreview()" readonly style="color:var(--muted);" placeholder="Se genera al guardar">
                     @if (codigoControlDuplicateCum()) {
                       <span class="field-hint" style="color:var(--error, #ef4444);">
-                        ⚠ Ya existe <strong>{{ codigoControlDuplicateCum() }}</strong> con el mismo consecutivo CUM. No se puede crear.
+                        ⚠ Ya existe <strong>{{ codigoControlDuplicateCum() }}</strong> con el mismo CUM. No se puede crear.
                       </span>
                     } @else if (codigoControlPreview() && form.consecutivo_cum) {
                       <span class="field-hint">Se asignará <strong>{{ codigoControlPreview() }}</strong> al guardar.</span>
@@ -204,6 +198,7 @@
                 <label>
                   CUM
                   <input type="number" [(ngModel)]="form.cum" placeholder="Código único de medicamento"
+                    (ngModelChange)="onCodigoOrLabChange()"
                     [class.field-error]="submitted() && !form.cum && form.cum !== 0">
                 </label>
                 <label>

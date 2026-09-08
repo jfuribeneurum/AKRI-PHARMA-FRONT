@@ -4,20 +4,27 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
-interface SalidaItem {
+interface ConsumoItem {
   id_lote: number | null;
   cantidad: number;
 }
 
+// Registra el consumo interno de dispositivos médicos (jeringas, agujas,
+// catéteres, gasas, etc. — productos con tipo_producto = 'dispositivo') en
+// procedimientos que no pasan por una formulación/dispensación de
+// HealthSphere. A diferencia de Movimiento de Salida, aquí no hay selector
+// de "tipo" — siempre es 'movimiento_interno', porque el punto de esta
+// pantalla es simplificar el registro para el personal asistencial, no
+// pedirles que clasifiquen el tipo de movimiento contable.
 @Component({
-  selector: 'akri-movimiento-salida',
+  selector: 'akri-consumo-dispositivos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './movimiento-salida.component.html',
-  styleUrls: ['./movimiento-salida.component.css'],
+  templateUrl: './consumo-dispositivos.component.html',
+  styleUrls: ['./consumo-dispositivos.component.css'],
   imports: [CommonModule, FormsModule, UppercaseInputDirective]
 })
-export class MovimientoSalidaComponent implements OnInit {
+export class ConsumoDispositivosComponent implements OnInit {
   private api = inject(ApiService);
 
   loading = signal(false);
@@ -28,37 +35,22 @@ export class MovimientoSalidaComponent implements OnInit {
   filteredStock = signal<any[]>([]);
 
   searchText = '';
-  // Vacío a propósito: 'salida_venta' no es uno de los tipos que ofrece
-  // /parametros/tipo_movimiento_salida/activos (esa sale solo desde
-  // Dispensación) — precargar un valor que no aparece en el <select> dejaba
-  // el combo visualmente en blanco pero el modelo seguía en 'salida_venta',
-  // así que si el usuario no lo tocaba, el movimiento se registraba
-  // igual con ese tipo equivocado.
-  form = { tipo: '', motivo: '' };
-  tiposMovimiento: { valor: string; etiqueta: string }[] = [];
-  items: SalidaItem[] = [this.emptyItem()];
+  form = { motivo: '' };
+  items: ConsumoItem[] = [this.emptyItem()];
 
   async ngOnInit() {
-    await Promise.all([this.cargarStock(), this.cargarTipos()]);
+    await this.cargarStock();
   }
 
-  private emptyItem(): SalidaItem {
+  private emptyItem(): ConsumoItem {
     return { id_lote: null, cantidad: 1 };
-  }
-
-  private async cargarTipos() {
-    try {
-      const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_salida/activos');
-      this.tiposMovimiento = res.data ?? [];
-    } catch { /* non-fatal */ }
   }
 
   async cargarStock() {
     this.loading.set(true);
     try {
-      const resp: any = await this.api.get('/inventory/stock');
+      const resp: any = await this.api.get('/inventory/stock?tipo_producto=dispositivo');
       const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
-      // Solo lotes con stock disponible
       this.allStock.set(lista.filter((i: any) => Number(i.cantidad_disponible) > 0));
       this.filtrar();
     } catch {
@@ -92,12 +84,12 @@ export class MovimientoSalidaComponent implements OnInit {
     if (!this.items.length) this.items.push(this.emptyItem());
   }
 
-  onLoteChange(item: SalidaItem, value: string) {
+  onLoteChange(item: ConsumoItem, value: string) {
     item.id_lote = Number(value) || null;
     item.cantidad = 1;
   }
 
-  clampCantidad(item: SalidaItem) {
+  clampCantidad(item: ConsumoItem) {
     const lote = this.loteFor(item.id_lote);
     if (!lote) return;
     const max = Number(lote.cantidad_disponible);
@@ -107,22 +99,20 @@ export class MovimientoSalidaComponent implements OnInit {
 
   private reset() {
     this.items = [this.emptyItem()];
-    this.form = { tipo: '', motivo: '' };
+    this.form = { motivo: '' };
   }
 
   async registrar() {
     this.error.set('');
     this.message.set('');
 
-    if (!this.form.tipo) { this.error.set('Selecciona el tipo de movimiento.'); return; }
-
     const lineas = this.items.filter(i => i.id_lote != null);
-    if (!lineas.length) { this.error.set('Agrega al menos un producto.'); return; }
+    if (!lineas.length) { this.error.set('Agrega al menos un dispositivo.'); return; }
 
     const vistos = new Set<number>();
     for (const item of lineas) {
       const lote = this.loteFor(item.id_lote);
-      if (!lote) { this.error.set('Selecciona un lote válido en cada línea.'); return; }
+      if (!lote) { this.error.set('Selecciona un dispositivo/lote válido en cada línea.'); return; }
       if (vistos.has(item.id_lote as number)) {
         this.error.set(`Ya agregaste "${lote.nombre_comercial}" en otra línea; edita la cantidad en esa línea en su lugar.`);
         return;
@@ -139,7 +129,7 @@ export class MovimientoSalidaComponent implements OnInit {
     }
 
     this.saving.set(true);
-    const fallidas: SalidaItem[] = [];
+    const fallidas: ConsumoItem[] = [];
     const fallos: string[] = [];
     let exitos = 0;
 
@@ -147,7 +137,7 @@ export class MovimientoSalidaComponent implements OnInit {
       const lote = this.loteFor(item.id_lote);
       try {
         await this.api.post('/inventory/movements', {
-          tipo: this.form.tipo,
+          tipo: 'movimiento_interno',
           id_lote: lote.id_lote,
           id_almacen_origen: lote.id_almacen,
           id_ubicacion_origen: lote.id_ubicacion,
@@ -162,7 +152,7 @@ export class MovimientoSalidaComponent implements OnInit {
     }
 
     if (exitos) {
-      this.message.set(`${exitos} salida(s) registrada(s) exitosamente.`);
+      this.message.set(`${exitos} consumo(s) de dispositivo(s) registrado(s) exitosamente.`);
     }
     if (fallos.length) {
       this.error.set(`No se pudieron registrar ${fallos.length} movimiento(s): ${fallos.join(' | ')}`);

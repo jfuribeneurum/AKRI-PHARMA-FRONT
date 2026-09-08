@@ -70,7 +70,7 @@
                     }
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0">
-                    <span class="ing-badge badge-recibido">
+                    <span class="ing-badge" [class]="'badge-' + ing.estado">
                       {{ ing.estado }}
                     </span>
                     <span style="font-size:0.8rem;font-weight:600">{{ ing.cantidad }} uds.</span>
@@ -79,8 +79,27 @@
                             (click)="generarActaRecepcion(ing, $event)">
                       {{ actaGenerando() === ing.id_ingreso ? 'Generando…' : '📋 Acta de recepción' }}
                     </button>
+                    @if (ing.estado !== 'anulado') {
+                      <button class="anular-btn"
+                              [disabled]="anulando() === ing.id_ingreso"
+                              (click)="pedirAnulacion(ing, $event)">
+                        🚫 Anular ingreso
+                      </button>
+                    }
                   </div>
                 </div>
+                @if (ingresoAAnular()?.id_ingreso === ing.id_ingreso) {
+                  <div class="anular-confirm" (click)="$event.stopPropagation()">
+                    <p>⚠ Vas a anular el ingreso {{ ing.referencia }}. Se revertirá el inventario que había movido y quedará marcado como "anulado" (no se elimina, por trazabilidad).</p>
+                    <input [(ngModel)]="motivoAnulacion" placeholder="Motivo de la anulación (opcional)">
+                    <div class="anular-confirm-actions">
+                      <button class="btn secondary" style="padding:0.35rem 0.9rem;font-size:0.8rem" (click)="cancelarAnulacion()">Cancelar</button>
+                      <button class="anular-btn" [disabled]="anulando() === ing.id_ingreso" (click)="confirmarAnulacion(ing)">
+                        {{ anulando() === ing.id_ingreso ? 'Anulando…' : 'Sí, anular' }}
+                      </button>
+                    </div>
+                  </div>
+                }
                 @if (expandedIngreso() === ing.id_ingreso && ing._items?.length > 0) {
                   <div class="ing-expand-panel" (click)="$event.stopPropagation()">
                     <table class="preview-table">

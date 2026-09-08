@@ -37,6 +37,12 @@ export class TrasladosComponent implements OnInit {
   filteredStock = signal<any[]>([]);
   todasBodegas     = signal<any[]>([]);
   todasUbicaciones = signal<any[]>([]);
+  // Bodegas receptoras: a diferencia de todasBodegas() (acotada a la sede
+  // activa, correcta para saber de dónde sale el stock), el destino de un
+  // traslado puede ser cualquier bodega de cualquiera de las sedes que esta
+  // sesión puede gestionar — mismo lookup que ya usan Ingresos/Órdenes de
+  // compra para el selector de sede/bodega.
+  bodegasDestino = signal<any[]>([]);
 
   searchText = '';
   idAlmacenDestino = 0;
@@ -50,7 +56,16 @@ export class TrasladosComponent implements OnInit {
   accionMap: Record<number, { obs: string; rechazando: boolean }> = {};
 
   async ngOnInit() {
-    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarPendientes()]);
+    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarBodegasDestino(), this.cargarPendientes()]);
+  }
+
+  private async cargarBodegasDestino() {
+    try {
+      const resp: any = await this.api.get('/purchases/warehouses');
+      this.bodegasDestino.set(resp?.data ?? []);
+    } catch {
+      this.bodegasDestino.set([]);
+    }
   }
 
   setTab(tab: Tab) {
@@ -114,7 +129,7 @@ export class TrasladosComponent implements OnInit {
   }
 
   nombreBodegaDestino(): string {
-    const b = this.todasBodegas().find(x => x.id_almacen === Number(this.idAlmacenDestino));
+    const b = this.bodegasDestino().find(x => x.id_almacen === Number(this.idAlmacenDestino));
     return b?.nombre ?? '';
   }
 
@@ -236,7 +251,12 @@ export class TrasladosComponent implements OnInit {
   async cargarPendientes() {
     this.loadingPendientes.set(true);
     try {
-      const resp: any = await this.api.get('/traslados?estado=pendiente');
+      // Solo los traslados destinados a la bodega activa de esta sesión —
+      // sin este filtro se veían (y se podían confirmar) traslados de
+      // cualquier bodega de cualquier sede, sin relación con dónde está
+      // realmente el usuario.
+      const idAlmacen = this.siteContext.activeAlmacenId();
+      const resp: any = await this.api.get(`/traslados?estado=pendiente&id_almacen_destino=${idAlmacen}`);
       const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
       this.pendientes.set(lista);
       // Inicializar mapa de acciones
