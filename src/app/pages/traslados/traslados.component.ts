@@ -34,7 +34,6 @@ export class TrasladosComponent implements OnInit {
 
   // ── stock y lookups (pestaña enviar) ─────────────────────────
   allStock      = signal<any[]>([]);
-  filteredStock = signal<any[]>([]);
   todasBodegas     = signal<any[]>([]);
   todasUbicaciones = signal<any[]>([]);
   // Bodegas receptoras: a diferencia de todasBodegas() (acotada a la sede
@@ -44,7 +43,6 @@ export class TrasladosComponent implements OnInit {
   // compra para el selector de sede/bodega.
   bodegasDestino = signal<any[]>([]);
 
-  searchText = '';
   idAlmacenDestino = 0;
   form = { motivo: '' };
   items: TrasladoItem[] = [this.emptyItem()];
@@ -87,7 +85,6 @@ export class TrasladosComponent implements OnInit {
       const resp: any = await this.api.get('/inventory/stock');
       const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
       this.allStock.set(lista.filter((i: any) => Number(i.cantidad_disponible) > 0));
-      this.filtrar();
     } catch {
       this.allStock.set([]);
     } finally {
@@ -105,16 +102,6 @@ export class TrasladosComponent implements OnInit {
       this.todasBodegas.set([]);
       this.todasUbicaciones.set([]);
     }
-  }
-
-  filtrar() {
-    const q = this.searchText.toLowerCase().trim();
-    const lista = this.allStock();
-    this.filteredStock.set(!q ? lista : lista.filter((i: any) =>
-      (i.nombre_comercial || '').toLowerCase().includes(q) ||
-      (i.sku || '').toLowerCase().includes(q) ||
-      (i.numero_lote || '').toLowerCase().includes(q)
-    ));
   }
 
   loteFor(idLote: number | null): any | undefined {

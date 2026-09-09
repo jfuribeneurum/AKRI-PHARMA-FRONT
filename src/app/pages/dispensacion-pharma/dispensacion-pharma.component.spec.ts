@@ -602,6 +602,23 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.hasItemsToDispense()).toBe(true);
     });
 
+    it('BUG REAL: sigue siendo true cuando "Cant. dispensada" completa EXACTAMENTE lo formulado en una sola entrega (ej. GLUCOMETRO: formulado 1, nada dispensado antes, se entrega 1)', () => {
+      // Antes, hasItemsToDispense() filtraba por tienePendientePorFormular(),
+      // que resta cantidadDispensadaOverride (no dispensadaOriginal) — al
+      // completar el medicamento en una sola entrega, "cantidad - override"
+      // daba 0 y el ítem quedaba fuera de "pendingItems", dejando el botón
+      // de confirmar deshabilitado justo cuando el usuario terminaba de
+      // llenarlo correctamente.
+      const med = makeMed({ idProductoLocal: 10, cantidad: 1, control: null });
+      component.modalFormItems.set([
+        makeItem({ med, dispensadaOriginal: 0, cantidadDispensadaOverride: 1, loteSeleccion: { '3:1': 1 } })
+      ]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 120 }] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      expect(component.hasItemsToDispense()).toBe(true);
+    });
+
     it('is false when the pending item has stock but "Cant. dispensada" is zero (dejar pendiente)', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 10, control: null });
       component.modalFormItems.set([makeItem({ med, cantidadDispensadaOverride: 0 })]);
@@ -1047,6 +1064,44 @@ describe('DispensacionPharmaComponent', () => {
       await component.saveDispensacion();
 
       expect((component as any).soporteData.items[0].cantidad_pendiente).toBe(0);
+    });
+  });
+
+  describe('saveDispensacion — BUG REAL: completar un medicamento en una sola entrega no debe desaparecer sin guardarse', () => {
+    it('llama a la API y descuenta inventario para un medicamento (ej. GLUCOMETRO) dispensado exactamente por su cantidad formulada completa', async () => {
+      // Reproduce el reporte real: GLUCOMETRO formulado=1, nada dispensado
+      // antes, se entrega 1 con lote asignado — "Completado" ya se veía en
+      // pantalla, pero saveDispensacion() lo excluía de "toSave" por el
+      // mismo bug de tienePendientePorFormular() (ver hasItemsToDispense
+      // arriba), así que nunca se llamaba a la API: no se descontaba
+      // inventario ni quedaba ningún registro.
+      const med = makeMed({ id_med_formulacion: 5, idProductoLocal: 10, nombre_medicamento: 'GLUCOMETRO', cantidad: 1 });
+      const item = makeItem({
+        med,
+        cantidad: 1,
+        cantidadDispensadaOverride: 1,
+        dispensadaOriginal: 0,
+        loteSeleccion: { '3:1': 1 }
+      });
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 120 }] });
+      component.modalContrato = 'contrato_1';
+      component.modalRegimen = 'contributivo';
+      (api.post as any).mockResolvedValue({ data: { cantidad_dispensada: 1 } });
+
+      await component.saveDispensacion();
+
+      expect(api.post).toHaveBeenCalledTimes(1);
+      expect(api.post).toHaveBeenCalledWith('/dispensacion-hs', expect.objectContaining({
+        id_med_formulacion_hs: 5,
+        cantidad_dispensada: 1
+      }));
+      expect(component.modalError()).toBe('');
+      const data = (component as any).soporteData;
+      expect(data.items).toContainEqual(
+        expect.objectContaining({ nombre_medicamento: 'GLUCOMETRO', cantidad_dispensada: 1 })
+      );
     });
   });
 

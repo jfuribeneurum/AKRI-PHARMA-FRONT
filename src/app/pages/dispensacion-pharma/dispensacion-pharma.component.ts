@@ -547,14 +547,20 @@ export class DispensacionPharmaComponent implements OnInit {
     // entrega de los demás — quedan documentados como pendientes en el
     // soporte (ver saveDispensacion), sin exigir stock ni lote.
     const accionables = this.modalFormItems().filter(i => !this.esNoDispensableAhora(i));
-    const pendingItems = accionables.filter(i => this.tienePendientePorFormular(i));
+    // OJO: usar getPendiente() (histórico, fijo) y NO tienePendientePorFormular()
+    // (que reacciona a cantidadDispensadaOverride) — si se usara ese último,
+    // completar un medicamento entregando exactamente lo que quedaba (p.ej.
+    // formulado 1, dispensando 1) hacía que "cantidad - override" diera 0 y
+    // el medicamento quedara excluido de "pendingItems", dejando el botón de
+    // confirmar deshabilitado justo cuando el usuario terminaba de llenarlo.
+    const pendingItems = accionables.filter(i => this.getPendiente(i) > 0);
     const puedeDispensarAlgo = pendingItems.some(i => i.cantidadDispensadaOverride > 0 && this.getAsignadoValido(i));
     if (puedeDispensarAlgo) return true;
 
     // Aunque nada sea realmente dispensable ahora mismo (todo "Sin MX" o sin
     // stock), igual se debe poder confirmar para dejar constancia de que
     // quedó pendiente — el botón no puede quedar bloqueado para siempre.
-    return this.modalFormItems().some(i => this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i));
+    return this.modalFormItems().some(i => this.esNoDispensableAhora(i) && this.getPendiente(i) > 0);
   }
 
   getMedStock(idProductoLocal: number): any[] {
@@ -1053,8 +1059,12 @@ export class DispensacionPharmaComponent implements OnInit {
       return;
     }
 
+    // getPendiente() (histórico, fijo), no tienePendientePorFormular() (ver
+    // el comentario en hasItemsToDispense — mismo bug: con el override,
+    // dispensar exactamente lo que quedaba formulado excluía el medicamento
+    // de "toSave" y la entrega se guardaba sin él, sin aviso ni error).
     const toSave = this.modalFormItems().filter(
-      i => !!i.med.idProductoLocal && this.tienePendientePorFormular(i) && Number(i.cantidadDispensadaOverride) > 0
+      i => !!i.med.idProductoLocal && this.getPendiente(i) > 0 && Number(i.cantidadDispensadaOverride) > 0
     );
     // Medicamentos sin MX vinculado, o con MX pero sin stock disponible: no
     // se pueden dispensar de verdad en esta ronda, pero no deben bloquear la
@@ -1063,7 +1073,7 @@ export class DispensacionPharmaComponent implements OnInit {
     // confirmar para dejar constancia de que quedaron pendientes.
     const idsGuardados = new Set(toSave.map(i => i.med.id_med_formulacion));
     const noDispensablesAhora = this.modalFormItems().filter(i =>
-      !idsGuardados.has(i.med.id_med_formulacion) && this.esNoDispensableAhora(i) && this.tienePendientePorFormular(i)
+      !idsGuardados.has(i.med.id_med_formulacion) && this.esNoDispensableAhora(i) && this.getPendiente(i) > 0
     );
     if (!toSave.length && !noDispensablesAhora.length) {
       this.modalError.set('No hay medicamentos pendientes por dispensar.');
@@ -1083,7 +1093,7 @@ export class DispensacionPharmaComponent implements OnInit {
     // equivocado en una de las filas y no notarlo.
     const conReferenciaSinEntrega = this.modalFormItems().filter(i =>
       !this.esNoDispensableAhora(i) &&
-      Number(i.cantidad || 0) > 0 && Number(i.cantidadDispensadaOverride || 0) === 0 && this.tienePendientePorFormular(i)
+      Number(i.cantidad || 0) > 0 && Number(i.cantidadDispensadaOverride || 0) === 0 && this.getPendiente(i) > 0
     );
     if (conReferenciaSinEntrega.length) {
       const nombres = conReferenciaSinEntrega.map(i => i.med.nombre_medicamento).join(', ');

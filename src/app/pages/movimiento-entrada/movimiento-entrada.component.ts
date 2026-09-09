@@ -16,7 +16,6 @@ interface EntradaItem {
   nombre_producto: string;
   numero_lote: string;
   fecha_vencimiento: string;
-  productoFiltro: string;
   cantidad: number;
   costo_unitario: number;
 }
@@ -37,14 +36,17 @@ export class MovimientoEntradaComponent implements OnInit {
   message = signal('');
   error = signal('');
   allStock = signal<any[]>([]);
-  filteredStock = signal<any[]>([]);
   // Catálogo completo (no solo lo que ya tiene stock en esta bodega) — usado
   // en modo "producto nuevo" para poder dar de alta cualquier MX.
   allProducts = signal<any[]>([]);
 
-  lookups: { almacenes: any[]; ubicaciones: any[] } = { almacenes: [], ubicaciones: [] };
-  tiposMovimiento: { valor: string; etiqueta: string }[] = [];
-  searchText = '';
+  // Signals (no campos planos): tras el reload de página completo que hace
+  // el switch de sede, un campo plano leído en el template de un componente
+  // OnPush no se repinta solo cuando llega la respuesta async — se queda
+  // "pegado" con el placeholder hasta que algún (click) real del usuario
+  // fuerza un chequeo de cambios. Los signals sí notifican solos.
+  lookups = signal<{ almacenes: any[]; ubicaciones: any[] }>({ almacenes: [], ubicaciones: [] });
+  tiposMovimiento = signal<{ valor: string; etiqueta: string }[]>([]);
   // Vacío a propósito: 'entrada_compra' no es uno de los tipos que ofrece
   // /parametros/tipo_movimiento_entrada/activos (esa sale solo desde
   // Ingresos Pharma) — igual que en Movimiento de Salida, precargar un valor
@@ -72,7 +74,7 @@ export class MovimientoEntradaComponent implements OnInit {
     return {
       modo: 'existente',
       id_lote: null, id_producto: null, nombre_producto: '',
-      numero_lote: '', fecha_vencimiento: '', productoFiltro: '',
+      numero_lote: '', fecha_vencimiento: '',
       cantidad: 1, costo_unitario: 0
     };
   }
@@ -84,19 +86,8 @@ export class MovimientoEntradaComponent implements OnInit {
     item.nombre_producto = '';
     item.numero_lote = '';
     item.fecha_vencimiento = '';
-    item.productoFiltro = '';
     item.cantidad = 1;
     item.costo_unitario = 0;
-  }
-
-  productosFiltrados(item: EntradaItem) {
-    const q = (item.productoFiltro ?? '').trim().toLowerCase();
-    const all = this.allProducts();
-    if (!q) return all.slice(0, 50);
-    return all.filter((p) =>
-      (p.nombre_medicamento_hs || p.nombre_comercial || '').toLowerCase().includes(q) ||
-      (p.sku || '').toLowerCase().includes(q)
-    ).slice(0, 50);
   }
 
   onProductoNuevoSelect(item: EntradaItem, idProducto: string) {
@@ -113,7 +104,6 @@ export class MovimientoEntradaComponent implements OnInit {
       const resp: any = await this.api.get('/inventory/stock');
       const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
       this.allStock.set(lista);
-      this.filtrar();
     } catch {
       this.allStock.set([]);
     } finally {
@@ -123,24 +113,21 @@ export class MovimientoEntradaComponent implements OnInit {
 
   async cargarLookups() {
     try {
-      const [inv, tipos] = await Promise.all([
+      const [inv, tipos, bodegas] = await Promise.all([
         this.api.get<any>('/inventory/lookups'),
-        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_entrada/activos')
+        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_entrada/activos'),
+        this.api.get<any>('/purchases/warehouses?scope=propia')
       ]);
       const data = inv?.data ?? inv ?? {};
-      this.lookups = { almacenes: data.almacenes ?? [], ubicaciones: data.ubicaciones ?? [] };
-      this.tiposMovimiento = tipos.data ?? [];
+      // Bodega destino: solo las del grupo de sede/ciudad de la sede activa
+      // (p.ej. Medellín agrupa Hemofilia y Diabetes) — scope=propia fuerza
+      // ese agrupamiento por ciudad incluso para ADMINISTRADOR, porque acá
+      // se está recibiendo mercancía en un lugar físico real, no gestionando
+      // órdenes de otras sedes. Las ubicaciones quedan sin filtrar porque
+      // solo se usan para resolver la ubicación destino de la bodega elegida.
+      this.lookups.set({ almacenes: bodegas?.data ?? bodegas ?? [], ubicaciones: data.ubicaciones ?? [] });
+      this.tiposMovimiento.set(tipos.data ?? []);
     } catch {}
-  }
-
-  filtrar() {
-    const q = this.searchText.toLowerCase().trim();
-    const lista = this.allStock();
-    this.filteredStock.set(!q ? lista : lista.filter(i =>
-      (i.nombre_comercial || '').toLowerCase().includes(q) ||
-      (i.sku || '').toLowerCase().includes(q) ||
-      (i.numero_lote || '').toLowerCase().includes(q)
-    ));
   }
 
   loteFor(idLote: number | null): any | undefined {
@@ -170,7 +157,7 @@ export class MovimientoEntradaComponent implements OnInit {
   }
 
   private resolveUbicacionDestino(idAlmacen: number): number | null {
-    const ubicacion = this.lookups.ubicaciones.find(u => u.id_almacen === idAlmacen);
+    const ubicacion = this.lookups().ubicaciones.find(u => u.id_almacen === idAlmacen);
     return ubicacion?.id_ubicacion ?? null;
   }
 

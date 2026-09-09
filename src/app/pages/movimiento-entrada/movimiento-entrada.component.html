@@ -29,7 +29,7 @@
                 <td style="min-width:180px">
                   <select [(ngModel)]="form.tipo">
                     <option value="">-- Seleccionar tipo --</option>
-                    @for (t of tiposMovimiento; track t.valor) {
+                    @for (t of tiposMovimiento(); track t.valor) {
                       <option [value]="t.valor">{{ t.etiqueta }}</option>
                     }
                   </select>
@@ -37,8 +37,8 @@
                 <td style="min-width:220px">
                   <select [(ngModel)]="form.id_almacen_destino">
                     <option [value]="0">-- Seleccionar bodega --</option>
-                    @for (a of lookups.almacenes; track a.id_almacen) {
-                      <option [value]="a.id_almacen">{{ a.nombre }}</option>
+                    @for (a of lookups().almacenes; track a.id_almacen) {
+                      <option [value]="a.id_almacen">{{ a.nombre }} — {{ a.sede_nombre }}</option>
                     }
                   </select>
                 </td>
@@ -54,10 +54,6 @@
       <!-- Detalle -->
       <div class="card">
         <div class="po-section-title">Detalle</div>
-
-        <div class="search-row">
-          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
-        </div>
 
         <div style="overflow-x:auto">
           <table class="items-table">
@@ -85,17 +81,16 @@
                     @if (item.modo === 'existente') {
                       <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
                         <option [ngValue]="null">-- Seleccionar producto/lote --</option>
-                        @for (i of filteredStock(); track i.id_lote) {
+                        @for (i of allStock(); track i.id_lote) {
                           <option [ngValue]="i.id_lote">
                             {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (actual: {{ i.cantidad_disponible }})
                           </option>
                         }
                       </select>
                     } @else {
-                      <input type="text" [(ngModel)]="item.productoFiltro" placeholder="Buscar producto por nombre o SKU..." style="margin-bottom:0.3rem;">
                       <select [ngModel]="item.id_producto" (ngModelChange)="onProductoNuevoSelect(item, $event)">
                         <option [ngValue]="null">-- Seleccionar producto --</option>
-                        @for (p of productosFiltrados(item); track p.id_producto) {
+                        @for (p of allProducts(); track p.id_producto) {
                           <option [ngValue]="p.id_producto">{{ p.nombre_medicamento_hs || p.nombre_comercial }} · SKU {{ p.sku }}</option>
                         }
                       </select>

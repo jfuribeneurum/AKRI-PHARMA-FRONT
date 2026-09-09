@@ -69,10 +69,6 @@
       @if (!idAlmacenDestino) {
         <p class="empty-msg">Selecciona la bodega receptora en el encabezado para agregar productos.</p>
       } @else {
-        <div class="search-row">
-          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
-        </div>
-
         <div style="overflow-x:auto">
           <table class="items-table">
             <thead>
@@ -91,7 +87,7 @@
                   <td style="min-width:280px">
                     <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
                       <option [ngValue]="null">-- Seleccionar producto/lote --</option>
-                      @for (i of filteredStock(); track i.id_lote) {
+                      @for (i of allStock(); track i.id_lote) {
                         <option [ngValue]="i.id_lote">
                           {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} (disp: {{ i.cantidad_disponible }})
                         </option>

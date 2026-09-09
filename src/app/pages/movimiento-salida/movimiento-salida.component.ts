@@ -25,9 +25,7 @@ export class MovimientoSalidaComponent implements OnInit {
   message = signal('');
   error = signal('');
   allStock = signal<any[]>([]);
-  filteredStock = signal<any[]>([]);
 
-  searchText = '';
   // Vacío a propósito: 'salida_venta' no es uno de los tipos que ofrece
   // /parametros/tipo_movimiento_salida/activos (esa sale solo desde
   // Dispensación) — precargar un valor que no aparece en el <select> dejaba
@@ -35,7 +33,12 @@ export class MovimientoSalidaComponent implements OnInit {
   // así que si el usuario no lo tocaba, el movimiento se registraba
   // igual con ese tipo equivocado.
   form = { tipo: '', motivo: '' };
-  tiposMovimiento: { valor: string; etiqueta: string }[] = [];
+  // Signal, no campo plano: en un componente OnPush, un campo plano leído en
+  // el template no se repinta solo cuando llega la respuesta async (p.ej.
+  // justo después del reload de página que hace el switch de sede) — se
+  // queda con el placeholder hasta que algún (click) real del usuario fuerza
+  // un chequeo de cambios. Los signals sí notifican solos.
+  tiposMovimiento = signal<{ valor: string; etiqueta: string }[]>([]);
   items: SalidaItem[] = [this.emptyItem()];
 
   async ngOnInit() {
@@ -49,7 +52,7 @@ export class MovimientoSalidaComponent implements OnInit {
   private async cargarTipos() {
     try {
       const res = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_salida/activos');
-      this.tiposMovimiento = res.data ?? [];
+      this.tiposMovimiento.set(res.data ?? []);
     } catch { /* non-fatal */ }
   }
 
@@ -60,22 +63,11 @@ export class MovimientoSalidaComponent implements OnInit {
       const lista = Array.isArray(resp) ? resp : (resp?.data ?? []);
       // Solo lotes con stock disponible
       this.allStock.set(lista.filter((i: any) => Number(i.cantidad_disponible) > 0));
-      this.filtrar();
     } catch {
       this.allStock.set([]);
     } finally {
       this.loading.set(false);
     }
-  }
-
-  filtrar() {
-    const q = this.searchText.toLowerCase().trim();
-    const lista = this.allStock();
-    this.filteredStock.set(!q ? lista : lista.filter(i =>
-      (i.nombre_comercial || '').toLowerCase().includes(q) ||
-      (i.sku || '').toLowerCase().includes(q) ||
-      (i.numero_lote || '').toLowerCase().includes(q)
-    ));
   }
 
   loteFor(idLote: number | null): any | undefined {

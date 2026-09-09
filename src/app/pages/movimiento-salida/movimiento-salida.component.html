@@ -28,7 +28,7 @@
                 <td style="min-width:200px">
                   <select [(ngModel)]="form.tipo">
                     <option value="">-- Seleccionar tipo --</option>
-                    @for (t of tiposMovimiento; track t.valor) {
+                    @for (t of tiposMovimiento(); track t.valor) {
                       <option [value]="t.valor">{{ t.etiqueta }}</option>
                     }
                   </select>
@@ -45,10 +45,6 @@
       <!-- Detalle -->
       <div class="card">
         <div class="po-section-title">Detalle</div>
-
-        <div class="search-row">
-          <input [(ngModel)]="searchText" (ngModelChange)="filtrar()" placeholder="Buscar por producto, SKU o número de lote...">
-        </div>
 
         <div style="overflow-x:auto">
           <table class="items-table">
@@ -68,7 +64,7 @@
                   <td style="min-width:280px">
                     <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
                       <option [ngValue]="null">-- Seleccionar producto/lote --</option>
-                      @for (i of filteredStock(); track i.id_lote) {
+                      @for (i of allStock(); track i.id_lote) {
                         <option [ngValue]="i.id_lote">
                           {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (disp: {{ i.cantidad_disponible }})
                         </option>
