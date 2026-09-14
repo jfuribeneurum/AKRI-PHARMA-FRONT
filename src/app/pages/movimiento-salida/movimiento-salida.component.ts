@@ -39,10 +39,37 @@ export class MovimientoSalidaComponent implements OnInit {
   // queda con el placeholder hasta que algún (click) real del usuario fuerza
   // un chequeo de cambios. Los signals sí notifican solos.
   tiposMovimiento = signal<{ valor: string; etiqueta: string }[]>([]);
+  historial = signal<any[]>([]);
+  cargandoHistorial = signal(false);
   items: SalidaItem[] = [this.emptyItem()];
 
   async ngOnInit() {
-    await Promise.all([this.cargarStock(), this.cargarTipos()]);
+    await Promise.all([this.cargarStock(), this.cargarTipos(), this.cargarHistorial()]);
+  }
+
+  async cargarHistorial() {
+    this.cargandoHistorial.set(true);
+    try {
+      const res: any = await this.api.get('/inventory/movements/history?direction=salida&limit=50');
+      this.historial.set(res?.data ?? []);
+    } catch {
+      this.historial.set([]);
+    } finally {
+      this.cargandoHistorial.set(false);
+    }
+  }
+
+  async anularMovimiento(m: any) {
+    if (!confirm(`¿Anular la salida de "${m.nombre_comercial}" (${m.cantidad})? Esto repone el stock que descontó.`)) return;
+    this.error.set('');
+    this.message.set('');
+    try {
+      await this.api.post(`/inventory/movements/${m.id_movimiento}/anular`, {});
+      this.message.set('Movimiento anulado correctamente.');
+      await Promise.all([this.cargarHistorial(), this.cargarStock()]);
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudo anular el movimiento.');
+    }
   }
 
   private emptyItem(): SalidaItem {
@@ -161,6 +188,9 @@ export class MovimientoSalidaComponent implements OnInit {
     }
 
     await this.cargarStock();
+    if (exitos) {
+      await this.cargarHistorial();
+    }
     if (!fallidas.length) {
       this.reset();
     } else {

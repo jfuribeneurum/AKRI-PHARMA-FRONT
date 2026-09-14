@@ -140,4 +140,55 @@
           {{ saving() ? 'Registrando...' : 'Registrar entrada' }}
         </button>
       </div>
+
+      <!-- Historial -->
+      <div class="card">
+        <div class="po-section-title">Historial de entradas</div>
+        <div style="overflow-x:auto">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Producto</th>
+                <th>Lote</th>
+                <th>Bodega</th>
+                <th>Ubicación</th>
+                <th>Cantidad</th>
+                <th>Usuario</th>
+                <th>Motivo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (cargandoHistorial()) {
+                <tr><td colspan="10" class="text-muted">Cargando...</td></tr>
+              } @else if (!historial().length) {
+                <tr><td colspan="10" class="text-muted">Sin movimientos registrados.</td></tr>
+              } @else {
+                @for (m of historial(); track m.id_movimiento) {
+                  <tr [class.anulado-row]="m.anulado">
+                    <td>{{ m.fecha_hora | date:'short' }}</td>
+                    <td>{{ m.tipo }}</td>
+                    <td>{{ m.nombre_comercial }} <span class="text-muted">· {{ m.sku }}</span></td>
+                    <td>{{ m.numero_lote || '—' }}</td>
+                    <td>{{ m.almacen_nombre }}</td>
+                    <td>{{ m.ubicacion_nombre }}</td>
+                    <td>{{ m.cantidad }}</td>
+                    <td>{{ m.usuario_nombre || '—' }}</td>
+                    <td>{{ m.motivo || '—' }}</td>
+                    <td>
+                      @if (m.anulado) {
+                        <span class="text-muted" style="font-size:0.72rem">ANULADO</span>
+                      } @else {
+                        <button class="btn-deselect" (click)="anularMovimiento(m)" title="Anular movimiento">✕</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>

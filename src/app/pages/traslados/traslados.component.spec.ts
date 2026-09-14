@@ -282,5 +282,33 @@ describe('TrasladosComponent', () => {
       expect(component.error()).toBe('');
       expect(api.get).toHaveBeenCalledWith(expect.stringContaining('/traslados?estado=pendiente'));
     });
+
+    it('recarga el historial al cambiar a la pestaña "historial"', () => {
+      (api.get as any).mockResolvedValue({ data: [] });
+
+      component.setTab('historial');
+
+      expect(component.activeTab()).toBe('historial');
+      expect(api.get).toHaveBeenCalledWith('/traslados?id_almacen=6');
+    });
+  });
+
+  describe('cargarHistorial', () => {
+    it('pide /traslados?id_almacen=<bodega activa> (sin filtrar por estado, trae enviados y recibidos) y guarda el resultado', async () => {
+      (api.get as any).mockResolvedValue({ data: [{ id_traslado: 1, estado: 'recibido', cantidad: 2 }] });
+
+      await component.cargarHistorial();
+
+      expect(api.get).toHaveBeenCalledWith('/traslados?id_almacen=6');
+      expect(component.historial()).toEqual([{ id_traslado: 1, estado: 'recibido', cantidad: 2 }]);
+    });
+
+    it('deja el historial vacío si la API falla, sin lanzar', async () => {
+      (api.get as any).mockRejectedValue(new Error('network'));
+
+      await component.cargarHistorial();
+
+      expect(component.historial()).toEqual([]);
+    });
   });
 });

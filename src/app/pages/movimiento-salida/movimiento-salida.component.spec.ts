@@ -187,4 +187,70 @@ describe('MovimientoSalidaComponent', () => {
       expect(component.tiposMovimiento()).toEqual([{ valor: 'merma', etiqueta: 'Merma' }]);
     });
   });
+
+  describe('cargarHistorial', () => {
+    it('pide /inventory/movements/history?direction=salida y guarda el resultado', async () => {
+      (api.get as any).mockResolvedValue({ data: [{ id_movimiento: 1, tipo: 'merma', cantidad: 2 }] });
+
+      await component.cargarHistorial();
+
+      expect(api.get).toHaveBeenCalledWith('/inventory/movements/history?direction=salida&limit=50');
+      expect(component.historial()).toEqual([{ id_movimiento: 1, tipo: 'merma', cantidad: 2 }]);
+    });
+
+    it('deja el historial vacío si la API falla, sin lanzar', async () => {
+      (api.get as any).mockRejectedValue(new Error('network'));
+
+      await component.cargarHistorial();
+
+      expect(component.historial()).toEqual([]);
+    });
+  });
+
+  describe('registrar — refresca el historial tras un guardado exitoso', () => {
+    it('llama a cargarHistorial cuando al menos una salida se registró', async () => {
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: [] });
+      component.items = [{ id_lote: 10, cantidad: 1 }];
+
+      await component.registrar();
+
+      const calledHistory = (api.get as any).mock.calls.some((c: any[]) => c[0] === '/inventory/movements/history?direction=salida&limit=50');
+      expect(calledHistory).toBe(true);
+    });
+  });
+
+  describe('anularMovimiento', () => {
+    afterEach(() => {
+      (window.confirm as any)?.mockRestore?.();
+    });
+
+    it('no llama a la API si el usuario cancela la confirmación', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      await component.anularMovimiento({ id_movimiento: 50, nombre_comercial: 'LOSARTAN', cantidad: 3 });
+
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('llama a /inventory/movements/:id/anular y refresca historial + stock cuando se confirma', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: [] });
+
+      await component.anularMovimiento({ id_movimiento: 50, nombre_comercial: 'LOSARTAN', cantidad: 3 });
+
+      expect(api.post).toHaveBeenCalledWith('/inventory/movements/50/anular', {});
+      expect(component.message()).toBe('Movimiento anulado correctamente.');
+    });
+
+    it('muestra el mensaje de error del backend si la anulación falla', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      (api.post as any).mockRejectedValue({ error: { message: 'Este movimiento ya fue anulado.' } });
+
+      await component.anularMovimiento({ id_movimiento: 50, nombre_comercial: 'LOSARTAN', cantidad: 3 });
+
+      expect(component.error()).toBe('Este movimiento ya fue anulado.');
+    });
+  });
 });

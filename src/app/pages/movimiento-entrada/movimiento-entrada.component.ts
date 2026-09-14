@@ -47,6 +47,8 @@ export class MovimientoEntradaComponent implements OnInit {
   // fuerza un chequeo de cambios. Los signals sí notifican solos.
   lookups = signal<{ almacenes: any[]; ubicaciones: any[] }>({ almacenes: [], ubicaciones: [] });
   tiposMovimiento = signal<{ valor: string; etiqueta: string }[]>([]);
+  historial = signal<any[]>([]);
+  cargandoHistorial = signal(false);
   // Vacío a propósito: 'entrada_compra' no es uno de los tipos que ofrece
   // /parametros/tipo_movimiento_entrada/activos (esa sale solo desde
   // Ingresos Pharma) — igual que en Movimiento de Salida, precargar un valor
@@ -56,11 +58,36 @@ export class MovimientoEntradaComponent implements OnInit {
   items: EntradaItem[] = [this.emptyItem()];
 
   async ngOnInit() {
-    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarProductos()]);
+    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarProductos(), this.cargarHistorial()]);
   }
 
   async cargarDatos() {
-    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarProductos()]);
+    await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarProductos(), this.cargarHistorial()]);
+  }
+
+  async cargarHistorial() {
+    this.cargandoHistorial.set(true);
+    try {
+      const res: any = await this.api.get('/inventory/movements/history?direction=entrada&limit=50');
+      this.historial.set(res?.data ?? []);
+    } catch {
+      this.historial.set([]);
+    } finally {
+      this.cargandoHistorial.set(false);
+    }
+  }
+
+  async anularMovimiento(m: any) {
+    if (!confirm(`¿Anular la entrada de "${m.nombre_comercial}" (${m.cantidad})? Esto revierte el stock que sumó.`)) return;
+    this.error.set('');
+    this.message.set('');
+    try {
+      await this.api.post(`/inventory/movements/${m.id_movimiento}/anular`, {});
+      this.message.set('Movimiento anulado correctamente.');
+      await Promise.all([this.cargarHistorial(), this.cargarStock()]);
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No se pudo anular el movimiento.');
+    }
   }
 
   private async cargarProductos() {
@@ -114,7 +141,7 @@ export class MovimientoEntradaComponent implements OnInit {
   async cargarLookups() {
     try {
       const [inv, tipos, bodegas] = await Promise.all([
-        this.api.get<any>('/inventory/lookups'),
+        this.api.get<any>('/inventory/lookups?scope=propia'),
         this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/tipo_movimiento_entrada/activos'),
         this.api.get<any>('/purchases/warehouses?scope=propia')
       ]);
@@ -123,8 +150,10 @@ export class MovimientoEntradaComponent implements OnInit {
       // (p.ej. Medellín agrupa Hemofilia y Diabetes) — scope=propia fuerza
       // ese agrupamiento por ciudad incluso para ADMINISTRADOR, porque acá
       // se está recibiendo mercancía en un lugar físico real, no gestionando
-      // órdenes de otras sedes. Las ubicaciones quedan sin filtrar porque
-      // solo se usan para resolver la ubicación destino de la bodega elegida.
+      // órdenes de otras sedes. /inventory/lookups también necesita
+      // scope=propia: sin él, ubicaciones solo trae las de la sede literal
+      // del usuario, así que elegir la OTRA bodega del grupo (ej. Diabetes
+      // estando activo en Hemofilia) no encontraba ubicación destino.
       this.lookups.set({ almacenes: bodegas?.data ?? bodegas ?? [], ubicaciones: data.ubicaciones ?? [] });
       this.tiposMovimiento.set(tipos.data ?? []);
     } catch {}
@@ -231,6 +260,9 @@ export class MovimientoEntradaComponent implements OnInit {
     }
 
     await this.cargarStock();
+    if (exitos) {
+      await this.cargarHistorial();
+    }
     if (!fallidas.length) {
       this.reset();
     } else {

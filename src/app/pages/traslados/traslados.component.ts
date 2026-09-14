@@ -5,7 +5,7 @@ import { ApiService } from '../../core/api.service';
 import { SiteContextService } from '../../core/site-context.service';
 import { UppercaseInputDirective } from '../../shared/uppercase-input.directive';
 
-type Tab = 'enviar' | 'recibir';
+type Tab = 'enviar' | 'recibir' | 'historial';
 
 interface TrasladoItem {
   id_lote: number | null;
@@ -53,8 +53,26 @@ export class TrasladosComponent implements OnInit {
   // Mapa id_traslado → { obs: string, rechazando: boolean }
   accionMap: Record<number, { obs: string; rechazando: boolean }> = {};
 
+  // ── historial (pestaña historial) ────────────────────────────
+  loadingHistorial = signal(false);
+  historial        = signal<any[]>([]);
+
   async ngOnInit() {
     await Promise.all([this.cargarStock(), this.cargarLookups(), this.cargarBodegasDestino(), this.cargarPendientes()]);
+  }
+
+  async cargarHistorial() {
+    this.loadingHistorial.set(true);
+    try {
+      const idAlmacen = this.siteContext.activeAlmacenId();
+      const resp: any = await this.api.get(`/traslados?id_almacen=${idAlmacen}`);
+      const lista: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+      this.historial.set(lista);
+    } catch {
+      this.historial.set([]);
+    } finally {
+      this.loadingHistorial.set(false);
+    }
   }
 
   private async cargarBodegasDestino() {
@@ -71,6 +89,7 @@ export class TrasladosComponent implements OnInit {
     this.message.set('');
     this.error.set('');
     if (tab === 'recibir') this.cargarPendientes();
+    if (tab === 'historial') this.cargarHistorial();
   }
 
   // ─── ENVIAR ────────────────────────────────────────────────────────────────
@@ -94,7 +113,12 @@ export class TrasladosComponent implements OnInit {
 
   async cargarLookups() {
     try {
-      const resp: any = await this.api.get('/inventory/lookups');
+      // scope=gestion: las ubicaciones deben cubrir el mismo conjunto de
+      // bodegas que ofrece "Bodega receptora" (cargarBodegasDestino, sin
+      // scope=propia) — para un ADMINISTRADOR eso son las 4 sedes, no solo
+      // la sede activa. Sin este scope, elegir una bodega receptora de otra
+      // sede fallaba porque nunca se habían pedido sus ubicaciones.
+      const resp: any = await this.api.get('/inventory/lookups?scope=gestion');
       const data = resp?.data ?? resp;
       this.todasBodegas.set(data?.almacenes ?? []);
       this.todasUbicaciones.set(data?.ubicaciones ?? []);

@@ -286,7 +286,7 @@ describe('MovimientoEntradaComponent', () => {
   describe('cargarLookups', () => {
     it('carga bodegas desde /purchases/warehouses?scope=propia y tipos desde /parametros', async () => {
       (api.get as any).mockImplementation((path: string) => {
-        if (path === '/inventory/lookups') return Promise.resolve({ data: { almacenes: [], ubicaciones: [{ id_almacen: 6, id_ubicacion: 7 }] } });
+        if (path === '/inventory/lookups?scope=propia') return Promise.resolve({ data: { almacenes: [], ubicaciones: [{ id_almacen: 6, id_ubicacion: 7 }] } });
         if (path === '/parametros/tipo_movimiento_entrada/activos') return Promise.resolve({ data: [{ valor: 'entrada_compra', etiqueta: 'Compra' }] });
         if (path === '/purchases/warehouses?scope=propia') return Promise.resolve({ data: [{ id_almacen: 6, nombre: 'Almacén general', sede_nombre: 'SEDE MEDELLIN HEMOFILIA' }] });
         return Promise.resolve({ data: [] });
@@ -297,6 +297,74 @@ describe('MovimientoEntradaComponent', () => {
       expect(component.lookups().almacenes).toEqual([{ id_almacen: 6, nombre: 'Almacén general', sede_nombre: 'SEDE MEDELLIN HEMOFILIA' }]);
       expect(component.lookups().ubicaciones).toEqual([{ id_almacen: 6, id_ubicacion: 7 }]);
       expect(component.tiposMovimiento()).toEqual([{ valor: 'entrada_compra', etiqueta: 'Compra' }]);
+    });
+  });
+
+  describe('cargarHistorial', () => {
+    it('pide /inventory/movements/history?direction=entrada y guarda el resultado', async () => {
+      (api.get as any).mockResolvedValue({ data: [{ id_movimiento: 1, tipo: 'entrada_compra', cantidad: 5 }] });
+
+      await component.cargarHistorial();
+
+      expect(api.get).toHaveBeenCalledWith('/inventory/movements/history?direction=entrada&limit=50');
+      expect(component.historial()).toEqual([{ id_movimiento: 1, tipo: 'entrada_compra', cantidad: 5 }]);
+    });
+
+    it('deja el historial vacío si la API falla, sin lanzar', async () => {
+      (api.get as any).mockRejectedValue(new Error('network'));
+
+      await component.cargarHistorial();
+
+      expect(component.historial()).toEqual([]);
+    });
+  });
+
+  describe('registrar — refresca el historial tras un guardado exitoso', () => {
+    it('llama a cargarHistorial cuando al menos una entrada se registró', async () => {
+      component.allStock.set([{ id_lote: 10, nombre_comercial: 'PARACETAMOL', cantidad_disponible: 5 }]);
+      component.items = [{ modo: 'existente', id_lote: 10, id_producto: null, nombre_producto: '', numero_lote: '', fecha_vencimiento: '', cantidad: 1, costo_unitario: 0 }];
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: [] });
+
+      await component.registrar();
+
+      const calledHistory = (api.get as any).mock.calls.some((c: any[]) => c[0] === '/inventory/movements/history?direction=entrada&limit=50');
+      expect(calledHistory).toBe(true);
+    });
+  });
+
+  describe('anularMovimiento', () => {
+    afterEach(() => {
+      (window.confirm as any)?.mockRestore?.();
+    });
+
+    it('no llama a la API si el usuario cancela la confirmación', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      await component.anularMovimiento({ id_movimiento: 7217, nombre_comercial: 'AGUJA', cantidad: 1 });
+
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('llama a /inventory/movements/:id/anular y refresca historial + stock cuando se confirma', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      (api.post as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: [] });
+
+      await component.anularMovimiento({ id_movimiento: 7217, nombre_comercial: 'AGUJA', cantidad: 1 });
+
+      expect(api.post).toHaveBeenCalledWith('/inventory/movements/7217/anular', {});
+      expect(component.message()).toBe('Movimiento anulado correctamente.');
+      expect(component.error()).toBe('');
+    });
+
+    it('muestra el mensaje de error del backend si la anulación falla', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      (api.post as any).mockRejectedValue({ error: { message: 'Este movimiento ya fue anulado.' } });
+
+      await component.anularMovimiento({ id_movimiento: 7217, nombre_comercial: 'AGUJA', cantidad: 1 });
+
+      expect(component.error()).toBe('Este movimiento ya fue anulado.');
     });
   });
 });

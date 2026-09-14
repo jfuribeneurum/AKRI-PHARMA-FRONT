@@ -17,6 +17,9 @@
         <span class="tab-badge">{{ pendientes().length }}</span>
       }
     </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'historial'" (click)="setTab('historial')">
+      Historial
+    </button>
   </div>
 
   @if (message()) { <div class="success-box" style="margin-top:1rem">{{ message() }}</div> }
@@ -230,6 +233,68 @@
           </div>
         }
       }
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- PESTAÑA: HISTORIAL                                        -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'historial') {
+    <div class="card" style="margin-top:1rem">
+      <div class="section-header-row">
+        <span class="po-section-title" style="margin-bottom:0;border-bottom:none">
+          Historial de traslados (enviados y recibidos por esta bodega)
+        </span>
+        <button class="btn secondary" style="padding:0.3rem 0.8rem;font-size:0.8rem" (click)="cargarHistorial()">
+          Actualizar
+        </button>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Fecha envío</th>
+              <th>Estado</th>
+              <th>Producto</th>
+              <th>Lote</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Cantidad</th>
+              <th>Emisor</th>
+              <th>Receptor</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loadingHistorial()) {
+              <tr><td colspan="10" class="text-muted">Cargando...</td></tr>
+            } @else if (!historial().length) {
+              <tr><td colspan="10" class="text-muted">Sin traslados registrados.</td></tr>
+            } @else {
+              @for (t of historial(); track t.id_traslado) {
+                <tr>
+                  <td>{{ t.fecha_envio | date:'short' }}</td>
+                  <td>
+                    <span class="badge-estado"
+                      [class.badge-pendiente]="t.estado === 'pendiente'"
+                      [class.badge-recibido]="t.estado === 'recibido'"
+                      [class.badge-rechazado]="t.estado === 'rechazado'">{{ t.estado }}</span>
+                  </td>
+                  <td>{{ t.nombre_comercial }} <span class="text-muted">· {{ t.sku }}</span></td>
+                  <td>{{ t.numero_lote || '—' }}</td>
+                  <td>{{ t.almacen_origen }}</td>
+                  <td>{{ t.almacen_destino }}</td>
+                  <td>{{ t.cantidad }}</td>
+                  <td>{{ t.nombre_emisor || '—' }}</td>
+                  <td>{{ t.nombre_receptor || '—' }}</td>
+                  <td>{{ t.motivo || '—' }}</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   }
 </section>
