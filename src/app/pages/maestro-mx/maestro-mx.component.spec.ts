@@ -118,4 +118,76 @@ describe('MaestroMxComponent', () => {
       expect(component.form.codigo_interno).toBe('MX01'); // no lo toca
     });
   });
+
+  // BUG REAL: <option [value]="lab.id_laboratorio"> / <option [value]="f.id_forma">
+  // (en vez de [ngValue]) hacía que, tras elegir una opción en el <select>,
+  // form.id_laboratorio/form.id_forma quedaran como STRING (el atributo DOM
+  // siempre es texto), no number. El backend exige z.number().int() para
+  // ambos campos y rechazaba el guardado con "Validación fallida" sin
+  // detalle visible. Se corrigió el HTML a [ngValue] y, como refuerzo, el
+  // payload ahora coerciona explícitamente a Number.
+  describe('create — payload envía id_laboratorio/id_forma como number, nunca string', () => {
+    let api: ApiService;
+
+    beforeEach(() => {
+      api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = {
+        codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG',
+        cum: '12', id_laboratorio: '3', id_forma: '2'
+      };
+      (api.post as any).mockResolvedValue({ data: { id_producto: 1 } });
+      (component as any).load = vi.fn();
+    });
+
+    it('convierte id_laboratorio y id_forma a number aunque vengan como string del <select>', async () => {
+      await component.create();
+
+      const [, payload] = (api.post as any).mock.calls[0];
+      expect(payload.id_laboratorio).toBe(3);
+      expect(typeof payload.id_laboratorio).toBe('number');
+      expect(payload.id_forma).toBe(2);
+      expect(typeof payload.id_forma).toBe('number');
+    });
+
+    it('manda null (no string vacío) cuando id_laboratorio/id_forma no se seleccionaron', async () => {
+      component.form.id_laboratorio = null;
+      component.form.id_forma = null;
+
+      await component.create();
+
+      const [, payload] = (api.post as any).mock.calls[0];
+      expect(payload.id_laboratorio).toBeNull();
+      expect(payload.id_forma).toBeNull();
+    });
+  });
+
+  describe('create — errores de validación muestran el campo específico que falló', () => {
+    it('agrega los fieldErrors del backend al mensaje, no solo "Validación fallida"', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.post as any).mockRejectedValue({
+        error: {
+          message: 'Validación fallida',
+          details: { fieldErrors: { id_laboratorio: ['Expected number, received string'] } }
+        }
+      });
+
+      await component.create();
+
+      expect(component.formError()).toBe('Validación fallida — id_laboratorio: Expected number, received string');
+    });
+
+    it('cae al mensaje genérico cuando el backend no manda fieldErrors', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.post as any).mockRejectedValue({ error: { message: 'SKU duplicado' } });
+
+      await component.create();
+
+      expect(component.formError()).toBe('SKU duplicado');
+    });
+  });
 });

@@ -98,9 +98,9 @@
                   <select [(ngModel)]="form.id_forma"
                     [class.hs-filled]="form.id_medicamento_hs && form.id_forma"
                     [disabled]="!!form.id_medicamento_hs">
-                    <option [value]="null">Sin especificar</option>
+                    <option [ngValue]="null">Sin especificar</option>
                     @for (f of formas(); track f.id_forma) {
-                      <option [value]="f.id_forma">{{ f.nombre }}</option>
+                      <option [ngValue]="f.id_forma">{{ f.nombre }}</option>
                     }
                   </select>
                   @if (form.id_medicamento_hs && !form.id_forma) {
@@ -139,9 +139,9 @@
                   Laboratorio
                   <select [(ngModel)]="form.id_laboratorio" (ngModelChange)="onCodigoOrLabChange()"
                     [class.field-error]="submitted() && !form.id_laboratorio">
-                    <option [value]="null">Sin proveedor</option>
+                    <option [ngValue]="null">Sin proveedor</option>
                     @for (lab of laboratorios(); track lab.id_laboratorio) {
-                      <option [value]="lab.id_laboratorio">{{ lab.nombre }}</option>
+                      <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
                     }
                   </select>
                 </label>

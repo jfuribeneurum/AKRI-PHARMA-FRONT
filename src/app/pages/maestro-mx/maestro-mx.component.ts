@@ -210,7 +210,7 @@ export class MaestroMxComponent implements OnInit {
       this.message.set('Producto registrado correctamente.');
       await this.load(response.data.id_producto);
     } catch (err: any) {
-      this.formError.set(err?.error?.message || 'No fue posible guardar el producto.');
+      this.formError.set(this.describeApiError(err) || 'No fue posible guardar el producto.');
     }
   }
 
@@ -222,8 +222,25 @@ export class MaestroMxComponent implements OnInit {
       this.message.set('Producto actualizado correctamente.');
       await this.load(this.editingId()!);
     } catch (err: any) {
-      this.formError.set(err?.error?.message || 'No fue posible actualizar el producto.');
+      this.formError.set(this.describeApiError(err) || 'No fue posible actualizar el producto.');
     }
+  }
+
+  // "Validación fallida" a secas no dice qué campo falló — el zod
+  // fieldErrors (ver middleware/validate.js) sí lo tiene, solo que la API no
+  // lo mostraba nunca. Sin esto, un caso como id_laboratorio llegando como
+  // string en vez de number (bug real: <option [value]> en vez de
+  // [ngValue]) era indistinguible de cualquier otro error de validación.
+  private describeApiError(err: any): string {
+    const message = err?.error?.message || '';
+    const fieldErrors = err?.error?.details?.fieldErrors;
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      const detalles = Object.entries(fieldErrors)
+        .filter(([, msgs]) => Array.isArray(msgs) && msgs.length)
+        .map(([campo, msgs]) => `${campo}: ${(msgs as string[]).join(', ')}`);
+      if (detalles.length) return `${message} — ${detalles.join(' | ')}`;
+    }
+    return message;
   }
 
   onHsSearchChange(value: string) {
@@ -338,9 +355,9 @@ export class MaestroMxComponent implements OnInit {
       codigo_atc:           this.form.atc || null,
       codigo_dci:           this.form.codigo_dci != null && this.form.codigo_dci !== '' ? Number(this.form.codigo_dci) : null,
       clasificacion:        this.form.clasificacion || null,
-      id_forma:             this.form.id_forma || null,
+      id_forma:             this.form.id_forma != null && this.form.id_forma !== '' ? Number(this.form.id_forma) : null,
       tipo_producto:        this.form.tipo_producto || undefined,
-      id_laboratorio:       this.form.id_laboratorio || null,
+      id_laboratorio:       this.form.id_laboratorio != null && this.form.id_laboratorio !== '' ? Number(this.form.id_laboratorio) : null,
       iva_tasa:             Number(this.form.iva ?? 0),
       mx_control:           !!this.form.mx_control,
       requiere_cadena_frio: !!this.form.requiere_cadena_frio,
