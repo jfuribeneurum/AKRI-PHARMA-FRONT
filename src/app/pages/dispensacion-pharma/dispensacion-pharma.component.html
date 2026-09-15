@@ -640,7 +640,7 @@
                 <tr [class.row-expanded]="expandedId() === f.id_formulacion">
                   <td>
                     <button class="btn-icon" (click)="toggleExpand(f.id_formulacion)"
-                            [title]="expandedId() === f.id_formulacion ? 'Colapsar' : 'Ver medicamentos'">
+                            [title]="expandedId() === f.id_formulacion ? 'Ocultar' : 'Ver medicamentos'">
                       {{ expandedId() === f.id_formulacion ? '▲' : '▼' }}
                     </button>
                   </td>
@@ -663,7 +663,7 @@
                   </td>
                   <td>
                     <button class="btn btn-small" (click)="toggleExpand(f.id_formulacion)">
-                      {{ expandedId() === f.id_formulacion ? 'Colapsar' : 'Ver detalle' }}
+                      {{ expandedId() === f.id_formulacion ? 'Ocultar' : 'Ver detalle' }}
                     </button>
                   </td>
                 </tr>
