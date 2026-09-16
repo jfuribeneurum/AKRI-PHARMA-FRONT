@@ -6,6 +6,13 @@ import { UppercaseInputDirective } from '../../shared/uppercase-input.directive'
 
 type MediaSourceType = 'escaneada' | 'importada' | 'fotografia';
 
+// El CUM (Código Único de Medicamento, INVIMA) solo existe para
+// medicamentos/controlados/vacunas. Un dispositivo médico, insumo o
+// reactivo se identifica por registro_invima, no por CUM — exigirlo para
+// esos tipos bloqueaba guardar/editar ~155 productos reales del catálogo
+// que nunca lo han tenido (ni deben tenerlo).
+const TIPOS_CON_CUM = new Set(['medicamento', 'controlado', 'vacuna']);
+
 @Component({
   selector: 'akri-maestro-mx',
   standalone: true,
@@ -40,6 +47,7 @@ export class MaestroMxComponent implements OnInit {
   hsSearching = signal(false);
   hsNoResults = signal(false);
   private hsDebounce: ReturnType<typeof setTimeout> | null = null;
+  private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   codigoControlPreview = signal<string>('');
   codigoControlDuplicateCum = signal<string | null>(null);
@@ -151,6 +159,11 @@ export class MaestroMxComponent implements OnInit {
     this.showDetailModal.set(false);
   }
 
+  onSearchChange() {
+    if (this.searchDebounce) clearTimeout(this.searchDebounce);
+    this.searchDebounce = setTimeout(() => void this.load(), 300);
+  }
+
   async load(preselectId?: number | null) {
     const params = new URLSearchParams({ search: this.search });
     if (this.filterLaboratorio) params.set('id_laboratorio', String(this.filterLaboratorio));
@@ -185,6 +198,10 @@ export class MaestroMxComponent implements OnInit {
     }
   }
 
+  requiereCum(): boolean {
+    return TIPOS_CON_CUM.has(this.form.tipo_producto);
+  }
+
   private validateForm(): string | null {
     if (this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
     if (this.form.tipo_producto === 'dispositivo' && !this.form.clasificacion) return 'El campo Clasificación es obligatorio para dispositivos médicos.';
@@ -192,8 +209,10 @@ export class MaestroMxComponent implements OnInit {
     if (!this.form.presentacion) return 'El campo Presentación es obligatorio.';
     if (!this.form.registro_invima) return 'El campo Registro INVIMA es obligatorio.';
     if (!this.form.id_laboratorio) return 'El campo Proveedor / Laboratorio es obligatorio.';
-    if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
-    if (!this.form.consecutivo_cum || String(this.form.consecutivo_cum).trim() === '') return 'El campo Consecutivo CUM es obligatorio.';
+    if (TIPOS_CON_CUM.has(this.form.tipo_producto)) {
+      if (!this.form.cum && this.form.cum !== 0) return 'El campo CUM es obligatorio.';
+      if (!this.form.consecutivo_cum || String(this.form.consecutivo_cum).trim() === '') return 'El campo Consecutivo CUM es obligatorio.';
+    }
     if (this.form.requiere_cadena_frio && (this.form.temp_min == null || this.form.temp_max == null)) {
       return 'Debes indicar la temperatura mínima y máxima para un producto de cadena de frío.';
     }

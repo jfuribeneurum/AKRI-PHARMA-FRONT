@@ -705,9 +705,18 @@ export class DispensacionPharmaComponent implements OnInit {
 
     this.excluyendoMedId.set(med.id_med_formulacion);
     try {
-      await this.api.post(`/dispensacion-hs/formulacion/${detail.id_formulacion}/medicamentos/${med.id_med_formulacion}/excluir`, {
-        nombre_medicamento: med.nombre_medicamento
-      });
+      if (med.esManual) {
+        // Un medicamento manual no viene de HealthSphere: "excluirlo" no basta,
+        // porque su fila en dispensacion_hs_medicamentos_extra seguiría activa y
+        // volvería a bloquear el reintento con "ya fue agregado a esta formulación".
+        // Hay que desactivar la fila real (idMedicamentoExtra, sin el offset
+        // 900000000 que trae id_med_formulacion).
+        await this.api.delete(`/dispensacion-hs/medicamentos-extra/${med.idMedicamentoExtra}`);
+      } else {
+        await this.api.post(`/dispensacion-hs/formulacion/${detail.id_formulacion}/medicamentos/${med.id_med_formulacion}/excluir`, {
+          nombre_medicamento: med.nombre_medicamento
+        });
+      }
       await this.loadDetail(detail.id_formulacion);
       // Si la exclusión se pidió desde dentro del modal de dispensación, la
       // fila también debe desaparecer de ahí sin esperar a cerrar/reabrir.

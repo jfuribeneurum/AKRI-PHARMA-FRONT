@@ -190,4 +190,59 @@ describe('MaestroMxComponent', () => {
       expect(component.formError()).toBe('SKU duplicado');
     });
   });
+
+  // El buscador de Maestro MX antes solo buscaba con Enter — el usuario pidió
+  // que busque mientras se escribe, como el resto de buscadores con debounce
+  // de la app (ver onHsSearchChange). onSearchChange() debe reiniciar el
+  // temporizador en cada tecla y solo disparar load() una vez, tras la pausa.
+  describe('onSearchChange (buscador con debounce)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('no llama a load() inmediatamente al escribir', () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.search = 'abacavir';
+
+      component.onSearchChange();
+
+      expect(api.get).not.toHaveBeenCalled();
+    });
+
+    it('llama a load() después de la pausa de 300ms', () => {
+      const api = makeApiStub();
+      (api.get as any).mockResolvedValue({ data: [] });
+      component = new MaestroMxComponent(api);
+      component.search = 'abacavir';
+
+      component.onSearchChange();
+      vi.advanceTimersByTime(300);
+
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('search=abacavir'));
+    });
+
+    it('reinicia el temporizador en cada tecla, sin disparar load() varias veces', () => {
+      const api = makeApiStub();
+      (api.get as any).mockResolvedValue({ data: [] });
+      component = new MaestroMxComponent(api);
+
+      component.search = 'a';
+      component.onSearchChange();
+      vi.advanceTimersByTime(150);
+      component.search = 'ab';
+      component.onSearchChange();
+      vi.advanceTimersByTime(150);
+      component.search = 'aba';
+      component.onSearchChange();
+      vi.advanceTimersByTime(300);
+
+      expect(api.get).toHaveBeenCalledTimes(1);
+      expect(api.get).toHaveBeenCalledWith(expect.stringContaining('search=aba'));
+    });
+  });
 });

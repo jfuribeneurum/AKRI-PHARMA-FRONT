@@ -1,3 +1,28 @@
+.toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.toolbar label input,
+.toolbar label select {
+  /* .toolbar input/select trae "flex: 1 1 180px" pensado para cuando son
+     hijos directos de un flex-row — dentro de este label en columna, ese
+     mismo flex-basis se aplicaba al alto en vez del ancho, agrandándolos.
+     Se anula el flex heredado y se fija el ancho a mano. */
+  flex: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

@@ -199,13 +199,13 @@
                   CUM
                   <input type="number" [(ngModel)]="form.cum" placeholder="Código único de medicamento"
                     (ngModelChange)="onCodigoOrLabChange()"
-                    [class.field-error]="submitted() && !form.cum && form.cum !== 0">
+                    [class.field-error]="submitted() && requiereCum() && !form.cum && form.cum !== 0">
                 </label>
                 <label>
                   Consecutivo CUM
                   <input type="number" min="1" [(ngModel)]="form.consecutivo_cum" placeholder="Ej: 8"
                     (ngModelChange)="onCodigoOrLabChange()"
-                    [class.field-error]="submitted() && !form.consecutivo_cum">
+                    [class.field-error]="submitted() && requiereCum() && !form.consecutivo_cum">
                 </label>
                 <label>
                   Registro INVIMA
@@ -420,16 +420,28 @@
       }
 
       <div class="card">
-        <div class="toolbar">
-          <input [(ngModel)]="search" placeholder="Buscar por nombre, SKU, principio activo, código de barras o ID medicamento HS" (keyup.enter)="load()" style="flex:2;">
-          <select [(ngModel)]="filterLaboratorio" (ngModelChange)="load()" style="flex:1;min-width:0;">
-            <option [ngValue]="null">Todos los laboratorios</option>
-            @for (lab of laboratorios(); track lab.id_laboratorio) {
-              <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
-            }
-          </select>
-          <input [(ngModel)]="filterLote" placeholder="Filtrar por lote" (keyup.enter)="load()" style="flex:1;min-width:0;">
-          <button class="btn secondary" (click)="load()">Buscar</button>
+        <div class="toolbar" style="align-items:flex-start;">
+          <label style="flex:2;min-width:260px;">
+            <span class="toolbar-label">Buscar producto</span>
+            <input [(ngModel)]="search" placeholder="Nombre, SKU o principio activo..."
+              title="Busca por nombre, SKU, principio activo, código de barras, código de control o ID de medicamento HS"
+              (ngModelChange)="onSearchChange()" (keyup.enter)="load()">
+            <span class="field-hint">También busca por código de barras, código de control e ID de medicamento HS</span>
+          </label>
+          <label style="flex:1;min-width:0;">
+            <span class="toolbar-label">Laboratorio</span>
+            <select [(ngModel)]="filterLaboratorio" (ngModelChange)="load()">
+              <option [ngValue]="null">Todos los laboratorios</option>
+              @for (lab of laboratorios(); track lab.id_laboratorio) {
+                <option [ngValue]="lab.id_laboratorio">{{ lab.nombre }}</option>
+              }
+            </select>
+          </label>
+          <label style="flex:1;min-width:0;">
+            <span class="toolbar-label">Lote</span>
+            <input [(ngModel)]="filterLote" placeholder="Número de lote" (keyup.enter)="load()">
+          </label>
+          <button class="btn secondary" (click)="load()" style="align-self:flex-end;">Buscar</button>
         </div>
 
         <div class="table-wrap compact">

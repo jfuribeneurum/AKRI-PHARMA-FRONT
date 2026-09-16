@@ -722,6 +722,38 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.excluyendoMedId()).toBeNull();
     });
 
+    it('deletes a manually-added medicamento through /medicamentos-extra instead of /excluir, so it can be re-added afterwards', async () => {
+      // Un medicamento manual no viene de HealthSphere. Si se "excluye" como
+      // los demás, la fila en dispensacion_hs_medicamentos_extra sigue activa
+      // y el backend bloquea el reintento con "ya fue agregado a esta
+      // formulación" aunque ya no aparezca en la lista — este es el bug real
+      // reportado en producción.
+      const med = makeMed({ id_med_formulacion: 900000123, esManual: true, idMedicamentoExtra: 123 });
+      component.medAExcluir.set(med);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      (api.delete as any).mockResolvedValue({});
+      (api.get as any).mockResolvedValue({ data: { id_formulacion: 7, medicamentos: [] } });
+
+      await component.confirmarExclusion();
+
+      expect(api.delete).toHaveBeenCalledWith('/dispensacion-hs/medicamentos-extra/123');
+      expect(api.post).not.toHaveBeenCalled();
+      expect(component.medAExcluir()).toBeNull();
+      expect(component.excluyendoMedId()).toBeNull();
+    });
+
+    it('surfaces the backend error message when deleting a manual medicamento fails', async () => {
+      const med = makeMed({ id_med_formulacion: 900000123, esManual: true, idMedicamentoExtra: 123 });
+      component.medAExcluir.set(med);
+      component.selectedDetail.set({ id_formulacion: 7 } as any);
+      (api.delete as any).mockRejectedValue({ error: { message: 'Medicamento manual no encontrado' } });
+
+      await component.confirmarExclusion();
+
+      expect(component.error()).toBe('Medicamento manual no encontrado');
+      expect(component.excluyendoMedId()).toBeNull();
+    });
+
     it('surfaces the backend error message and clears excluyendoMedId on failure', async () => {
       component.medAExcluir.set(makeMed({ id_med_formulacion: 11 }));
       component.selectedDetail.set({ id_formulacion: 7 } as any);
