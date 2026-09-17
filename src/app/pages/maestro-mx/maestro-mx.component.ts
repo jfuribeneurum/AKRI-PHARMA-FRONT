@@ -42,10 +42,15 @@ export class MaestroMxComponent implements OnInit {
   showDetailModal = signal(false);
   editingId = signal<number | null>(null);
 
+  // Modal de resultado al guardar/editar un MX (reemplaza el alert() nativo
+  // feo del navegador por algo con la misma cara que el resto de la app).
+  resultModal = signal<{ tipo: 'success' | 'error'; mensaje: string } | null>(null);
+
   hsSearch = '';
   hsResults = signal<any[]>([]);
   hsSearching = signal(false);
   hsNoResults = signal(false);
+  hsRefreshing = signal(false);
   private hsDebounce: ReturnType<typeof setTimeout> | null = null;
   private searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
@@ -184,12 +189,24 @@ export class MaestroMxComponent implements OnInit {
   async save() {
     this.submitted.set(true);
     const err = this.validateForm();
-    if (err) { this.formError.set(err); return; }
+    if (err) {
+      this.formError.set(err);
+      this.mostrarResultado('error', err);
+      return;
+    }
     if (this.editingId()) {
       await this.update();
     } else {
       await this.create();
     }
+  }
+
+  mostrarResultado(tipo: 'success' | 'error', mensaje: string) {
+    this.resultModal.set({ tipo, mensaje });
+  }
+
+  cerrarResultado() {
+    this.resultModal.set(null);
   }
 
   onTipoProductoChange(tipo: string) {
@@ -228,8 +245,11 @@ export class MaestroMxComponent implements OnInit {
       this.closeModal();
       this.message.set('Producto registrado correctamente.');
       await this.load(response.data.id_producto);
+      this.mostrarResultado('success', 'Producto registrado correctamente.');
     } catch (err: any) {
-      this.formError.set(this.describeApiError(err) || 'No fue posible guardar el producto.');
+      const mensaje = this.describeApiError(err) || 'No fue posible guardar el producto.';
+      this.formError.set(mensaje);
+      this.mostrarResultado('error', mensaje);
     }
   }
 
@@ -240,8 +260,11 @@ export class MaestroMxComponent implements OnInit {
       this.closeModal();
       this.message.set('Producto actualizado correctamente.');
       await this.load(this.editingId()!);
+      this.mostrarResultado('success', 'Producto actualizado correctamente.');
     } catch (err: any) {
-      this.formError.set(this.describeApiError(err) || 'No fue posible actualizar el producto.');
+      const mensaje = this.describeApiError(err) || 'No fue posible actualizar el producto.';
+      this.formError.set(mensaje);
+      this.mostrarResultado('error', mensaje);
     }
   }
 
@@ -312,6 +335,38 @@ export class MaestroMxComponent implements OnInit {
     this.hsResults.set([]);
     this.hsSearch = '';
     this.hsNoResults.set(false);
+  }
+
+  // Trae de nuevo el registro de HealthSphere del medicamento ya vinculado y
+  // refresca en el formulario los campos que vienen de allá (principio
+  // activo, concentración, ATC, unidad de medida, forma farmacéutica, DCI).
+  // No toca nombre_comercial: ese campo es "Tu catálogo", editable libremente
+  // por la farmacia y no debe sobreescribirse con el texto crudo de HS.
+  // Solo actualiza el formulario en memoria — hay que guardar el producto
+  // (botón "Actualizar producto") para que quede persistido.
+  async actualizarDesdeHs() {
+    if (!this.form.id_medicamento_hs || this.hsRefreshing()) return;
+    this.hsRefreshing.set(true);
+    try {
+      const resp: any = await this.api.get(`/medicamentos-hs/${this.form.id_medicamento_hs}`);
+      const med = resp?.data ?? resp;
+      this.form.principio_activo = med.principioActivo ?? this.form.principio_activo;
+      this.form.concentracion    = med.concentracion ?? this.form.concentracion;
+      this.form.atc              = med.atc ?? this.form.atc;
+      this.form.unidad_medida    = med.unidad_dosificacion ?? this.form.unidad_medida;
+      this.form.codigo_dci       = med.codigo_dci ?? this.form.codigo_dci;
+      const forma = this.matchForma(med.forma_farmaceutica);
+      if (forma) this.form.id_forma = forma;
+      this.mostrarResultado('success', 'Datos actualizados desde HealthSphere. Recuerda guardar el producto para que los cambios queden guardados.');
+    } catch (err: any) {
+      const status = err?.status ?? err?.error?.status;
+      const mensaje = status === 404
+        ? 'No se encontró este medicamento en HealthSphere.'
+        : 'No fue posible traer los datos de HealthSphere.';
+      this.mostrarResultado('error', mensaje);
+    } finally {
+      this.hsRefreshing.set(false);
+    }
   }
 
   private matchForma(hsText: string | null): number | null {

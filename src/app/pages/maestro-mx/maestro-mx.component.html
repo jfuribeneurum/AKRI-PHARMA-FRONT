@@ -1,3 +1,13 @@
+@if (resultModal(); as resultado) {
+  <div class="modal-backdrop result-modal-backdrop" (click)="cerrarResultado()">
+    <div class="result-modal-panel" [class.result-modal-panel--error]="resultado.tipo === 'error'" (click)="$event.stopPropagation()">
+      <div class="result-modal-icon">{{ resultado.tipo === 'success' ? '✓' : '✕' }}</div>
+      <p class="result-modal-message">{{ resultado.mensaje }}</p>
+      <button class="btn" (click)="cerrarResultado()">Aceptar</button>
+    </div>
+  </div>
+}
+
 <!-- Modal: agregar / editar producto -->
     @if (showModal()) {
       <div class="modal-backdrop" (click)="closeModal()">
@@ -27,7 +37,13 @@
                   <strong>{{ form.nombre_comercial }}</strong>
                   <span class="muted">{{ form.principio_activo }}{{ form.concentracion ? ' · ' + form.concentracion : '' }}{{ form.atc ? ' · ATC: ' + form.atc : '' }}</span>
                 </div>
-                <button class="btn secondary btn-small" (click)="clearHsMed()">Cambiar</button>
+                <div class="hs-linked-actions">
+                  <button class="btn secondary btn-small" (click)="actualizarDesdeHs()" [disabled]="hsRefreshing()"
+                    title="Vuelve a traer los datos de este medicamento desde HealthSphere por si fueron completados o corregidos allá">
+                    {{ hsRefreshing() ? 'Actualizando…' : '⟳ Actualizar desde HealthSphere' }}
+                  </button>
+                  <button class="btn secondary btn-small" (click)="clearHsMed()">Cambiar</button>
+                </div>
               </div>
             } @else {
               <div class="hs-search-row">
@@ -420,15 +436,15 @@
       }
 
       <div class="card">
-        <div class="toolbar" style="align-items:flex-start;">
-          <label style="flex:2;min-width:260px;">
+        <div class="toolbar toolbar--filters">
+          <label class="toolbar-field toolbar-field--search">
             <span class="toolbar-label">Buscar producto</span>
             <input [(ngModel)]="search" placeholder="Nombre, SKU o principio activo..."
               title="Busca por nombre, SKU, principio activo, código de barras, código de control o ID de medicamento HS"
               (ngModelChange)="onSearchChange()" (keyup.enter)="load()">
             <span class="field-hint">También busca por código de barras, código de control e ID de medicamento HS</span>
           </label>
-          <label style="flex:1;min-width:0;">
+          <label class="toolbar-field">
             <span class="toolbar-label">Laboratorio</span>
             <select [(ngModel)]="filterLaboratorio" (ngModelChange)="load()">
               <option [ngValue]="null">Todos los laboratorios</option>
@@ -437,11 +453,14 @@
               }
             </select>
           </label>
-          <label style="flex:1;min-width:0;">
+          <label class="toolbar-field">
             <span class="toolbar-label">Lote</span>
             <input [(ngModel)]="filterLote" placeholder="Número de lote" (keyup.enter)="load()">
           </label>
-          <button class="btn secondary" (click)="load()" style="align-self:flex-end;">Buscar</button>
+          <div class="toolbar-field toolbar-field--btn">
+            <span class="toolbar-label" aria-hidden="true">&nbsp;</span>
+            <button class="btn secondary" (click)="load()">Buscar</button>
+          </div>
         </div>
 
         <div class="table-wrap compact">

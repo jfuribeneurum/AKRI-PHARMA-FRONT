@@ -195,6 +195,78 @@ describe('MaestroMxComponent', () => {
   // que busque mientras se escribe, como el resto de buscadores con debounce
   // de la app (ver onHsSearchChange). onSearchChange() debe reiniciar el
   // temporizador en cada tecla y solo disparar load() una vez, tras la pausa.
+  // A petición del usuario: al guardar o editar un MX, correcta o
+  // incorrectamente, debe aparecer un aviso imposible de pasar por alto.
+  // Primero se hizo con alert() nativo, pero el usuario pidió que se viera
+  // "más bonito" — resultModal() es el modal propio de la app (mismo estilo
+  // que el resto de modales) que reemplaza al alert() feo del navegador.
+  describe('resultModal al guardar/editar (create, update, save)', () => {
+    it('save() muestra el modal de error de validación y no llega a llamar a create()/update()', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = {}; // sin tipo_producto -> falla validateForm()
+
+      await component.save();
+
+      expect(component.resultModal()).toEqual({ tipo: 'error', mensaje: 'El campo Tipo de producto es obligatorio.' });
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('create() exitoso muestra el modal de éxito', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.post as any).mockResolvedValue({ data: { id_producto: 1 } });
+      (component as any).load = vi.fn();
+
+      await component.create();
+
+      expect(component.resultModal()).toEqual({ tipo: 'success', mensaje: 'Producto registrado correctamente.' });
+    });
+
+    it('create() fallido muestra el modal de error con el mensaje del backend', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.post as any).mockRejectedValue({ error: { message: 'SKU duplicado' } });
+
+      await component.create();
+
+      expect(component.resultModal()).toEqual({ tipo: 'error', mensaje: 'SKU duplicado' });
+    });
+
+    it('update() exitoso muestra el modal de éxito', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.editingId.set(7);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.put as any).mockResolvedValue({});
+      (component as any).load = vi.fn();
+
+      await component.update();
+
+      expect(component.resultModal()).toEqual({ tipo: 'success', mensaje: 'Producto actualizado correctamente.' });
+    });
+
+    it('update() fallido muestra el modal de error con el mensaje del backend', async () => {
+      const api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.editingId.set(7);
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG' };
+      (api.put as any).mockRejectedValue({ error: { message: 'No autorizado' } });
+
+      await component.update();
+
+      expect(component.resultModal()).toEqual({ tipo: 'error', mensaje: 'No autorizado' });
+    });
+
+    it('cerrarResultado() limpia el modal', () => {
+      component.resultModal.set({ tipo: 'success', mensaje: 'x' });
+      component.cerrarResultado();
+      expect(component.resultModal()).toBeNull();
+    });
+  });
+
   describe('onSearchChange (buscador con debounce)', () => {
     beforeEach(() => {
       vi.useFakeTimers();
