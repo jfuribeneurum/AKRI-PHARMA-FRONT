@@ -339,13 +339,19 @@ export class PharmaPurchaseOrderComponent implements OnInit {
     return this.items.reduce((sum, item) => sum + this.itemTotal(item), 0);
   }
 
+  // Tasa de IVA (%) del MX seleccionado en esa fila, según su producto/laboratorio actual.
+  itemIvaRate(item: OrderItem): number {
+    const prod = this.labProducts().find(p => p.id_producto === item.id_producto);
+    const tasa = Number(prod?.iva_tasa ?? 0);
+    return tasa >= 1 ? tasa : 0;
+  }
+
+  itemIvaValue(item: OrderItem): number {
+    return this.itemTotal(item) * this.itemIvaRate(item) / 100;
+  }
+
   totalIva(): number {
-    return this.items.reduce((sum, item) => {
-      const prod = this.labProducts().find(p => p.id_producto === item.id_producto);
-      const tasa = Number(prod?.iva_tasa ?? 0);
-      const rate = tasa >= 1 ? tasa : 0;
-      return sum + (this.itemTotal(item) * rate / 100);
-    }, 0);
+    return this.items.reduce((sum, item) => sum + this.itemIvaValue(item), 0);
   }
 
   totalOrdenCompra(): number {

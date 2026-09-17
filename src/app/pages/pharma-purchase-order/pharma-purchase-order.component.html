@@ -265,6 +265,7 @@
                       <th>Laboratorio</th>
                       <th style="text-align:right">Cantidad</th>
                       <th style="text-align:right">Valor unitario</th>
+                      <th style="text-align:right">IVA</th>
                       <th style="text-align:right">Valor total</th>
                       <th></th>
                     </tr>
@@ -312,6 +313,13 @@
                         </td>
                         <td><input type="number" min="0" [(ngModel)]="item.cantidad" style="text-align:right;width:80px"></td>
                         <td><input type="number" min="0" [(ngModel)]="item.valor_unitario" style="text-align:right;width:110px"></td>
+                        <td style="text-align:right; color:#9ca3af;">
+                          @if (item.product_key) {
+                            {{ itemIvaRate(item) }}%
+                          } @else {
+                            —
+                          }
+                        </td>
                         <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                         <td>
                           @if (items.length > 1) {
@@ -323,7 +331,7 @@
                   </tbody>
                   <tfoot>
                     <tr class="total-row">
-                      <td colspan="7" style="text-align:right">Total</td>
+                      <td colspan="8" style="text-align:right">Total</td>
                       <td class="valor-total-cell">{{ grandTotal() | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
                       <td></td>
                     </tr>
