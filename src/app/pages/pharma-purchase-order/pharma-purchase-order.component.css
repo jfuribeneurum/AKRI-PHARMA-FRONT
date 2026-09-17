@@ -1,3 +1,6 @@
+/* ── espaciado entre tarjetas de la página ──────────────────── */
+    .card + .card { margin-top: 1rem; }
+
 /* ── filtros ─────────────────────────────────────────────── */
     .filter-type-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
     .filter-pill {

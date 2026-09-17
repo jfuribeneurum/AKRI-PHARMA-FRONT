@@ -23,123 +23,6 @@
         </div>
       }
 
-      <!-- ══ BUSCADOR ════════════════════════════════════════════════ -->
-      <div class="card">
-        <div class="po-section-title">Buscar ordenes</div>
-
-        <!-- Filtro de estado siempre visible -->
-        <div class="estado-filter-row">
-          <span class="estado-filter-label">Estado:</span>
-          <div class="estado-pills">
-            @for (e of estadoOptions; track e.value) {
-              <button
-                class="badge estado-badge"
-                [class.badge-enviada]="e.value === 'enviada'"
-                [class.badge-editada]="e.value === 'editada'"
-                [class.badge-aprobada]="e.value === 'aprobada'"
-                [class.badge-cancelada]="e.value === 'cancelada'"
-                [class.estado-active]="filter.estado === e.value"
-                (click)="toggleEstadoFilter(e.value)">
-                {{ e.label }}
-              </button>
-            }
-          </div>
-        </div>
-
-        <div class="filter-type-row">
-          <button class="filter-pill" [class.active]="filterType() === 'numero'"
-            (click)="setFilterType('numero')">Numero de orden</button>
-          <button class="filter-pill" [class.active]="filterType() === 'fecha'"
-            (click)="setFilterType('fecha')">Fecha</button>
-          <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
-            (click)="setFilterType('laboratorio')">Laboratorio</button>
-        </div>
-
-        <div class="filter-input-row">
-          @if (filterType() === 'numero') {
-            <label>
-              Numero de orden
-              <input [(ngModel)]="filter.numero_oc" placeholder="OC-..." (ngModelChange)="applyFilter()">
-            </label>
-          }
-          @if (filterType() === 'fecha') {
-            <label>
-              Desde
-              <input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="applyFilter()">
-            </label>
-            <label>
-              Hasta
-              <input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="applyFilter()">
-            </label>
-          }
-          @if (filterType() === 'laboratorio') {
-            <label>
-              Laboratorio
-              <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="applyFilter()">
-            </label>
-          }
-          <button class="btn secondary filter-btn" style="align-self:flex-end" (click)="clearFilter()">Limpiar</button>
-        </div>
-
-        <div style="overflow-x:auto;">
-          <table class="orders-table">
-            <thead>
-              <tr>
-                <th>Consecutivo</th>
-                <th>Fecha</th>
-                <th>Proveedor</th>
-                <th>Sede</th>
-                <th>Estado</th>
-                <th style="text-align:right">Total</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @if (loading()) {
-                <tr class="empty-row"><td colspan="7">Cargando...</td></tr>
-              } @else if (filtered().length === 0) {
-                <tr class="empty-row"><td colspan="7">No se encontraron ordenes.</td></tr>
-              } @else {
-                @for (row of filtered(); track row.id_oc) {
-                  <tr>
-                    <td>{{ row.numero_oc }}</td>
-                    <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
-                    <td>{{ row.proveedor }}</td>
-                    <td>{{ row.sede }}</td>
-                    <td>
-                      <span class="badge"
-                        [class.badge-borrador]="row.estado === 'borrador'"
-                        [class.badge-enviada]="row.estado === 'enviada'"
-                        [class.badge-editada]="row.estado === 'editada'"
-                        [class.badge-aprobada]="row.estado === 'aprobada'"
-                        [class.badge-cancelada]="row.estado === 'cancelada'">
-                        {{ row.estado }}
-                      </span>
-                    </td>
-                    <td style="text-align:right">{{ row.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                    <td>
-                      <div class="actions-cell">
-                        <button class="btn-action pdf" [disabled]="pdfGenerando() === row.id_oc"
-                                (click)="generarPdfOrden(row)">
-                          {{ pdfGenerando() === row.id_oc ? 'Generando…' : '📄 PDF' }}
-                        </button>
-                        @if (isEditable(row.estado)) {
-                          <button class="btn-action edit" (click)="loadOrderForEdit(row.id_oc)">Editar</button>
-                          <button class="btn-action cancel-oc" (click)="cancelOrder(row.id_oc, row.numero_oc)">Cancelar</button>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-        <div style="margin-top:0.5rem; font-size:0.8rem; color:#9ca3af">
-          {{ filtered().length }} de {{ allOrders().length }} ordenes
-        </div>
-      </div>
-
       <!-- ══ FORMULARIO ═════════════════════════════════════════════ -->
       <div class="card">
         <div class="new-order-toggle" (click)="toggleForm()">
@@ -400,5 +283,122 @@
           </div>
 
         }
+      </div>
+
+      <!-- ══ BUSCADOR ════════════════════════════════════════════════ -->
+      <div class="card">
+        <div class="po-section-title">Buscar ordenes</div>
+
+        <!-- Filtro de estado siempre visible -->
+        <div class="estado-filter-row">
+          <span class="estado-filter-label">Estado:</span>
+          <div class="estado-pills">
+            @for (e of estadoOptions; track e.value) {
+              <button
+                class="badge estado-badge"
+                [class.badge-enviada]="e.value === 'enviada'"
+                [class.badge-editada]="e.value === 'editada'"
+                [class.badge-aprobada]="e.value === 'aprobada'"
+                [class.badge-cancelada]="e.value === 'cancelada'"
+                [class.estado-active]="filter.estado === e.value"
+                (click)="toggleEstadoFilter(e.value)">
+                {{ e.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="filter-type-row">
+          <button class="filter-pill" [class.active]="filterType() === 'numero'"
+            (click)="setFilterType('numero')">Numero de orden</button>
+          <button class="filter-pill" [class.active]="filterType() === 'fecha'"
+            (click)="setFilterType('fecha')">Fecha</button>
+          <button class="filter-pill" [class.active]="filterType() === 'laboratorio'"
+            (click)="setFilterType('laboratorio')">Laboratorio</button>
+        </div>
+
+        <div class="filter-input-row">
+          @if (filterType() === 'numero') {
+            <label>
+              Numero de orden
+              <input [(ngModel)]="filter.numero_oc" placeholder="OC-..." (ngModelChange)="applyFilter()">
+            </label>
+          }
+          @if (filterType() === 'fecha') {
+            <label>
+              Desde
+              <input type="date" [(ngModel)]="filter.fecha_desde" (ngModelChange)="applyFilter()">
+            </label>
+            <label>
+              Hasta
+              <input type="date" [(ngModel)]="filter.fecha_hasta" (ngModelChange)="applyFilter()">
+            </label>
+          }
+          @if (filterType() === 'laboratorio') {
+            <label>
+              Laboratorio
+              <input [(ngModel)]="filter.laboratorio" placeholder="Nombre del laboratorio" (ngModelChange)="applyFilter()">
+            </label>
+          }
+          <button class="btn secondary filter-btn" style="align-self:flex-end" (click)="clearFilter()">Limpiar</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>Consecutivo</th>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Sede</th>
+                <th>Estado</th>
+                <th style="text-align:right">Total</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (loading()) {
+                <tr class="empty-row"><td colspan="7">Cargando...</td></tr>
+              } @else if (filtered().length === 0) {
+                <tr class="empty-row"><td colspan="7">No se encontraron ordenes.</td></tr>
+              } @else {
+                @for (row of filtered(); track row.id_oc) {
+                  <tr>
+                    <td>{{ row.numero_oc }}</td>
+                    <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
+                    <td>{{ row.proveedor }}</td>
+                    <td>{{ row.sede }}</td>
+                    <td>
+                      <span class="badge"
+                        [class.badge-borrador]="row.estado === 'borrador'"
+                        [class.badge-enviada]="row.estado === 'enviada'"
+                        [class.badge-editada]="row.estado === 'editada'"
+                        [class.badge-aprobada]="row.estado === 'aprobada'"
+                        [class.badge-cancelada]="row.estado === 'cancelada'">
+                        {{ row.estado }}
+                      </span>
+                    </td>
+                    <td style="text-align:right">{{ row.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    <td>
+                      <div class="actions-cell">
+                        <button class="btn-action pdf" [disabled]="pdfGenerando() === row.id_oc"
+                                (click)="generarPdfOrden(row)">
+                          {{ pdfGenerando() === row.id_oc ? 'Generando…' : '📄 PDF' }}
+                        </button>
+                        @if (isEditable(row.estado)) {
+                          <button class="btn-action edit" (click)="loadOrderForEdit(row.id_oc)">Editar</button>
+                          <button class="btn-action cancel-oc" (click)="cancelOrder(row.id_oc, row.numero_oc)">Cancelar</button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:0.5rem; font-size:0.8rem; color:#9ca3af">
+          {{ filtered().length }} de {{ allOrders().length }} ordenes
+        </div>
       </div>
     </section>

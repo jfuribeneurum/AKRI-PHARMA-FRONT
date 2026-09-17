@@ -1,3 +1,6 @@
+/* ── espaciado entre tarjetas de la página ──────────────────── */
+    .card + .card { margin-top: 1rem; }
+
 /* ── buscador de MX (igual que Ordenes de Compra) ─────────── */
     .po-mx-combo { position: relative; }
     .po-mx-combo__input { width: 100%; }
