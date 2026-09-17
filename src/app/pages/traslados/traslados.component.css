@@ -1,5 +1,8 @@
+.card + .card { margin-top: 0.6rem; }
+.toolbar { margin-top: 0.6rem; }
+
 /* ── pestañas ─────────────────────────────────────────────── */
-.tab-bar { display:flex; gap:0; border-bottom:2px solid var(--color-border,#e5e7eb); margin-top:1rem; }
+.tab-bar { display:flex; gap:0; border-bottom:2px solid var(--color-border,#e5e7eb); margin-top:1rem; margin-bottom:0.6rem; }
 .tab-btn {
   padding:0.6rem 1.25rem; background:none; border:none; cursor:pointer;
   font-size:0.88rem; font-weight:600; color:#6b7280;

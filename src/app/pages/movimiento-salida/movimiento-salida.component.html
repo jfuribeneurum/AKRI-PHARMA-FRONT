@@ -66,7 +66,7 @@
                       <option [ngValue]="null">-- Seleccionar producto/lote --</option>
                       @for (i of allStock(); track i.id_lote) {
                         <option [ngValue]="i.id_lote">
-                          {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (disp: {{ i.cantidad_disponible }})
+                          {{ i.principio_activo || i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (disp: {{ i.cantidad_disponible }})
                         </option>
                       }
                     </select>
