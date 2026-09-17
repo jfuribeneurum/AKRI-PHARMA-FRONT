@@ -220,16 +220,20 @@ describe('DispensacionPharmaComponent', () => {
   });
 
   describe('getMedEntregaMax', () => {
-    it('is limited by available stock even when more is pending', () => {
+    it('is limited by available stock', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 24, control: null });
       component.stockByMed.set({ 10: [{ cantidad_disponible: 5 }] });
       expect(component.getMedEntregaMax(med)).toBe(5);
     });
 
-    it('is limited by what is pending even when stock is abundant', () => {
+    // A propósito ya NO se limita a "lo pendiente por formular": algunos MX
+    // vienen en unidades de entrega fijas (ej. un pen con varias dosis) y
+    // debe poder entregarse la unidad completa aunque supere lo formulado —
+    // el único límite real es no poder sacar más de lo que hay en stock.
+    it('allows entering more than what is pending, as long as there is stock for it', () => {
       const med = makeMed({ idProductoLocal: 10, cantidad: 24, control: { cantidad_dispensada: 20 } as any });
       component.stockByMed.set({ 10: [{ cantidad_disponible: 500 }] });
-      expect(component.getMedEntregaMax(med)).toBe(4);
+      expect(component.getMedEntregaMax(med)).toBe(500);
     });
 
     it('is zero when the medicamento has no MX product linked', () => {
@@ -356,7 +360,7 @@ describe('DispensacionPharmaComponent', () => {
   });
 
   describe('setDispensadaOverride ("Cant. dispensada" es lo que de verdad sale del inventario)', () => {
-    it('clamps to the lesser of pending and available stock, same as Control de entrega', () => {
+    it('clamps to the available stock (the only real limit — no puede sacar más de lo que hay)', () => {
       const item = makeItem({
         med: makeMed({ idProductoLocal: 10, cantidad: 24, control: null }),
         dispensadaOriginal: 0
@@ -368,6 +372,20 @@ describe('DispensacionPharmaComponent', () => {
 
       const updated = component.modalFormItems()[0];
       expect(updated.cantidadDispensadaOverride).toBe(5);
+    });
+
+    it('allows dispensing more than what was formulated when there is enough stock (unidades de entrega fijas)', () => {
+      const item = makeItem({
+        med: makeMed({ idProductoLocal: 10, cantidad: 3, control: null }), // solo 3 formuladas
+        dispensadaOriginal: 0
+      });
+      component.modalFormItems.set([item]);
+      component.stockByMed.set({ 10: [{ cantidad_disponible: 50 }] }); // el pen trae más unidades
+
+      component.setDispensadaOverride(item, 10); // se entrega el pen completo, más de lo formulado
+
+      const updated = component.modalFormItems()[0];
+      expect(updated.cantidadDispensadaOverride).toBe(10);
     });
 
     it('never touches "Control de entrega"', () => {

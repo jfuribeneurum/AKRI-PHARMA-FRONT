@@ -420,9 +420,13 @@ export class DispensacionPharmaComponent implements OnInit {
   }
 
   // "Cant. dispensada" es lo que físicamente sale del inventario en esta
-  // acción — por eso se acota igual que "Control de entrega" (no puede
-  // superar el stock disponible ni lo que queda pendiente por formular). Si
-  // se deja en 0, no se exige lote porque no se está sacando nada.
+  // acción — se acota solo por el stock disponible (no puedes entregar lo
+  // que no tienes). A propósito NO se limita a "lo pendiente por formular":
+  // algunos MX vienen en unidades de entrega fijas (ej. un pen con varias
+  // dosis) y hay que poder entregar la unidad completa aunque supere lo
+  // formulado; lo que de verdad se entregó siempre queda documentado tal
+  // cual en el soporte/PDF (ver cantidad_dispensada). Si se deja en 0, no
+  // se exige lote porque no se está sacando nada.
   setDispensadaOverride(item: ModalFormItem, value: number) {
     const max = this.getMedEntregaMax(item.med);
     const cantidadDispensadaOverride = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
@@ -455,9 +459,7 @@ export class DispensacionPharmaComponent implements OnInit {
   }
 
   getMedEntregaMax(med: MedicamentoFormulacion): number {
-    const pendiente = this.getMedRestante(med);
-    const stock = med.idProductoLocal ? this.getMedStockTotal(med.idProductoLocal) : 0;
-    return Math.min(pendiente, stock);
+    return med.idProductoLocal ? this.getMedStockTotal(med.idProductoLocal) : 0;
   }
 
   // Clave estable para identificar una fila de stock (un mismo lote puede
