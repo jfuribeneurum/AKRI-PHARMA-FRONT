@@ -157,6 +157,7 @@
                     <th>Lote</th>
                     <th>Vencimiento</th>
                     <th style="text-align:right">Valor total</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,6 +207,11 @@
                         <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
                         <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
                         <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                        <td>
+                          @if (ocItems.length > 1) {
+                            <button class="btn-remove" (click)="removeItem($index)" title="Quitar línea">&times;</button>
+                          }
+                        </td>
                       </tr>
                       @if (item._showMed) {
                         <tr class="med-expand-row">
@@ -251,7 +257,8 @@
             </div>
             <div class="po-items-footer">
               <div class="po-footer-left">
-                <div class="po-section-title" style="margin-bottom:0.6rem">Datos del ingreso</div>
+                <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
+                <div class="po-section-title" style="margin-bottom:0.6rem; margin-top:0.85rem">Datos del ingreso</div>
                 <div class="ing-footer-grid">
                   <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
                   <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
@@ -397,6 +404,7 @@
                     <th>Lote</th>
                     <th>Vencimiento</th>
                     <th style="text-align:right">Valor total</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -446,6 +454,11 @@
                         <td><input [(ngModel)]="item.lote" placeholder="Lote"></td>
                         <td><input type="date" [(ngModel)]="item.fecha_vencimiento"></td>
                         <td class="valor-total-cell">{{ itemTotal(item) | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                        <td>
+                          @if (ocItems.length > 1) {
+                            <button class="btn-remove" (click)="removeItem($index)" title="Quitar línea">&times;</button>
+                          }
+                        </td>
                       </tr>
                       @if (item._showMed) {
                         <tr class="med-expand-row">

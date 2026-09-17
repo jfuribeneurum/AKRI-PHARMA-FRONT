@@ -119,7 +119,7 @@
                       <option [ngValue]="f.id_forma">{{ f.nombre }}</option>
                     }
                   </select>
-                  @if (form.id_medicamento_hs && !form.id_forma) {
+                  @if (requiereFormaFarmaceutica() && form.id_medicamento_hs && !form.id_forma) {
                     <span class="field-hint" style="color:#f59e0b; font-weight:500;">
                       ⚠ Este medicamento no tiene forma farmacéutica en HealthSphere. Debes actualizarlo allí antes de poder guardarlo aquí.
                     </span>
@@ -190,7 +190,7 @@
                   <input type="number" min="1" [(ngModel)]="form.codigo_dci" placeholder="Ej: 12345"
                     [readOnly]="!!form.id_medicamento_hs"
                     [class.hs-filled]="form.id_medicamento_hs">
-                  @if (form.id_medicamento_hs && !form.codigo_dci) {
+                  @if (requiereFormaFarmaceutica() && form.id_medicamento_hs && !form.codigo_dci) {
                     <span class="field-hint" style="color:#f59e0b; font-weight:500;">
                       ⚠ Este medicamento no tiene DCI asociado en HealthSphere.
                     </span>
@@ -278,7 +278,7 @@
 
           <div class="form-actions" style="margin-top:1.5rem;">
             <button class="btn secondary" (click)="closeModal()">Cancelar</button>
-            <button class="btn" (click)="save()" [disabled]="form.id_medicamento_hs && !form.id_forma">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
+            <button class="btn" (click)="save()" [disabled]="requiereFormaFarmaceutica() && form.id_medicamento_hs && !form.id_forma">{{ editingId() ? 'Actualizar producto' : 'Guardar producto' }}</button>
           </div>
         </div>
       </div>

@@ -219,8 +219,15 @@ export class MaestroMxComponent implements OnInit {
     return TIPOS_CON_CUM.has(this.form.tipo_producto);
   }
 
+  // La forma farmacéutica (tableta, jarabe, etc.) solo aplica a medicamentos —
+  // un dispositivo médico o insumo vinculado a HS (ej. una bomba de insulina)
+  // nunca la tiene allá, así que no puede ser un requisito para ellos.
+  requiereFormaFarmaceutica(): boolean {
+    return TIPOS_CON_CUM.has(this.form.tipo_producto);
+  }
+
   private validateForm(): string | null {
-    if (this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
+    if (this.requiereFormaFarmaceutica() && this.form.id_medicamento_hs && !this.form.id_forma) return 'Este medicamento no tiene forma farmacéutica en HealthSphere. Actualízalo allí primero.';
     if (this.form.tipo_producto === 'dispositivo' && !this.form.clasificacion) return 'El campo Clasificación es obligatorio para dispositivos médicos.';
     if (!this.form.tipo_producto) return 'El campo Tipo de producto es obligatorio.';
     if (!this.form.presentacion) return 'El campo Presentación es obligatorio.';

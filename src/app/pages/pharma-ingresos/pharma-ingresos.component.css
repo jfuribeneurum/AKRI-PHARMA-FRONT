@@ -1,6 +1,11 @@
 /* ── espaciado entre tarjetas de la página ──────────────────── */
     .card + .card { margin-top: 1rem; }
 
+    .btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; padding: 0 0.3rem; line-height: 1; }
+    .btn-remove:hover { color: #b91c1c; }
+    :host-context([data-theme="dark"]) .btn-remove { color: var(--danger); }
+    :host-context([data-theme="dark"]) .btn-remove:hover { color: #FCA5A5; }
+
 /* ── buscador de MX (igual que Ordenes de Compra) ─────────── */
     .po-mx-combo { position: relative; }
     .po-mx-combo__input { width: 100%; }

@@ -643,6 +643,14 @@ export class PharmaIngresosComponent implements OnInit {
     this.ocItems.push(this.emptyOcItem());
   }
 
+  // Permite quitar líneas también cuando el ingreso viene precargado desde
+  // una OC: puede llegar mercancía distinta a lo pedido (faltantes, cambios
+  // de lote del proveedor) y hay que poder ajustar el detalle real recibido.
+  removeItem(index: number) {
+    if (this.ocItems.length <= 1) return;
+    this.ocItems.splice(index, 1);
+  }
+
   private async precargarDesdeOrden(oc: any) {
     this.limpiar();
     // El ingreso necesita su propio consecutivo ING-XXX — antes se usaba por
