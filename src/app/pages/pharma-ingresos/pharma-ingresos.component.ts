@@ -40,6 +40,12 @@ export class PharmaIngresosComponent implements OnInit {
   ocItems: any[] = [this.emptyOcItem()];
   ingresoExtra: any = this.emptyIngresoExtra();
 
+  // Fotografía de los códigos que trajo la OC original (antes de que el
+  // usuario agregue/quite filas) — permite calcular al guardar cuáles
+  // productos son distintos a lo que la orden pedía, para dejar eso
+  // registrado en la trazabilidad del ingreso.
+  private ocItemsOriginales: string[] = [];
+
   ingreso: any = this.emptyIngreso();
   factura: any = this.emptyFactura();
 
@@ -716,9 +722,13 @@ export class PharmaIngresosComponent implements OnInit {
       i++;
     }
     this.ocItems = parsedItems.length > 0 ? parsedItems : [this.emptyOcItem()];
-    for (const item of this.ocItems) {
-      if (item.codigo) await this.autoFillMedFromCodigo(item);
-    }
+    this.ocItemsOriginales = this.ocItems.filter((it) => it.codigo).map((it) => it.codigo);
+    // En paralelo — antes se esperaba item por item (await dentro del for),
+    // así que con varios productos el detalle se iba llenando fila por fila
+    // en vez de aparecer todo junto.
+    await Promise.all(
+      this.ocItems.filter((item) => item.codigo).map((item) => this.autoFillMedFromCodigo(item))
+    );
   }
 
   private parseObservaciones(obs: string): Record<string, string> {
@@ -825,7 +835,6 @@ export class PharmaIngresosComponent implements OnInit {
       if (!item.presentacion && p.forma_farmaceutica) item.presentacion = p.forma_farmaceutica;
       // fallback: laboratorio desde detalle si el listado no lo trajo
       if (!item.laboratorio && p.laboratorio?.nombre) item.laboratorio = p.laboratorio.nombre;
-      item._showMed = true;
       this.cdr.markForCheck();
     } catch { /* silently ignore — product not found or network error */ }
   }
@@ -916,10 +925,17 @@ export class PharmaIngresosComponent implements OnInit {
     this.ocMeta = this.emptyOcMeta();
     this.ocItems = [this.emptyOcItem()];
     this.ingresoExtra = this.emptyIngresoExtra();
+    this.ocItemsOriginales = [];
   }
 
   private ingresoConOrdenPayload() {
     const items = this.ocItems.filter(i => Number(i.cantidad) > 0);
+    const codigosActuales = items.filter((i) => i.codigo).map((i) => i.codigo);
+    // Diferencia contra lo que trajo la OC — queda en la trazabilidad del
+    // ingreso para poder ver, sin comparar tablas a mano, qué se recibió
+    // distinto a lo pedido (faltantes, cambios de MX del proveedor, etc.).
+    const productosAgregados = codigosActuales.filter((c) => !this.ocItemsOriginales.includes(c));
+    const productosQuitados = this.ocItemsOriginales.filter((c) => !codigosActuales.includes(c));
     const facturaStr = [this.ingresoExtra.prefijo_factura, this.ingresoExtra.numero_factura].filter(Boolean).join('');
 
     return {
@@ -935,6 +951,9 @@ export class PharmaIngresosComponent implements OnInit {
       cufe:                this.ingresoExtra.cufe || null,
       fecha_recepcion:     this.ingresoExtra.fecha_recepcion || null,
       observaciones:       this.ingresoExtra.observaciones || null,
+      // Trazabilidad del cambio respecto a la OC original
+      productos_agregados: productosAgregados,
+      productos_quitados:  productosQuitados,
       // Orden / sede
       numero_orden_compra: this.ocMeta.numero_oc || null,
       sede:                this.ocMeta.sede || null,

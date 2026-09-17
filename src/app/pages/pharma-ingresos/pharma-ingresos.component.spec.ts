@@ -104,3 +104,144 @@ describe('PharmaIngresosComponent — acta de recepción técnica (PDF)', () => 
     expect(htmlConNoCumple).toContain('gestionarse conforme al procedimiento de rechazo');
   });
 });
+
+// Cubre el pedido del usuario: al agregar/quitar MX en un ingreso con OC
+// precargada, ¿el guardado (POST /ingresos) refleja exactamente lo que quedó
+// en pantalla? El payload se reconstruye desde this.ocItems en el momento de
+// guardar (ingresoConOrdenPayload), así que un producto quitado nunca debe
+// viajar al backend y uno agregado siempre debe viajar, sin depender de lo
+// que la OC original traía.
+function makeOcItem(overrides: Partial<any> = {}): any {
+  return {
+    id_producto: 0, product_key: '', productoFiltro: '',
+    codigo: '', nombre: '', laboratorio: '', cantidad: 0, valor_unitario: 0,
+    lote: '', fecha_vencimiento: '',
+    _showMed: false,
+    registro_invima: '', cum: '', consecutivo_cum: '',
+    presentacion: '', iva: 0, temperatura: '', cumple: null as (boolean | null),
+    descuento_pct: 0, descuento_valor: 0,
+    ...overrides
+  };
+}
+
+describe('PharmaIngresosComponent — agregar/quitar MX en ingreso con orden de compra', () => {
+  let component: PharmaIngresosComponent;
+  let api: ApiService;
+
+  beforeEach(() => {
+    api = makeApiStub();
+    component = new PharmaIngresosComponent(
+      api,
+      {} as unknown as ChangeDetectorRef,
+      { activeAlmacenId: () => 6 } as unknown as SiteContextService
+    );
+    (component as any).ocMeta = {
+      consecutivo: 'ING-001', numero_oc: 'OC-0001', fecha: '2026-09-17',
+      id_sede: 1, id_almacen: 6, sede: 'Sede Test', bodega: 'Bodega Test',
+      direccion_sede: '', ciudad_sede: '',
+      id_proveedor: 10, proveedor_nombre: 'Distribuidora Prueba', proveedor_nit: '900111222',
+      proveedor_contacto: '', proveedor_telefono: '', proveedor_direccion: ''
+    };
+    (component as any).ingresoExtra = {
+      prefijo_factura: 'FV', numero_factura: 1, fecha_factura: '2026-09-17',
+      cufe: '', fecha_recepcion: '2026-09-17', observaciones: ''
+    };
+    // Simula lo que precargarDesdeOrden() dejaría en pantalla: 2 items
+    // que vinieron de la OC original, y la fotografía que precargarDesdeOrden()
+    // toma de esos mismos códigos antes de que el usuario edite nada.
+    component.ocItems = [
+      makeOcItem({ codigo: 'MX1', nombre: 'ACETAMINOFEN 500MG', laboratorio: 'GENFAR', cantidad: 10, valor_unitario: 20000, cumple: true }),
+      makeOcItem({ codigo: 'MX2', nombre: 'IBUPROFENO 400MG', laboratorio: 'PROCAPS', cantidad: 5, valor_unitario: 15000, cumple: true }),
+    ];
+    (component as any).ocItemsOriginales = ['MX1', 'MX2'];
+  });
+
+  it('agregarItem() agrega una fila nueva y vacía al final, sin tocar las existentes', () => {
+    component.agregarItem();
+    expect(component.ocItems.length).toBe(3);
+    expect(component.ocItems[2].codigo).toBe('');
+    expect(component.ocItems[0].codigo).toBe('MX1');
+    expect(component.ocItems[1].codigo).toBe('MX2');
+  });
+
+  it('removeItem() quita exactamente la fila indicada y deja las demás intactas', () => {
+    component.removeItem(0);
+    expect(component.ocItems.length).toBe(1);
+    expect(component.ocItems[0].codigo).toBe('MX2');
+  });
+
+  it('removeItem() no deja la lista de detalle vacía (protege el mínimo de 1 fila)', () => {
+    component.removeItem(0);
+    component.removeItem(0);
+    expect(component.ocItems.length).toBe(1);
+  });
+
+  it('el payload de guardado excluye un producto quitado', () => {
+    component.removeItem(0); // quita MX1, queda solo MX2
+    const payload = (component as any).ingresoConOrdenPayload();
+    expect(payload.items.length).toBe(1);
+    expect(payload.items[0].codigo).toBe('MX2');
+    expect(payload.items.some((i: any) => i.codigo === 'MX1')).toBe(false);
+  });
+
+  it('el payload de guardado incluye un producto agregado que no venía en la OC', () => {
+    component.agregarItem();
+    Object.assign(component.ocItems[2], {
+      codigo: 'MX3', nombre: 'LORATADINA 10MG', laboratorio: 'TECNOQUIMICAS',
+      cantidad: 8, valor_unitario: 9000, cumple: true
+    });
+    const payload = (component as any).ingresoConOrdenPayload();
+    expect(payload.items.length).toBe(3);
+    expect(payload.items.find((i: any) => i.codigo === 'MX3')).toEqual(
+      expect.objectContaining({ codigo: 'MX3', nombre: 'LORATADINA 10MG', cantidad: 8, valor_unitario: 9000 })
+    );
+  });
+
+  it('crearIngreso() envía al backend exactamente el detalle tras quitar uno y agregar otro (trazabilidad del guardado real)', async () => {
+    component.removeItem(0); // quita MX1
+    component.agregarItem();
+    Object.assign(component.ocItems[1], {
+      codigo: 'MX3', nombre: 'LORATADINA 10MG', laboratorio: 'TECNOQUIMICAS',
+      cantidad: 8, valor_unitario: 9000, cumple: true
+    });
+    (api.post as any).mockResolvedValue({});
+
+    await component.crearIngreso();
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    const [endpoint, payload] = (api.post as any).mock.calls[0];
+    expect(endpoint).toBe('/ingresos');
+    expect(payload.items.length).toBe(2);
+    expect(payload.items.some((i: any) => i.codigo === 'MX1')).toBe(false); // el quitado nunca viaja
+    expect(payload.items.some((i: any) => i.codigo === 'MX2')).toBe(true); // el que se mantuvo sí viaja
+    expect(payload.items.some((i: any) => i.codigo === 'MX3')).toBe(true); // el agregado sí viaja
+    // El backend liga el ingreso a la OC vía numero_orden_compra — con eso
+    // basta para poder comparar después qué pidió la OC vs qué se recibió.
+    expect(payload.numero_orden_compra).toBe('OC-0001');
+    // Y además el payload ya trae la diferencia calculada explícitamente,
+    // para que quede en la traza sin tener que comparar tablas a mano.
+    expect(payload.productos_agregados).toEqual(['MX3']);
+    expect(payload.productos_quitados).toEqual(['MX1']);
+  });
+
+  it('el payload no marca cambios cuando el detalle final es igual al de la OC original', () => {
+    // No se toca nada: mismos 2 items que trajo la OC.
+    const payload = (component as any).ingresoConOrdenPayload();
+    expect(payload.productos_agregados).toEqual([]);
+    expect(payload.productos_quitados).toEqual([]);
+  });
+
+  it('crearIngreso() no guarda nada si falta diligenciar el cumplimiento de un producto agregado', async () => {
+    component.agregarItem();
+    Object.assign(component.ocItems[2], {
+      codigo: 'MX4', nombre: 'DICLOFENACO 50MG', cantidad: 3, valor_unitario: 5000
+      // cumple queda null a propósito
+    });
+    (api.post as any).mockResolvedValue({});
+
+    await component.crearIngreso();
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(component.error()).toContain('cumplimiento');
+  });
+});
