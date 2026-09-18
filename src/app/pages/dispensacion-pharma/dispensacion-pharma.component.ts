@@ -1022,6 +1022,13 @@ export class DispensacionPharmaComponent implements OnInit {
       const rows = Array.isArray(histRes) ? histRes : (histRes?.data ?? []);
       for (const r of rows) {
         if (r.id_med_formulacion_hs == null) continue;
+        // Una entrega anulada (ver anularEntregaHS en el backend, que ya
+        // marca cada fila con `anulado`) repuso el inventario y volvió a
+        // quedar pendiente — sumarla aquí igual que una entrega real hacía
+        // que el medicamento se viera "Completado" y quedara bloqueado para
+        // volver a dispensarlo, aunque dispensacion_hs_control.cantidad_dispensada
+        // ya estuviera correctamente en 0.
+        if (r.anulado) continue;
         entregadoReal[r.id_med_formulacion_hs] = (entregadoReal[r.id_med_formulacion_hs] ?? 0) + Number(r.cantidad || 0);
       }
     } catch { /* si falla, se usa el acumulado cacheado como respaldo */ }
@@ -1287,6 +1294,11 @@ export class DispensacionPharmaComponent implements OnInit {
     const usuarios = new Set<string>();
     for (const g of cronologico) {
       for (const it of g.items) {
+        // Una entrega anulada no salió realmente del inventario (se repuso al
+        // anularla, ver anularEntregaHS) — igual que en pantalla, donde queda
+        // tachada con la etiqueta "Anulado", no debe contarse aquí ni aparecer
+        // como una línea real dispensada en el soporte/PDF.
+        if (it.anulado) continue;
         const nombre = it.nombre_medicamento;
         acumulado[nombre] = (acumulado[nombre] ?? 0) + Number(it.cantidad);
         if (it.usuario) usuarios.add(it.usuario);
@@ -1359,17 +1371,22 @@ export class DispensacionPharmaComponent implements OnInit {
     const acumuladoDespues: Record<string, number> = {};
     for (let i = 0; i <= idx; i++) {
       for (const it of cronologico[i].items) {
+        // Ver el mismo filtro en generarPdfSoportesGeneral: una entrega
+        // anulada no salió realmente del inventario y no debe contarse.
+        if (it.anulado) continue;
         const nombre = it.nombre_medicamento;
         acumuladoDespues[nombre] = (acumuladoDespues[nombre] ?? 0) + Number(it.cantidad);
       }
     }
 
-    const items = grupo.items.map(it => ({
-      nombre_medicamento: it.nombre_medicamento,
-      numero_lote: it.numero_lote,
-      cantidad_dispensada: it.cantidad,
-      cantidad_pendiente: Math.max(0, (formuladaPorMed[it.nombre_medicamento] ?? 0) - (acumuladoDespues[it.nombre_medicamento] ?? 0))
-    }));
+    const items = grupo.items
+      .filter(it => !it.anulado)
+      .map(it => ({
+        nombre_medicamento: it.nombre_medicamento,
+        numero_lote: it.numero_lote,
+        cantidad_dispensada: it.cantidad,
+        cantidad_pendiente: Math.max(0, (formuladaPorMed[it.nombre_medicamento] ?? 0) - (acumuladoDespues[it.nombre_medicamento] ?? 0))
+      }));
 
     // La página "Pendiente" solo es para medicamentos que no recibieron NADA
     // en la ronda (ver noDispensablesAhora en saveDispensacion). Un soporte

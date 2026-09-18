@@ -1424,4 +1424,165 @@ describe('DispensacionPharmaComponent', () => {
       expect(component.getEstadoClass('rareza')).toBe('');
     });
   });
+
+  // Bug real reportado: un medicamento al que se le anuló una entrega previa
+  // (ver anularEntregaHS en el backend) quedaba "atascado" como Completado
+  // para siempre — el modal sumaba esa entrega anulada como si siguiera
+  // dispensada, aunque dispensacion_hs_control.cantidad_dispensada ya
+  // estuviera correctamente en 0. Pasaba sobre todo con medicamentos
+  // formulados por 30 días desde la historia clínica, donde es común anular
+  // y reintentar una entrega.
+  describe('openFormulacionModal — histórico de entregas (dispensadaOriginal)', () => {
+    it('does not count an anulada entrega as already dispensed, so the medicamento is dispensable again', async () => {
+      (api.get as any).mockImplementation((url: string) => {
+        if (url === '/formulaciones-hs/349915') {
+          return Promise.resolve({
+            data: {
+              id_formulacion: 349915,
+              medicamentos: [
+                makeMed({
+                  id_med_formulacion: 505283,
+                  idProductoLocal: 264,
+                  nombre_medicamento: 'EZETIMIBE 10 MG + ROSUVASTATINA 40 MG TABLETA RECUBIERTA',
+                  cantidad: 30,
+                  control: { estado: 'pendiente', cantidad_dispensada: 0 }
+                })
+              ]
+            }
+          });
+        }
+        if (url === '/dispensacion-hs/formulacion/349915/historial') {
+          return Promise.resolve({
+            data: [
+              { id_med_formulacion_hs: 505283, cantidad: 30, anulado: true }
+            ]
+          });
+        }
+        return Promise.resolve({ data: [] });
+      });
+
+      component.selectedDetail.set({ id_formulacion: 349915 } as any);
+      await component.openFormulacionModal();
+
+      const [item] = component.modalFormItems();
+      expect(item.dispensadaOriginal).toBe(0);
+      expect(component.getPendiente(item)).toBe(30);
+      expect(component.tienePendientePorFormular(item)).toBe(true);
+    });
+
+    it('still counts a non-anulada entrega as dispensed', async () => {
+      (api.get as any).mockImplementation((url: string) => {
+        if (url === '/formulaciones-hs/1') {
+          return Promise.resolve({
+            data: {
+              id_formulacion: 1,
+              medicamentos: [makeMed({ id_med_formulacion: 5, cantidad: 30 })]
+            }
+          });
+        }
+        if (url === '/dispensacion-hs/formulacion/1/historial') {
+          return Promise.resolve({
+            data: [{ id_med_formulacion_hs: 5, cantidad: 12, anulado: false }]
+          });
+        }
+        return Promise.resolve({ data: [] });
+      });
+
+      component.selectedDetail.set({ id_formulacion: 1 } as any);
+      await component.openFormulacionModal();
+
+      const [item] = component.modalFormItems();
+      expect(item.dispensadaOriginal).toBe(12);
+      expect(component.getPendiente(item)).toBe(18);
+    });
+
+    it('sums only the non-anulada entregas when a medicamento has both', async () => {
+      (api.get as any).mockImplementation((url: string) => {
+        if (url === '/formulaciones-hs/1') {
+          return Promise.resolve({
+            data: {
+              id_formulacion: 1,
+              medicamentos: [makeMed({ id_med_formulacion: 5, cantidad: 30 })]
+            }
+          });
+        }
+        if (url === '/dispensacion-hs/formulacion/1/historial') {
+          return Promise.resolve({
+            data: [
+              { id_med_formulacion_hs: 5, cantidad: 30, anulado: true },
+              { id_med_formulacion_hs: 5, cantidad: 10, anulado: false }
+            ]
+          });
+        }
+        return Promise.resolve({ data: [] });
+      });
+
+      component.selectedDetail.set({ id_formulacion: 1 } as any);
+      await component.openFormulacionModal();
+
+      const [item] = component.modalFormItems();
+      expect(item.dispensadaOriginal).toBe(10);
+      expect(component.getPendiente(item)).toBe(20);
+    });
+  });
+
+  // Mismo bug reportado por el usuario, pero en los PDF de soportes de
+  // entrega: el histórico anulado se seguía imprimiendo como una entrega real
+  // (con su cantidad sumada al acumulado y sin ninguna marca de "Anulado"),
+  // aunque la lista en pantalla ya lo mostraba correctamente tachado.
+  describe('generarPdfSoportesGeneral / verSoportePdf — excluyen las entregas anuladas del PDF', () => {
+    function setSoportesListado(medFormulada: number, grupos: { fecha: Date; items: any[] }[]) {
+      component.soportesListDetail.set({
+        nombre_paciente: 'ROSA MARIA CORRALES HENAO',
+        documento_paciente: '43589749',
+        medicamentos: [makeMed({ nombre_medicamento: 'SEMAGLUTIDA', cantidad: medFormulada })]
+      } as any);
+      component.soportesListGrupos.set(grupos);
+    }
+
+    it('generarPdfSoportesGeneral() no incluye una entrega anulada como línea del PDF consolidado', () => {
+      const spy = vi.spyOn(component as any, 'generarSoporteEntrega').mockImplementation(() => {});
+      setSoportesListado(3, [
+        {
+          fecha: new Date('2026-09-18T11:06:00'),
+          items: [
+            { nombre_medicamento: 'SEMAGLUTIDA', numero_lote: 'RP5T712', cantidad: 1, anulado: true, usuario: 'ANA MILENA RUIZ' },
+            { nombre_medicamento: 'SEMAGLUTIDA', numero_lote: 'RP5T900', cantidad: 2, anulado: false, usuario: 'ANA MILENA RUIZ' }
+          ]
+        }
+      ]);
+
+      component.generarPdfSoportesGeneral();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      const data = spy.mock.calls[0][0] as any;
+      expect(data.items).toHaveLength(1);
+      expect(data.items[0].numero_lote).toBe('RP5T900');
+      expect(data.items[0].cantidad_dispensada).toBe(2);
+      // Pendiente calculado sobre lo realmente vigente (3 formulado - 2 real = 1),
+      // no sobre 3 - (1 anulado + 2 vigente) = 0.
+      expect(data.items[0].cantidad_pendiente).toBe(1);
+    });
+
+    it('verSoportePdf() no incluye una entrega anulada como línea del soporte de esa ronda puntual', () => {
+      const spy = vi.spyOn(component as any, 'generarSoporteEntrega').mockImplementation(() => {});
+      const grupo = {
+        fecha: new Date('2026-09-18T11:06:00'),
+        items: [
+          { nombre_medicamento: 'SEMAGLUTIDA', numero_lote: 'RP5T712', cantidad: 1, anulado: true },
+          { nombre_medicamento: 'SEMAGLUTIDA', numero_lote: 'RP5T900', cantidad: 2, anulado: false }
+        ]
+      };
+      setSoportesListado(3, [grupo]);
+
+      component.verSoportePdf(grupo);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      const data = spy.mock.calls[0][0] as any;
+      expect(data.items).toHaveLength(1);
+      expect(data.items[0].numero_lote).toBe('RP5T900');
+      expect(data.items[0].cantidad_dispensada).toBe(2);
+      expect(data.items[0].cantidad_pendiente).toBe(1);
+    });
+  });
 });
