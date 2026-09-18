@@ -797,7 +797,11 @@ export class PharmaPurchaseOrderComponent implements OnInit {
           precio_venta: Number(i.precio_venta ?? 0),
           costo_referencia: Number(i.costo_referencia ?? 0),
           descuento: 0,
-          impuesto: 0,
+          // Antes se mandaba fijo en 0 — el backend suma este campo tal cual
+          // para guardar ordenes_compra.impuestos, así que el IVA calculado
+          // en pantalla (itemIvaValue, según iva_tasa del MX) nunca llegaba a
+          // guardarse y el PDF de la orden siempre mostraba "IVA: 0,00".
+          impuesto: this.itemIvaValue(i),
           fecha_requerida: null
         }))
     };

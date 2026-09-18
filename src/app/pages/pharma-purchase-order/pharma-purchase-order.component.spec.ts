@@ -52,6 +52,29 @@ describe('PharmaPurchaseOrderComponent — creación de orden de compra', () => 
       ]);
     });
 
+    // Bug real reportado: el PDF de la orden siempre mostraba "IVA: 0,00"
+    // aunque el MX tuviera IVA real en el Maestro MX — buildPayload() mandaba
+    // "impuesto: 0" fijo para cada línea en vez de itemIvaValue(item), así que
+    // el backend guardaba ordenes_compra.impuestos = 0 sin importar la tasa.
+    it('manda el IVA real de cada línea (itemIvaValue), no 0 fijo', () => {
+      component.labProducts.set([{ id_producto: 451, iva_tasa: 19 }]);
+      component.items = [makeItem({ id_producto: 451, cantidad: 10, valor_unitario: 5000 })];
+
+      const payload: any = (component as any).buildPayload();
+
+      // itemTotal = 10 * 5000 = 50000; IVA 19% = 9500
+      expect(payload.items[0].impuesto).toBe(9500);
+    });
+
+    it('manda impuesto 0 cuando el MX no tiene IVA (o no se resuelve el producto)', () => {
+      component.labProducts.set([{ id_producto: 451, iva_tasa: 0 }]);
+      component.items = [makeItem({ id_producto: 451 })];
+
+      const payload: any = (component as any).buildPayload();
+
+      expect(payload.items[0].impuesto).toBe(0);
+    });
+
     it('excluye una fila con cantidad escrita pero sin MX seleccionado (id_producto = 0), en vez de mandarla como producto id 1', () => {
       component.items = [
         makeItem({ id_producto: 451, cantidad: 10 }),
