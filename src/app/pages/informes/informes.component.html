@@ -1,0 +1,58 @@
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Informes</h1>
+      <p class="page-subtitle">Reportes e indicadores de la operación.</p>
+    </div>
+  </div>
+
+  @if (message()) { <div class="success-box">{{ message() }}</div> }
+  @if (error()) { <div class="error-box">{{ error() }}</div> }
+
+  <div class="card informes-filters">
+    <div class="f-field">
+      <label>Desde</label>
+      <input type="date" [(ngModel)]="desde">
+    </div>
+    <div class="f-field">
+      <label>Hasta</label>
+      <input type="date" [(ngModel)]="hasta">
+    </div>
+    <div class="f-field">
+      <label>Sede / Bodega</label>
+      <select [(ngModel)]="idSede">
+        <option [ngValue]="''">Todas las sedes</option>
+        @for (s of siteContext.sedes(); track s.id_sede) {
+          <option [ngValue]="s.id_sede">{{ s.nombre }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="informes-grid">
+    @for (r of reports; track r.key) {
+      <div class="informe-card">
+        <div class="informe-top">
+          <div class="informe-icon" [style.background]="categoriaOf(r).color + '1A'" [style.color]="categoriaOf(r).color">
+            <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="8"/></svg>
+          </div>
+          <span class="status-pill" [class]="'status-' + r.estado">{{ statusLabel[r.estado] }}</span>
+        </div>
+        <p class="informe-name">{{ r.nombre }}</p>
+        <p class="informe-desc">{{ r.descripcion }}</p>
+        <div class="informe-foot">
+          <span class="informe-cat">
+            <span class="cat-dot" [style.background]="categoriaOf(r).color"></span>
+            {{ categoriaOf(r).label }}
+          </span>
+          <button
+            class="informe-btn"
+            [disabled]="r.estado !== 'ready' || downloadingKey() === r.key"
+            (click)="onGenerar(r)">
+            {{ downloadingKey() === r.key ? 'Generando…' : (r.estado === 'ready' ? 'Excel' : (r.estado === 'blocked' ? 'Bloqueado' : 'En construcción')) }}
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</section>

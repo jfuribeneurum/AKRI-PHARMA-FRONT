@@ -203,6 +203,7 @@ export class ShellComponent {
       ]
     },
     { path: '/dispensing-pharma', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },
+    { path: '/informes', label: 'Informes', any: [] },
     {
       label: 'Otros',
       any: [],

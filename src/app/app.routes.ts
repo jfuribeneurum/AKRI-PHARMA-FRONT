@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'pharma-ingresos',     loadComponent: () => import('./pages/pharma-ingresos/pharma-ingresos.component').then(m => m.PharmaIngresosComponent) },
       { path: 'dispensing',          loadComponent: () => import('./pages/dispensing/dispensing.component').then(m => m.DispensingComponent) },
       { path: 'dispensing-pharma',   loadComponent: () => import('./pages/dispensacion-pharma/dispensacion-pharma.component').then(m => m.DispensacionPharmaComponent) },
+      { path: 'informes',            loadComponent: () => import('./pages/informes/informes.component').then(m => m.InformesComponent) },
       { path: 'cold-chain',          loadComponent: () => import('./pages/cold-chain/cold-chain.component').then(m => m.ColdChainComponent) },
       { path: 'billing',             loadComponent: () => import('./pages/billing/billing.component').then(m => m.BillingComponent) },
       { path: 'reports',             loadComponent: () => import('./pages/reports/reports.component').then(m => m.ReportsComponent) },
