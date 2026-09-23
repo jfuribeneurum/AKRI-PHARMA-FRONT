@@ -31,6 +31,84 @@
   font-family: inherit;
 }
 
+.contratos-dropdown {
+  position: relative;
+}
+
+.contratos-dropdown summary {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  list-style: none;
+  min-width: 170px;
+}
+
+.contratos-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.contratos-dropdown[open] summary {
+  border-color: var(--primary);
+}
+
+.contratos-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  width: max(340px, 100%);
+  max-width: min(420px, 90vw);
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 9px;
+  padding: 0.35rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.contrato-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.contrato-opt + .contrato-opt {
+  border-top: 1px solid var(--line);
+}
+
+.contrato-opt input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin-top: 0.15rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.contrato-opt:hover {
+  background: var(--surface-muted);
+}
+
+.contratos-empty {
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 0.3rem 0.4rem;
+}
+
 .informes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));

@@ -27,6 +27,26 @@
         }
       </select>
     </div>
+    <div class="f-field">
+      <label>Contratos</label>
+      <details class="contratos-dropdown">
+        <summary>{{ contratosSeleccionados().length ? contratosSeleccionados().length + ' seleccionado(s)' : 'Todos los contratos' }}</summary>
+        <div class="contratos-list">
+          @for (c of contratoOptions(); track c.valor) {
+            <label class="contrato-opt">
+              <input
+                type="checkbox"
+                [checked]="contratosSeleccionados().includes(c.valor)"
+                (change)="onContratoToggle(c.valor, $any($event.target).checked)">
+              {{ c.etiqueta }}
+            </label>
+          }
+          @if (!contratoOptions().length) {
+            <span class="contratos-empty">Sin contratos configurados</span>
+          }
+        </div>
+      </details>
+    </div>
   </div>
 
   <div class="informes-grid">
