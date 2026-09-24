@@ -75,4 +75,23 @@
       </div>
     }
   </div>
+
+  @if (descargaModal(); as modal) {
+    <div class="modal-backdrop" (click)="cerrarDescargaModal()">
+      <div class="modal-panel descarga-panel" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h3>Informe descargado</h3>
+            <div class="helper">{{ modal.nombre }}</div>
+          </div>
+        </div>
+        <ul class="descarga-filtros">
+          @for (f of modal.filtros; track f.label) {
+            <li><span class="df-label">{{ f.label }}</span><span class="df-valor">{{ f.valor }}</span></li>
+          }
+        </ul>
+        <button class="informe-btn descarga-cerrar" (click)="cerrarDescargaModal()">Cerrar</button>
+      </div>
+    </div>
+  }
 </section>

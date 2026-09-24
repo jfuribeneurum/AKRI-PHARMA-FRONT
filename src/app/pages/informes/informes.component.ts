@@ -71,6 +71,10 @@ export class InformesComponent implements OnInit {
   readonly error = signal('');
   readonly downloadingKey = signal<string | null>(null);
 
+  // Modal de confirmación de descarga: muestra el nombre del informe y los
+  // filtros con los que se generó, para que quede claro qué se descargó.
+  readonly descargaModal = signal<{ nombre: string; filtros: { label: string; valor: string }[] } | null>(null);
+
   desde = '';
   hasta = '';
   idSede: number | '' = '';
@@ -131,10 +135,35 @@ export class InformesComponent implements OnInit {
 
       await this.api.download(`${r.path}?${params.toString()}`, `akripharmacy-${r.key}.xls`);
       this.message.set(`${r.nombre} exportado.`);
+      this.descargaModal.set({ nombre: r.nombre, filtros: this.filtrosAplicados() });
     } catch (err: any) {
       this.error.set(err?.error?.message || `No fue posible exportar ${r.nombre}.`);
     } finally {
       this.downloadingKey.set(null);
     }
+  }
+
+  private filtrosAplicados(): { label: string; valor: string }[] {
+    const filtros: { label: string; valor: string }[] = [];
+    filtros.push({ label: 'Desde', valor: this.desde || 'Sin definir' });
+    filtros.push({ label: 'Hasta', valor: this.hasta || 'Sin definir' });
+
+    const sede = this.idSede ? this.siteContext.sedes().find(s => s.id_sede === this.idSede) : null;
+    filtros.push({ label: 'Sede / Bodega', valor: sede?.nombre ?? 'Todas las sedes' });
+
+    const contratos = this.contratosSeleccionados();
+    const etiquetasContratos = contratos.length
+      ? this.contratoOptions()
+          .filter(c => contratos.includes(c.valor))
+          .map(c => c.etiqueta)
+          .join(', ')
+      : 'Todos los contratos';
+    filtros.push({ label: 'Contratos', valor: etiquetasContratos });
+
+    return filtros;
+  }
+
+  cerrarDescargaModal() {
+    this.descargaModal.set(null);
   }
 }

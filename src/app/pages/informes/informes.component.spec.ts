@@ -63,6 +63,63 @@ describe('InformesComponent', () => {
     expect(component.message()).toContain('RIPS');
   });
 
+  it('onGenerar() abre el modal de confirmación con el nombre del informe y "sin filtros" cuando no hay ninguno', async () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    (api.download as any).mockResolvedValue('akripharmacy-rips.xls');
+
+    await component.onGenerar(rips);
+
+    const modal = component.descargaModal();
+    expect(modal?.nombre).toBe('Facturación — RIPS');
+    expect(modal?.filtros).toEqual([
+      { label: 'Desde', valor: 'Sin definir' },
+      { label: 'Hasta', valor: 'Sin definir' },
+      { label: 'Sede / Bodega', valor: 'Todas las sedes' },
+      { label: 'Contratos', valor: 'Todos los contratos' }
+    ]);
+  });
+
+  it('onGenerar() muestra en el modal los filtros de fecha, sede y contratos aplicados', async () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    component.desde = '2026-09-01';
+    component.hasta = '2026-09-30';
+    component.idSede = 3;
+    component.contratoOptions.set([{ valor: 'contrato_a', etiqueta: 'Contrato A' }]);
+    component.onContratoToggle('contrato_a', true);
+    (component.siteContext.sedes as any) = () => [{ id_sede: 3, nombre: 'Sede Pereira' }];
+    (api.download as any).mockResolvedValue('akripharmacy-rips.xls');
+
+    await component.onGenerar(rips);
+
+    const modal = component.descargaModal();
+    expect(modal?.filtros).toEqual([
+      { label: 'Desde', valor: '2026-09-01' },
+      { label: 'Hasta', valor: '2026-09-30' },
+      { label: 'Sede / Bodega', valor: 'Sede Pereira' },
+      { label: 'Contratos', valor: 'Contrato A' }
+    ]);
+  });
+
+  it('cerrarDescargaModal() limpia el modal', async () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    (api.download as any).mockResolvedValue('akripharmacy-rips.xls');
+    await component.onGenerar(rips);
+    expect(component.descargaModal()).not.toBeNull();
+
+    component.cerrarDescargaModal();
+
+    expect(component.descargaModal()).toBeNull();
+  });
+
+  it('onGenerar() no abre el modal cuando la descarga falla', async () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    (api.download as any).mockRejectedValue({ error: { message: 'Sin permisos' } });
+
+    await component.onGenerar(rips);
+
+    expect(component.descargaModal()).toBeNull();
+  });
+
   it('onGenerar() incluye desde/hasta/id_sede en la query cuando están seleccionados', async () => {
     const rips = component.reports.find(r => r.key === 'rips')!;
     component.desde = '2026-09-01';

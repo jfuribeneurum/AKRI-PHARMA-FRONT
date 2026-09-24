@@ -239,3 +239,70 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-panel {
+  background: var(--surface, #fff);
+  border-radius: 18px;
+  padding: 1.6rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.modal-header h3 {
+  margin: 0 0 0.25rem;
+}
+
+.modal-header .helper {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.descarga-filtros {
+  list-style: none;
+  margin: 1.1rem 0 1.3rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.descarga-filtros li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.descarga-filtros li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.df-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.df-valor {
+  font-weight: 600;
+  text-align: right;
+}
+
+.descarga-cerrar {
+  width: 100%;
+  text-align: center;
+}
