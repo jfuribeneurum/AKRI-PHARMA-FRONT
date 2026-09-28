@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
 import { ThemeService } from '../core/theme.service';
 import { SiteContextService } from '../core/site-context.service';
+import { allowedPathsFor, isPathAllowed } from '../core/role-scope';
 
 @Component({
   selector: 'akri-shell',
@@ -232,6 +233,15 @@ export class ShellComponent {
     const user = this.currentUser();
     const isAdmin = user?.role === 'ADMINISTRADOR';
     const permissions = user?.permissions ?? {};
+
+    if (allowedPathsFor(user?.role)) {
+      return this.navItems
+        .filter(item => !item.pinProtected)
+        .map(item => item.children
+          ? { ...item, children: item.children.filter((c: any) => isPathAllowed(user.role, c.path)) }
+          : { ...item })
+        .filter(item => item.children ? item.children.length > 0 : isPathAllowed(user.role, item.path));
+    }
 
     return this.navItems.map(item => {
       if (item.children) {

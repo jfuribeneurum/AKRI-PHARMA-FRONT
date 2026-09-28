@@ -25,9 +25,16 @@
     window.location.href = `/dashboard#control-center:${tab}`;
   }
   function bindLink(element) { if (!element || element.dataset.bound) return; element.dataset.bound = 'true'; element.addEventListener('click', navigateToControlCenter); }
+  // Roles limitados a ciertas pantallas (ver ROLE_ALLOWED_PATHS en
+  // src/app/core/role-scope.ts) no ven el Centro de control.
+  const RESTRICTED_ROLES = ['INFORMES'];
+  function isRestrictedRole() {
+    try { return RESTRICTED_ROLES.includes(JSON.parse(localStorage.getItem('akri_user') || 'null')?.role); } catch { return false; }
+  }
   function ensureSidebarLink() {
     const nav = document.querySelector('.sidebar nav');
     if (!nav) return;
+    if (isRestrictedRole()) { nav.querySelector('[data-akri-ops-link]')?.remove(); return; }
     let anchor = nav.querySelector('[data-akri-ops-link]');
     if (!anchor) { anchor = document.createElement('a'); anchor.className = 'akri-ops-nav-link'; anchor.dataset.akriOpsLink = 'true'; anchor.innerHTML = '<span>Centro de control</span><span class="badge">v26</span>'; nav.appendChild(anchor); }
     anchor.href = controlCenterHref(); bindLink(anchor);

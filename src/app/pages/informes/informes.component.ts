@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { SiteContextService } from '../../core/site-context.service';
+import { currentRole, isReportVisible, reportFormatsFor } from '../../core/role-scope';
 
 type InformeStatus = 'ready' | 'build' | 'blocked';
 type InformeCategoria = 'catalogo' | 'factura' | 'dispensacion' | 'cartera' | 'inventario' | 'movimientos' | 'compras';
@@ -65,7 +66,7 @@ const REPORTS: InformeDef[] = [
   styleUrls: ['./informes.component.css']
 })
 export class InformesComponent implements OnInit {
-  readonly reports = REPORTS;
+  readonly reports = REPORTS.filter(r => isReportVisible(currentRole(), r.key));
   readonly categorias = CATEGORIAS;
   readonly statusLabel = STATUS_LABEL;
 
@@ -115,7 +116,7 @@ export class InformesComponent implements OnInit {
   }
 
   formatosOf(r: InformeDef): ('excel' | 'csv')[] {
-    return r.formatos ?? ['excel', 'csv'];
+    return reportFormatsFor(currentRole(), r.key, r.formatos ?? ['excel', 'csv']);
   }
 
   async onGenerar(r: InformeDef, formato: 'excel' | 'csv' = 'excel') {

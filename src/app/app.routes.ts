@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { roleScopeGuard } from './core/role-scope';
 import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
@@ -9,6 +10,7 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],
+    canActivateChild: [roleScopeGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard',           loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent) },

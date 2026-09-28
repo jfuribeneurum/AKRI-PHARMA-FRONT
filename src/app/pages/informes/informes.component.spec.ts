@@ -23,6 +23,24 @@ describe('InformesComponent', () => {
     expect(component.reports.length).toBe(12);
   });
 
+  describe('rol INFORMES', () => {
+    beforeEach(() => localStorage.setItem('akri_user', JSON.stringify({ role: 'INFORMES' })));
+    afterEach(() => localStorage.removeItem('akri_user'));
+
+    it('no ve el informe de Dispensación, sí RIPS', () => {
+      const c = new InformesComponent(api, { sedes: () => [] } as unknown as SiteContextService);
+      const keys = c.reports.map(r => r.key);
+      expect(keys).not.toContain('dispensacion');
+      expect(keys).toContain('rips');
+      expect(c.reports.length).toBe(11);
+    });
+
+    it('RIPS solo ofrece CSV', () => {
+      const rips = component.reports.find(r => r.key === 'rips')!;
+      expect(component.formatosOf(rips)).toEqual(['csv']);
+    });
+  });
+
   it('RIPS y Dispensación están "ready" — el resto del catálogo queda "blocked"', () => {
     const listos = component.reports.filter(r => r.estado === 'ready');
     expect(listos.map(r => r.key)).toEqual(['rips', 'dispensacion']);
