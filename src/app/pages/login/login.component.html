@@ -3,10 +3,6 @@
     <h1>AkriPharmacy</h1>
     <p class="muted">ERP de inventario y dispensación farmacéutica</p>
 
-    <div class="notice" style="margin-bottom: 1rem;">
-      Demo: admin / Akri123*
-    </div>
-
     @if (error()) {
       <div class="error" style="margin-bottom: 1rem;">
         {{ error() }}
@@ -16,7 +12,7 @@
     <div class="form-grid" style="grid-template-columns: 1fr;">
       <label>
         Usuario
-        <input [(ngModel)]="username" name="username" placeholder="admin">
+        <input [(ngModel)]="username" name="username" placeholder="Tu usuario">
       </label>
 
       <label>

@@ -14,8 +14,8 @@ import { SiteContextService } from '../../core/site-context.service';
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-  username = 'admin';
-  password = 'Akri123*';
+  username = '';
+  password = '';
   loading = signal(false);
   error = signal('');
 
