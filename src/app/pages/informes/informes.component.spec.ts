@@ -2,10 +2,10 @@ import { InformesComponent } from './informes.component';
 import { ApiService } from '../../core/api.service';
 import { SiteContextService } from '../../core/site-context.service';
 
-// A pedido explícito: solo RIPS queda "ready" mientras se termina de definir
-// ese informe; el resto del catálogo se deshabilitó ("blocked") en la UI.
-// Estas pruebas fijan que onGenerar() nunca llame a la API para los
-// deshabilitados, y que RIPS siga funcionando normalmente.
+// A pedido explícito: RIPS y Dispensación quedan "ready" (Dispensación
+// clona el mismo dataset/columnas de RIPS, solo que únicamente en Excel);
+// el resto del catálogo sigue "blocked" en la UI. Estas pruebas fijan que
+// onGenerar() nunca llame a la API para los deshabilitados.
 function makeApiStub(): ApiService {
   return { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(), download: vi.fn() } as unknown as ApiService;
 }
@@ -23,13 +23,34 @@ describe('InformesComponent', () => {
     expect(component.reports.length).toBe(12);
   });
 
-  it('solo RIPS está "ready" — el resto del catálogo queda "blocked"', () => {
+  it('RIPS y Dispensación están "ready" — el resto del catálogo queda "blocked"', () => {
     const listos = component.reports.filter(r => r.estado === 'ready');
-    expect(listos.map(r => r.key)).toEqual(['rips']);
+    expect(listos.map(r => r.key)).toEqual(['rips', 'dispensacion']);
 
-    const bloqueados = component.reports.filter(r => r.key !== 'rips');
+    const bloqueados = component.reports.filter(r => !listos.includes(r));
     expect(bloqueados.every(r => r.estado === 'blocked')).toBe(true);
     expect(bloqueados.every(r => !!r.motivoBloqueo)).toBe(true);
+  });
+
+  it('Dispensación solo ofrece formato Excel (sin csv)', () => {
+    const dispensacion = component.reports.find(r => r.key === 'dispensacion')!;
+    expect(component.formatosOf(dispensacion)).toEqual(['excel']);
+  });
+
+  it('RIPS ofrece Excel y csv', () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    expect(component.formatosOf(rips)).toEqual(['excel', 'csv']);
+  });
+
+  it('onGenerar() descarga Dispensación en excel apuntando a su propio export', async () => {
+    const dispensacion = component.reports.find(r => r.key === 'dispensacion')!;
+    (api.download as any).mockResolvedValue('akripharmacy-dispensacion.xls');
+
+    await component.onGenerar(dispensacion, 'excel');
+
+    const [path, filename] = (api.download as any).mock.calls[0];
+    expect(path).toBe('/reports/dispensing/export?format=excel');
+    expect(filename).toBe('akripharmacy-dispensacion.xls');
   });
 
   it('onGenerar() no llama a la API para un informe bloqueado, y explica el motivo', async () => {
@@ -51,16 +72,28 @@ describe('InformesComponent', () => {
     expect(component.error()).toContain('construcción');
   });
 
-  it('onGenerar() descarga RIPS sin filtros con solo el formato', async () => {
+  it('onGenerar() descarga RIPS en excel por defecto, sin filtros con solo el formato', async () => {
     const rips = component.reports.find(r => r.key === 'rips')!;
     (api.download as any).mockResolvedValue('akripharmacy-rips.xls');
 
     await component.onGenerar(rips);
 
     expect(api.download).toHaveBeenCalledTimes(1);
-    const [path] = (api.download as any).mock.calls[0];
+    const [path, filename] = (api.download as any).mock.calls[0];
     expect(path).toBe('/reports/rips-am/export?format=excel');
+    expect(filename).toBe('akripharmacy-rips.xls');
     expect(component.message()).toContain('RIPS');
+  });
+
+  it('onGenerar() descarga en csv cuando se elige ese formato', async () => {
+    const rips = component.reports.find(r => r.key === 'rips')!;
+    (api.download as any).mockResolvedValue('akripharmacy-rips.csv');
+
+    await component.onGenerar(rips, 'csv');
+
+    const [path, filename] = (api.download as any).mock.calls[0];
+    expect(path).toBe('/reports/rips-am/export?format=csv');
+    expect(filename).toBe('akripharmacy-rips.csv');
   });
 
   it('onGenerar() abre el modal de confirmación con el nombre del informe y "sin filtros" cuando no hay ninguno', async () => {
@@ -72,6 +105,7 @@ describe('InformesComponent', () => {
     const modal = component.descargaModal();
     expect(modal?.nombre).toBe('Facturación — RIPS');
     expect(modal?.filtros).toEqual([
+      { label: 'Formato', valor: 'Excel' },
       { label: 'Desde', valor: 'Sin definir' },
       { label: 'Hasta', valor: 'Sin definir' },
       { label: 'Sede / Bodega', valor: 'Todas las sedes' },
@@ -79,7 +113,7 @@ describe('InformesComponent', () => {
     ]);
   });
 
-  it('onGenerar() muestra en el modal los filtros de fecha, sede y contratos aplicados', async () => {
+  it('onGenerar() muestra en el modal los filtros de fecha, sede, contratos y formato aplicados', async () => {
     const rips = component.reports.find(r => r.key === 'rips')!;
     component.desde = '2026-09-01';
     component.hasta = '2026-09-30';
@@ -87,12 +121,13 @@ describe('InformesComponent', () => {
     component.contratoOptions.set([{ valor: 'contrato_a', etiqueta: 'Contrato A' }]);
     component.onContratoToggle('contrato_a', true);
     (component.siteContext.sedes as any) = () => [{ id_sede: 3, nombre: 'Sede Pereira' }];
-    (api.download as any).mockResolvedValue('akripharmacy-rips.xls');
+    (api.download as any).mockResolvedValue('akripharmacy-rips.csv');
 
-    await component.onGenerar(rips);
+    await component.onGenerar(rips, 'csv');
 
     const modal = component.descargaModal();
     expect(modal?.filtros).toEqual([
+      { label: 'Formato', valor: 'CSV' },
       { label: 'Desde', valor: '2026-09-01' },
       { label: 'Hasta', valor: '2026-09-30' },
       { label: 'Sede / Bodega', valor: 'Sede Pereira' },

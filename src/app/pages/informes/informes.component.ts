@@ -16,6 +16,8 @@ interface InformeDef {
   /** Ruta del export en el backend — solo presente cuando estado = 'ready'. */
   path?: string;
   motivoBloqueo?: string;
+  /** Formatos de descarga que ofrece este informe — 'excel' y 'csv' por defecto. */
+  formatos?: ('excel' | 'csv')[];
 }
 
 const CATEGORIAS: Record<InformeCategoria, { label: string; color: string }> = {
@@ -42,7 +44,7 @@ const MOTIVO_DESHABILITADO = 'Deshabilitado temporalmente mientras se termina de
 const REPORTS: InformeDef[] = [
   { key: 'maestro',      categoria: 'catalogo',     nombre: 'Listado maestro',                 descripcion: 'Catálogo completo de MX con todas sus variables.',       estado: 'blocked', path: '/reports/maestro/export', motivoBloqueo: MOTIVO_DESHABILITADO },
   { key: 'rips',         categoria: 'factura',      nombre: 'Facturación — RIPS',               descripcion: 'Archivo AM (medicamentos), estructura estándar pendiente de homologación oficial.', estado: 'ready', path: '/reports/rips-am/export' },
-  { key: 'dispensacion', categoria: 'dispensacion', nombre: 'Dispensación',                     descripcion: 'Cruce entre lo formulado y lo realmente dispensado.',    estado: 'blocked', path: '/reports/dispensing/export', motivoBloqueo: MOTIVO_DESHABILITADO },
+  { key: 'dispensacion', categoria: 'dispensacion', nombre: 'Dispensación',                     descripcion: 'Detalle operativo de la entrega: lote, laboratorio, código interno, cantidad pendiente/faltante, historia y especialidad del médico.', estado: 'ready', path: '/reports/dispensing/export', formatos: ['excel'] },
   { key: 'pendientes',   categoria: 'cartera',      nombre: 'Pendientes (generados y pagados)', descripcion: 'Facturas generadas y su estado — el pago aún no se registra en el sistema.', estado: 'blocked', path: '/reports/pendientes/export', motivoBloqueo: MOTIVO_DESHABILITADO },
   { key: 'inventario',   categoria: 'inventario',   nombre: 'Consulta de inventarios',          descripcion: 'Existencias disponibles, reservadas y en cuarentena.',   estado: 'blocked', path: '/reports/inventory/export', motivoBloqueo: MOTIVO_DESHABILITADO },
   { key: 'movimientos',  categoria: 'inventario',   nombre: 'Movimientos por producto',         descripcion: 'Historial de entradas, salidas y ajustes por MX.',       estado: 'blocked', path: '/reports/movimientos-producto/export', motivoBloqueo: MOTIVO_DESHABILITADO },
@@ -112,7 +114,11 @@ export class InformesComponent implements OnInit {
     return this.categorias[r.categoria];
   }
 
-  async onGenerar(r: InformeDef) {
+  formatosOf(r: InformeDef): ('excel' | 'csv')[] {
+    return r.formatos ?? ['excel', 'csv'];
+  }
+
+  async onGenerar(r: InformeDef, formato: 'excel' | 'csv' = 'excel') {
     this.error.set('');
     this.message.set('');
 
@@ -127,15 +133,16 @@ export class InformesComponent implements OnInit {
 
     this.downloadingKey.set(r.key);
     try {
-      const params = new URLSearchParams({ format: 'excel' });
+      const extension = formato === 'csv' ? 'csv' : 'xls';
+      const params = new URLSearchParams({ format: formato });
       if (this.desde) params.set('desde', this.desde);
       if (this.hasta) params.set('hasta', this.hasta);
       if (this.idSede) params.set('id_sede', String(this.idSede));
       if (this.contratosSeleccionados().length) params.set('contratos', this.contratosSeleccionados().join(','));
 
-      await this.api.download(`${r.path}?${params.toString()}`, `akripharmacy-${r.key}.xls`);
+      await this.api.download(`${r.path}?${params.toString()}`, `akripharmacy-${r.key}.${extension}`);
       this.message.set(`${r.nombre} exportado.`);
-      this.descargaModal.set({ nombre: r.nombre, filtros: this.filtrosAplicados() });
+      this.descargaModal.set({ nombre: r.nombre, filtros: this.filtrosAplicados(formato) });
     } catch (err: any) {
       this.error.set(err?.error?.message || `No fue posible exportar ${r.nombre}.`);
     } finally {
@@ -143,8 +150,9 @@ export class InformesComponent implements OnInit {
     }
   }
 
-  private filtrosAplicados(): { label: string; valor: string }[] {
+  private filtrosAplicados(formato: 'excel' | 'csv'): { label: string; valor: string }[] {
     const filtros: { label: string; valor: string }[] = [];
+    filtros.push({ label: 'Formato', valor: formato === 'csv' ? 'CSV' : 'Excel' });
     filtros.push({ label: 'Desde', valor: this.desde || 'Sin definir' });
     filtros.push({ label: 'Hasta', valor: this.hasta || 'Sin definir' });
 

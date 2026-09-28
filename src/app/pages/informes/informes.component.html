@@ -65,12 +65,23 @@
             <span class="cat-dot" [style.background]="categoriaOf(r).color"></span>
             {{ categoriaOf(r).label }}
           </span>
-          <button
-            class="informe-btn"
-            [disabled]="r.estado !== 'ready' || downloadingKey() === r.key"
-            (click)="onGenerar(r)">
-            {{ downloadingKey() === r.key ? 'Generando…' : (r.estado === 'ready' ? 'Excel' : (r.estado === 'blocked' ? 'Bloqueado' : 'En construcción')) }}
-          </button>
+          @if (r.estado === 'ready') {
+            <div class="informe-btn-group">
+              @for (f of formatosOf(r); track f; let first = $first) {
+                <button
+                  class="informe-btn"
+                  [class.informe-btn-secondary]="!first"
+                  [disabled]="downloadingKey() === r.key"
+                  (click)="onGenerar(r, f)">
+                  {{ downloadingKey() === r.key ? 'Generando…' : (f === 'csv' ? 'CSV' : 'Excel') }}
+                </button>
+              }
+            </div>
+          } @else {
+            <button class="informe-btn" disabled>
+              {{ r.estado === 'blocked' ? 'Bloqueado' : 'En construcción' }}
+            </button>
+          }
         </div>
       </div>
     }
