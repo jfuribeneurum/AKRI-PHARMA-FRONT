@@ -14,9 +14,11 @@ describe('role-scope', () => {
   });
 
   describe('isReportVisible', () => {
-    it('INFORMES no ve Dispensación pero sí RIPS', () => {
-      expect(isReportVisible('INFORMES', 'dispensacion')).toBe(false);
+    it('INFORMES solo ve RIPS', () => {
       expect(isReportVisible('INFORMES', 'rips')).toBe(true);
+      expect(isReportVisible('INFORMES', 'dispensacion')).toBe(false);
+      expect(isReportVisible('INFORMES', 'ingresos')).toBe(false);
+      expect(isReportVisible('INFORMES', 'maestro')).toBe(false);
     });
 
     it('ADMINISTRADOR y sin rol ven todo', () => {

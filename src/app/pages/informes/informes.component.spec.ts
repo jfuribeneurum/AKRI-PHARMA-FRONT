@@ -27,12 +27,9 @@ describe('InformesComponent', () => {
     beforeEach(() => localStorage.setItem('akri_user', JSON.stringify({ role: 'INFORMES' })));
     afterEach(() => localStorage.removeItem('akri_user'));
 
-    it('no ve el informe de Dispensación, sí RIPS', () => {
+    it('solo ve el informe de RIPS', () => {
       const c = new InformesComponent(api, { sedes: () => [] } as unknown as SiteContextService);
-      const keys = c.reports.map(r => r.key);
-      expect(keys).not.toContain('dispensacion');
-      expect(keys).toContain('rips');
-      expect(c.reports.length).toBe(11);
+      expect(c.reports.map(r => r.key)).toEqual(['rips']);
     });
 
     it('RIPS solo ofrece CSV', () => {
@@ -41,9 +38,9 @@ describe('InformesComponent', () => {
     });
   });
 
-  it('RIPS y Dispensación están "ready" — el resto del catálogo queda "blocked"', () => {
+  it('RIPS, Dispensación e Ingresos están "ready" — el resto del catálogo queda "blocked"', () => {
     const listos = component.reports.filter(r => r.estado === 'ready');
-    expect(listos.map(r => r.key)).toEqual(['rips', 'dispensacion']);
+    expect(listos.map(r => r.key)).toEqual(['rips', 'dispensacion', 'ingresos']);
 
     const bloqueados = component.reports.filter(r => !listos.includes(r));
     expect(bloqueados.every(r => r.estado === 'blocked')).toBe(true);
@@ -69,6 +66,16 @@ describe('InformesComponent', () => {
     const [path, filename] = (api.download as any).mock.calls[0];
     expect(path).toBe('/reports/dispensing/export?format=excel');
     expect(filename).toBe('akripharmacy-dispensacion.xls');
+  });
+
+  it('Ingresos ofrece Excel y csv y descarga desde su export', async () => {
+    const ingresos = component.reports.find(r => r.key === 'ingresos')!;
+    expect(component.formatosOf(ingresos)).toEqual(['excel', 'csv']);
+
+    await component.onGenerar(ingresos, 'csv');
+    const [path, filename] = (api.download as any).mock.calls[0];
+    expect(path).toBe('/reports/ingresos/export?format=csv');
+    expect(filename).toBe('akripharmacy-ingresos.csv');
   });
 
   it('onGenerar() no llama a la API para un informe bloqueado, y explica el motivo', async () => {

@@ -8,14 +8,16 @@ export const ROLE_ALLOWED_PATHS: Record<string, string[]> = {
   INFORMES: ['/informes']
 };
 
-// Informes (por key de la página /informes) que un rol no ve. El backend los
-// bloquea con ROLE_API_DENY (src/middleware/role-scope.js).
-export const ROLE_HIDDEN_REPORTS: Record<string, string[]> = {
-  INFORMES: ['dispensacion']
+// Únicos informes (por key de la página /informes) que ve un rol limitado;
+// el resto no le aparece. El backend los bloquea con ROLE_API_SCOPES
+// (src/middleware/role-scope.js).
+export const ROLE_VISIBLE_REPORTS: Record<string, string[]> = {
+  INFORMES: ['rips']
 };
 
 export function isReportVisible(role: string | null | undefined, key: string): boolean {
-  return !(role && ROLE_HIDDEN_REPORTS[role]?.includes(key));
+  const visibles = role ? ROLE_VISIBLE_REPORTS[role] : undefined;
+  return !visibles || visibles.includes(key);
 }
 
 // Formatos de descarga que un rol puede usar por informe (key de /informes).
