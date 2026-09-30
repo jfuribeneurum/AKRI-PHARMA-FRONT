@@ -34,7 +34,7 @@
             @if (form.id_medicamento_hs) {
               <div class="hs-linked">
                 <div class="hs-linked-info">
-                  <strong>{{ form.nombre_comercial }}</strong>
+                  <strong>{{ form.nombre_comercial || form.nombre_medicamento_hs || form.principio_activo || 'Medicamento enlazado' }}</strong>
                   <span class="muted">{{ form.principio_activo }}{{ form.concentracion ? ' · ' + form.concentracion : '' }}{{ form.atc ? ' · ATC: ' + form.atc : '' }}</span>
                 </div>
                 <div class="hs-linked-actions">
@@ -290,7 +290,7 @@
         <div class="modal-panel modal-panel--wide" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <div>
-              <h3>{{ item.nombre_comercial }}</h3>
+              <h3>{{ item.nombre_comercial || item.nombre_medicamento_hs || 'Sin nombre' }}</h3>
               <div class="helper">Ficha visual · imágenes · stock por lote</div>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;">

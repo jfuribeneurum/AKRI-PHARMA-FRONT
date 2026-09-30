@@ -132,6 +132,7 @@ export class MaestroMxComponent implements OnInit {
       codigo_control:       full.codigo_control ?? '',
       tipo_producto:        full.tipo_producto ?? '',
       nombre_comercial:     full.nombre_comercial ?? '',
+      nombre_medicamento_hs: full.nombre_medicamento_hs ?? '',
       principio_activo:     full.principio_activo ?? '',
       concentracion:        full.concentracion ?? '',
       presentacion:         full.presentacion ?? '',
@@ -333,6 +334,7 @@ export class MaestroMxComponent implements OnInit {
     // trae un nombreComercial propio cargado. Sigue siendo editable: el
     // usuario puede reemplazarlo libremente por la marca comercial real.
     this.form.nombre_comercial  = med.nombre || med.nombreComercial || '';
+    this.form.nombre_medicamento_hs = med.nombre ?? '';
     this.form.principio_activo  = med.principioActivo ?? '';
     this.form.concentracion     = med.concentracion ?? '';
     this.form.atc               = med.atc ?? '';
@@ -411,6 +413,7 @@ export class MaestroMxComponent implements OnInit {
   clearHsMed() {
     this.form.id_medicamento_hs  = null;
     this.form.nombre_comercial   = '';
+    this.form.nombre_medicamento_hs = '';
     this.form.principio_activo   = '';
     this.form.concentracion      = '';
     this.form.atc               = '';
@@ -561,6 +564,10 @@ export class MaestroMxComponent implements OnInit {
       codigo_control:       '',
       tipo_producto:        '',
       nombre_comercial:     '',
+      // Solo para mostrar: el nombre descriptivo del medicamento enlazado en
+      // HealthSphere. Es el que rotula el producto cuando la farmacia no le
+      // pone nombre comercial propio (el campo es opcional). No se envía a la API.
+      nombre_medicamento_hs: '',
       principio_activo:     '',
       concentracion:        '',
       atc:                  '',

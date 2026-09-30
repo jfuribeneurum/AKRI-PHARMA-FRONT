@@ -162,6 +162,57 @@ describe('MaestroMxComponent', () => {
     });
   });
 
+  // El nombre comercial es la marca propia de la farmacia y muchos MX no
+  // tienen una: el producto se identifica por el nombre descriptivo de
+  // HealthSphere. Guardar sin ese campo no debe bloquearse en el formulario,
+  // y el nombre enlazado de HS debe quedar disponible para rotularlo.
+  describe('nombre comercial opcional', () => {
+    let api: ApiService;
+
+    beforeEach(() => {
+      api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      component.form = {
+        ...(component as any).blankForm(),
+        codigo_interno: 'MX01', tipo_producto: 'medicamento', presentacion: 5,
+        registro_invima: '5956', id_laboratorio: 3, id_forma: 2,
+        cum: 559, consecutivo_cum: 565, nombre_comercial: ''
+      };
+      (api.post as any).mockResolvedValue({ data: { id_producto: 1 } });
+      (component as any).load = vi.fn();
+    });
+
+    it('no bloquea el guardado por tener el nombre comercial vacío', () => {
+      expect((component as any).validateForm()).toBeNull();
+    });
+
+    it('save() llega a crear el producto con el nombre comercial vacío', async () => {
+      await component.save();
+
+      expect((api.post as any)).toHaveBeenCalled();
+      expect(component.resultModal()?.tipo).toBe('success');
+    });
+
+    it('sigue bloqueando los campos que sí son obligatorios', () => {
+      component.form.registro_invima = '';
+      expect((component as any).validateForm()).toContain('Registro INVIMA');
+    });
+
+    it('selectHsMed guarda el nombre descriptivo de HS aparte, para rotular el producto sin marca', () => {
+      component.selectHsMed({ id: 9, codigo: 'MX01', nombre: 'ABACAVIR 300 MG TABLETA RECUBIERTA' });
+
+      expect(component.form.nombre_medicamento_hs).toBe('ABACAVIR 300 MG TABLETA RECUBIERTA');
+    });
+
+    it('clearHsMed limpia también el nombre de HS al desvincular el medicamento', () => {
+      component.selectHsMed({ id: 9, codigo: 'MX01', nombre: 'ABACAVIR 300 MG TABLETA RECUBIERTA' });
+
+      component.clearHsMed();
+
+      expect(component.form.nombre_medicamento_hs).toBe('');
+    });
+  });
+
   describe('create — errores de validación muestran el campo específico que falló', () => {
     it('agrega los fieldErrors del backend al mensaje, no solo "Validación fallida"', async () => {
       const api = makeApiStub();
