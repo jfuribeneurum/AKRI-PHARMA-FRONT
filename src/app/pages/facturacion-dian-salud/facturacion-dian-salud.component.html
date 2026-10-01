@@ -1,0 +1,115 @@
+<section class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Facturación DIAN salud</h1>
+      <p class="page-subtitle">Facturas de copago / cuota moderadora emitidas al paciente vía AkribeIA al dispensar. Solo se puede ver/anular el cargo al paciente, nunca la factura a la EPS.</p>
+    </div>
+  </div>
+
+  @if (message()) {
+    <div class="success-box" style="margin-bottom: 1rem;">{{ message() }}</div>
+  }
+  @if (error()) {
+    <div class="error-box" style="margin-bottom: 1rem;">{{ error() }}</div>
+  }
+
+  <div class="card">
+    <div class="filter-input-row" style="margin-bottom: 0.85rem;">
+      <input type="text" class="obs-input" style="flex: 1; min-width: 220px;"
+             placeholder="Buscar por paciente, documento o número de factura…"
+             [(ngModel)]="search" (keyup.enter)="load()">
+      <button class="btn" (click)="load()">Buscar</button>
+      <button class="btn secondary" (click)="search = ''; load()">Limpiar</button>
+    </div>
+
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Formulación</th>
+          <th>Paciente</th>
+          <th>Tipo</th>
+          <th>Factura</th>
+          <th>Estado DIAN</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr class="empty-row"><td colspan="7">Cargando…</td></tr>
+        } @else if (facturas().length === 0) {
+          <tr class="empty-row"><td colspan="7">No hay facturas de salud registradas.</td></tr>
+        } @else {
+          @for (row of facturas(); track row.id_dispensacion_dian) {
+            <tr>
+              <td>{{ row.fecha_creacion | date:'yyyy-MM-dd HH:mm' }}</td>
+              <td>#{{ row.id_formulacion_hs }}</td>
+              <td>
+                {{ row.paciente_nombre }}
+                <div class="muted" style="font-size: 0.8rem;">{{ row.paciente_documento }}</div>
+              </td>
+              <td>{{ tipoLabel(row.modo) }}</td>
+              <td>{{ row.paciente_invoice_number ?? '—' }}</td>
+              <td>
+                <span class="badge-status" [class.badge-ok]="row.exito" [class.badge-error]="!row.exito">
+                  {{ row.paciente_estado_dian ?? (row.exito ? 'ok' : 'error') }}
+                </span>
+                @if (row.anulada) {
+                  <span class="badge-status badge-warn">Anulada</span>
+                }
+              </td>
+              <td>
+                @if (esFacturaOriginal(row) && row.paciente_invoice_number) {
+                  <div class="actions-cell">
+                    <button class="btn-action pdf" (click)="verDocumentos(row)">📄 Ver PDF/tirilla</button>
+                    <button class="btn-action approve" [disabled]="row.anulada || saving() === row.id_dispensacion_dian" (click)="notaCredito(row)">Nota crédito</button>
+                    <button class="btn-action cancel-oc" [disabled]="row.anulada || saving() === row.id_dispensacion_dian" (click)="notaDebito(row)">Nota débito</button>
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+@if (showDocumentos()) {
+  <div class="modal-backdrop" (click)="cerrarDocumentos()">
+    <div class="disp-modal" (click)="$event.stopPropagation()" style="max-width: 600px; height: auto; max-height: 80vh;">
+      <div class="disp-modal__header">
+        <div class="disp-modal__header-icon">🧾</div>
+        <div class="disp-modal__header-text">
+          <span class="disp-modal__header-sup">Factura al paciente</span>
+          <strong class="disp-modal__header-med">{{ documentosVista()?.paciente?.invoice_number }}</strong>
+        </div>
+        <button class="disp-modal__close" (click)="cerrarDocumentos()" title="Cerrar">✕</button>
+      </div>
+      <div class="disp-modal__body">
+        @if (documentosLoading()) {
+          <p class="empty-msg">Cargando…</p>
+        } @else if (documentosVista()) {
+          <p><strong>CUFE:</strong> {{ documentosVista().paciente?.cufe }}</p>
+          <p><strong>Estado:</strong> {{ documentosVista().paciente?.estado_dian }}</p>
+          <div class="actions-cell" style="margin: 0.75rem 0;">
+            @if (documentosVista().paciente?.pdf_base64) {
+              <a class="btn-action pdf" [href]="'data:application/pdf;base64,' + documentosVista().paciente.pdf_base64" target="_blank">Ver PDF</a>
+            }
+            @if (documentosVista().tirilla_pdf_base64) {
+              <a class="btn-action pdf" [href]="'data:application/pdf;base64,' + documentosVista().tirilla_pdf_base64" target="_blank">Ver tirilla</a>
+            }
+          </div>
+          @if (documentosVista().notas?.length) {
+            <strong>Notas emitidas:</strong>
+            <ul>
+              @for (n of documentosVista().notas; track n.numero) {
+                <li>{{ n.tipo }} · {{ n.numero }} · {{ n.estado_dian }}</li>
+              }
+            </ul>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
