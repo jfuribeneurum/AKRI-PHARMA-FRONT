@@ -18,6 +18,26 @@
               <div class="disp-modal__soporte-card">
                 <div class="disp-modal__soporte-icon">✅</div>
                 <h3>Dispensación registrada</h3>
+
+                @if (soporteDian()?.ok) {
+                  <div class="success-box" style="text-align: left; margin: 0.75rem 0;">
+                    <strong>Factura DIAN: {{ soporteDian().paciente?.invoice_number }}</strong>
+                    <div>Estado: {{ soporteDian().paciente?.estado_dian }}</div>
+                    <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                      @if (soporteDian().paciente?.pdf_base64) {
+                        <a class="btn btn-small btn-outline" [href]="'data:application/pdf;base64,' + soporteDian().paciente.pdf_base64" target="_blank">Ver factura PDF</a>
+                      }
+                      @if (soporteDian().tirilla_pdf_base64) {
+                        <a class="btn btn-small btn-outline" [href]="'data:application/pdf;base64,' + soporteDian().tirilla_pdf_base64" target="_blank">Ver tirilla</a>
+                      }
+                    </div>
+                  </div>
+                } @else if (soporteDian() && !soporteDian().ok) {
+                  <div class="error-box" style="text-align: left; margin: 0.75rem 0;">
+                    No se pudo facturar a la DIAN: {{ soporteDian().error }}
+                  </div>
+                }
+
                 <p>¿Deseas descargar el soporte de entrega de este medicamento?</p>
                 <div class="disp-modal__soporte-actions">
                   <button class="disp-modal__btn-cancel" (click)="omitirSoporte()">No, gracias</button>
@@ -80,6 +100,49 @@
                   }
                 </div>
               </label>
+            </div>
+
+            <!-- Facturación DIAN salud (copago / cuota moderadora) — el
+                 Contrato de arriba ya es el contrato_numero real de AkribeIA.
+                 Si "Tipo de cobro" queda en "Ninguno", no se envía nada a la DIAN. -->
+            <div class="disp-modal__patient-fields">
+              @if (ccSedeDesdeContrato) {
+                <div class="disp-modal__cc-sede-banner">
+                  Centro de costo y sede precargados del contrato — {{ centrosCostoDisponibles()[0]?.nombre }} / {{ sedesDisponibles()[0]?.nombre }}
+                </div>
+              }
+              <label class="disp-modal__field">
+                <span>Centro de costo (AkribeIA)</span>
+                <select class="disp-modal__obs-input" [(ngModel)]="modalCentroCostoId">
+                  <option [ngValue]="null">Selecciona</option>
+                  @for (o of centrosCostoDisponibles(); track o.id) {
+                    <option [ngValue]="o.id">{{ o.codigo }} · {{ o.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label class="disp-modal__field">
+                <span>Sede (AkribeIA)</span>
+                <select class="disp-modal__obs-input" [(ngModel)]="modalPuntoPagoSedeId">
+                  <option [ngValue]="null">Selecciona</option>
+                  @for (o of sedesDisponibles(); track o.id) {
+                    <option [ngValue]="o.id">{{ o.codigo }} · {{ o.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label class="disp-modal__field">
+                <span>Tipo de cobro al paciente</span>
+                <select class="disp-modal__obs-input" [(ngModel)]="modalTipoCobroUsuario" (ngModelChange)="onTipoCobroUsuarioChange()">
+                  <option [ngValue]="null">Ninguno (no se envía a la DIAN)</option>
+                  <option value="copago">Copago</option>
+                  <option value="cuota_moderadora">Cuota moderadora</option>
+                </select>
+              </label>
+              @if (modalTipoCobroUsuario) {
+                <label class="disp-modal__field">
+                  <span>Valor a cobrar al paciente (COP)</span>
+                  <input type="number" class="disp-modal__obs-input" min="0" step="100" [(ngModel)]="modalPagoUsuarioMonto">
+                </label>
+              }
             </div>
 
             <div class="disp-med-list__toolbar">

@@ -159,6 +159,16 @@
       background: var(--surface-muted); border-color: var(--line); color: var(--text);
     }
 
+    .disp-modal__cc-sede-banner {
+      flex-basis: 100%;
+      font-size: 0.78rem; color: #0369a1;
+      background: rgba(3,105,161,.08); border: 1px solid rgba(3,105,161,.25);
+      border-radius: 8px; padding: 0.5rem 0.75rem;
+    }
+    :host-context([data-theme="dark"]) .disp-modal__cc-sede-banner {
+      color: #7dd3fc; background: rgba(56,189,248,.1); border-color: rgba(56,189,248,.3);
+    }
+
     /* Combobox de Contrato/Régimen: se escribe directo en el input y las
        coincidencias aparecen flotando debajo, sin empujar el resto del
        modal (a diferencia del listado del buscador de medicamento). */

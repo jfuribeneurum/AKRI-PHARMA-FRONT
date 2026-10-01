@@ -200,7 +200,8 @@ export class ShellComponent {
         { path: '/salida', label: 'Salida', any: [] },
         { path: '/entrada', label: 'Entrada', any: [] },
         { path: '/traslados', label: 'Traslados', any: [] },
-        { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] }
+        { path: '/consumo-dispositivos', label: 'Consumo dispositivos', any: [] },
+        { path: '/facturacion-dian-salud', label: 'Facturación DIAN salud', any: [] }
       ]
     },
     { path: '/dispensing-pharma', label: 'Dispensación', any: ['perm_ventas_dispensar', 'perm_controlados_dispensar'] },

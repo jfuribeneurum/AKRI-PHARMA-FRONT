@@ -135,6 +135,64 @@ export class DispensacionPharmaComponent implements OnInit {
   showSoporteConfirm = signal(false);
   private soporteData: any = null;
 
+  soporteDian() {
+    return this.soporteData?.dian ?? null;
+  }
+
+  // Facturación DIAN salud (copago/cuota moderadora) — el "Contrato" de
+  // arriba YA es el contrato_numero real de AkribeIA (el catálogo se cargó
+  // así a propósito), así que no hay selector de EPS/contrato aparte.
+  saludOpciones = signal<any>({ contratos: [], centros_costo: [], sedes: [] });
+  modalCentroCostoId: string | null = null;
+  modalPuntoPagoSedeId: string | null = null;
+  modalTipoCobroUsuario: 'copago' | 'cuota_moderadora' | null = null;
+  modalPagoUsuarioMonto: number | null = null;
+  /** true mientras cc/sede quedaron precargados solos desde el contrato (un
+   *  solo centro/sede válido) — así el operador ve que no hace falta tocarlo,
+   *  mismo patrón que ya usa el formulario PGP de Akribeia. */
+  ccSedeDesdeContrato = false;
+
+  private contratoAkribeiaActual(): any {
+    return (this.saludOpciones().contratos || []).find((c: any) => c.numero === this.modalContrato) ?? null;
+  }
+
+  centrosCostoDisponibles(): { id: string; codigo: string; nombre: string }[] {
+    const c = this.contratoAkribeiaActual();
+    return c?.centros_costo?.length ? c.centros_costo : this.saludOpciones().centros_costo;
+  }
+
+  sedesDisponibles(): { id: string; codigo: string; nombre: string }[] {
+    const c = this.contratoAkribeiaActual();
+    return c?.sedes?.length ? c.sedes : this.saludOpciones().sedes;
+  }
+
+  /** Se llama al elegir contrato y al cambiar el tipo de cobro — autocompleta
+   *  centro de costo/sede si el contrato solo tiene una opción válida, y
+   *  sugiere el valor fijo de copago/cuota del contrato si existe (el
+   *  operador lo puede ajustar si el caso real es distinto). */
+  private aplicarDatosDeContrato(): void {
+    const c = this.contratoAkribeiaActual();
+    const ccList = this.centrosCostoDisponibles();
+    const sedeList = this.sedesDisponibles();
+    this.ccSedeDesdeContrato = !!(c && ccList.length === 1 && sedeList.length === 1);
+    if (ccList.length === 1) this.modalCentroCostoId = ccList[0].id;
+    else if (this.modalCentroCostoId && !ccList.some((x: any) => x.id === this.modalCentroCostoId)) this.modalCentroCostoId = null;
+    if (sedeList.length === 1) this.modalPuntoPagoSedeId = sedeList[0].id;
+    else if (this.modalPuntoPagoSedeId && !sedeList.some((x: any) => x.id === this.modalPuntoPagoSedeId)) this.modalPuntoPagoSedeId = null;
+
+    if (!c) return;
+    if (this.modalTipoCobroUsuario === 'copago' && c.valor_copago_fijo != null) {
+      this.modalPagoUsuarioMonto = Number(c.valor_copago_fijo);
+    } else if (this.modalTipoCobroUsuario === 'cuota_moderadora' && c.valor_cuota_moderadora_fijo != null) {
+      this.modalPagoUsuarioMonto = Number(c.valor_cuota_moderadora_fijo);
+    }
+  }
+
+  onTipoCobroUsuarioChange(): void {
+    if (!this.modalTipoCobroUsuario) { this.modalPagoUsuarioMonto = null; return; }
+    this.aplicarDatosDeContrato();
+  }
+
   showHistorial   = signal(false);
   historial       = signal<any[]>([]);
   historialLoading = signal(false);
@@ -247,6 +305,7 @@ export class DispensacionPharmaComponent implements OnInit {
     this.modalContrato = o.valor;
     this.contratoFiltro = o.etiqueta;
     this.contratoDropdownOpen.set(false);
+    this.aplicarDatosDeContrato();
   }
 
   seleccionarRegimen(o: { valor: string; etiqueta: string }) {
@@ -292,12 +351,23 @@ export class DispensacionPharmaComponent implements OnInit {
 
   private async cargarParametrosDispensacion() {
     try {
-      const [contrato, regimen] = await Promise.all([
-        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/contrato/activos'),
-        this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/regimen_paciente/activos')
-      ]);
-      this.contratoOptions = contrato.data ?? [];
+      const regimen = await this.api.get<{ success: boolean; data: { valor: string; etiqueta: string }[] }>('/parametros/regimen_paciente/activos');
       this.regimenOptions = regimen.data ?? [];
+    } catch { /* non-fatal */ }
+
+    try {
+      const salud = await this.api.get<{ success: boolean; data: any }>('/dispensacion-hs/salud/opciones');
+      const data = salud.data ?? { eps: [], contratos: [], centros_costo: [], sedes: [] };
+      this.saludOpciones.set(data);
+      // El combobox de "Contrato" se alimenta directo de AkribeIA (ya no de
+      // un catálogo local aparte) — así el texto nunca puede desalinearse
+      // del numero real del contrato, que es justo lo que compara
+      // contratoAkribeiaActual() para resolver cc/sede/valor fijo.
+      const epsPorId = new Map<string, string>((data.eps ?? []).map((e: any) => [e.id, e.nombre]));
+      this.contratoOptions = (data.contratos ?? []).map((c: any) => ({
+        valor: c.numero,
+        etiqueta: epsPorId.has(c.eps_id) ? `${c.numero} (${epsPorId.get(c.eps_id)})` : c.numero,
+      }));
     } catch { /* non-fatal */ }
   }
 
@@ -1050,6 +1120,11 @@ export class DispensacionPharmaComponent implements OnInit {
     this.modalRegimen = '';
     this.contratoFiltro = '';
     this.regimenFiltro = '';
+    this.modalCentroCostoId = null;
+    this.modalPuntoPagoSedeId = null;
+    this.modalTipoCobroUsuario = null;
+    this.modalPagoUsuarioMonto = null;
+    this.ccSedeDesdeContrato = false;
     this.modalError.set('');
     this.modalSuccess.set('');
     this.stockByMed.set({});
@@ -1203,6 +1278,34 @@ export class DispensacionPharmaComponent implements OnInit {
         else pendientesContinuados.push(resumen);
       }
 
+      // Facturación DIAN salud: se llama UNA sola vez acá, después de que ya
+      // se dispensaron todos los medicamentos de esta ronda (nunca dentro del
+      // loop de arriba) — este es el único punto donde "toda la visita" ya
+      // quedó confirmada. Si no hay copago/cuota moderadora seleccionado, el
+      // backend no manda nada a la DIAN.
+      let dianResultado: any = null;
+      if (toSave.length && this.modalTipoCobroUsuario) {
+        try {
+          const facturaRes = await this.api.post<{ success: boolean; data: any }>(
+            `/dispensacion-hs/formulacion/${detail.id_formulacion}/factura-salud`,
+            {
+              contrato_numero: this.modalContrato,
+              centro_costo_id: this.modalCentroCostoId,
+              punto_pago_sede_id: this.modalPuntoPagoSedeId,
+              tipo_cobro_usuario: this.modalTipoCobroUsuario,
+              // Un solo campo en pesos para copago Y cuota moderadora — ya
+              // no se pide porcentaje (evita que el operador tenga que
+              // calcularlo/adivinarlo; AkribeIA calcula el % efectivo solo
+              // para dejarlo informado en el registro).
+              pago_usuario_monto: this.modalPagoUsuarioMonto
+            }
+          );
+          dianResultado = facturaRes.data?.dian ?? null;
+        } catch (err: any) {
+          dianResultado = { ok: false, error: err?.error?.message ?? 'Error al facturar a la DIAN' };
+        }
+      }
+
       this.modalSuccess.set(
         toSave.length
           ? `Dispensación registrada (${toSave.length} medicamento${toSave.length > 1 ? 's' : ''}).`
@@ -1216,6 +1319,7 @@ export class DispensacionPharmaComponent implements OnInit {
         contrato: this.modalContrato,
         regimen: this.modalRegimen,
         observaciones: this.modalObs,
+        dian: dianResultado,
         fecha: new Date()
       };
       this.showSoporteConfirm.set(true);

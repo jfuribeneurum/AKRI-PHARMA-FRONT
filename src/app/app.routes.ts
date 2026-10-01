@@ -37,6 +37,7 @@ export const routes: Routes = [
       { path: 'salida',              loadComponent: () => import('./pages/movimiento-salida/movimiento-salida.component').then(m => m.MovimientoSalidaComponent) },
       { path: 'traslados',           loadComponent: () => import('./pages/traslados/traslados.component').then(m => m.TrasladosComponent) },
       { path: 'consumo-dispositivos',loadComponent: () => import('./pages/consumo-dispositivos/consumo-dispositivos.component').then(m => m.ConsumoDispositivosComponent) },
+      { path: 'facturacion-dian-salud', loadComponent: () => import('./pages/facturacion-dian-salud/facturacion-dian-salud.component').then((m) => m.FacturacionDianSaludComponent) },
       { path: 'pacientes',           loadComponent: () => import('./pages/pacientes/pacientes.component').then(m => m.PacientesComponent) },
       { path: 'ciudades',            loadComponent: () => import('./pages/ciudades/ciudades.component').then(m => m.CiudadesComponent) },
       { path: 'laboratorios',        loadComponent: () => import('./pages/laboratorios/laboratorios.component').then(m => m.LaboratoriosComponent) },
