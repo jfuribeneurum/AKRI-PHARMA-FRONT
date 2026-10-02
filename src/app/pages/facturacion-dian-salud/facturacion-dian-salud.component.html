@@ -40,7 +40,7 @@
         } @else if (facturas().length === 0) {
           <tr class="empty-row"><td colspan="7">No hay facturas de salud registradas.</td></tr>
         } @else {
-          @for (row of facturas(); track row.id_dispensacion_dian) {
+          @for (row of facturas(); track row.id) {
             <tr>
               <td>{{ row.fecha_creacion | date:'yyyy-MM-dd HH:mm' }}</td>
               <td>#{{ row.id_formulacion_hs }}</td>
@@ -51,9 +51,13 @@
               <td>{{ tipoLabel(row.modo) }}</td>
               <td>{{ row.paciente_invoice_number ?? '—' }}</td>
               <td>
-                <span class="badge-status" [class.badge-ok]="row.exito" [class.badge-error]="!row.exito">
-                  {{ row.paciente_estado_dian ?? (row.exito ? 'ok' : 'error') }}
-                </span>
+                @if (row.pendiente_facturacion) {
+                  <span class="badge-status badge-warn">Pendiente de facturación</span>
+                } @else {
+                  <span class="badge-status" [class.badge-ok]="row.exito" [class.badge-error]="!row.exito">
+                    {{ row.paciente_estado_dian ?? (row.exito ? 'ok' : 'error') }}
+                  </span>
+                }
                 @if (row.anulada) {
                   <span class="badge-status badge-warn">Anulada</span>
                 }
@@ -62,12 +66,47 @@
                 @if (esFacturaOriginal(row) && row.paciente_invoice_number) {
                   <div class="actions-cell">
                     <button class="btn-action pdf" (click)="verDocumentos(row)">📄 Ver PDF/tirilla</button>
-                    <button class="btn-action approve" [disabled]="row.anulada || saving() === row.id_dispensacion_dian" (click)="notaCredito(row)">Nota crédito</button>
-                    <button class="btn-action cancel-oc" [disabled]="row.anulada || saving() === row.id_dispensacion_dian" (click)="notaDebito(row)">Nota débito</button>
+                    <button class="btn-action approve" [disabled]="row.anulada || saving() === row.id" (click)="notaCredito(row)">Nota crédito</button>
+                    <button class="btn-action cancel-oc" [disabled]="row.anulada || saving() === row.id" (click)="notaDebito(row)">Nota débito</button>
                   </div>
+                }
+                @if (row.pendiente_facturacion) {
+                  <button class="btn-action approve" [disabled]="saving() === row.id" (click)="reintentar(row)">
+                    {{ saving() === row.id ? 'Reintentando…' : '🔄 Reintentar' }}
+                  </button>
                 }
               </td>
             </tr>
+            @if (row.pendiente_facturacion) {
+              <tr>
+                <td colspan="7" style="padding: 0.4rem 0.75rem 0.85rem;">
+                  <div class="error-box" style="margin: 0;">
+                    <strong>⚠ Esta factura no se emitió a la DIAN — el medicamento no tiene tarifa habilitada en el contrato.</strong>
+                    La dispensación al paciente ya quedó hecha; esta factura queda pendiente de facturación manual hasta que se habilite
+                    el medicamento en el contrato (o se reintente desde aquí).
+                    <div style="margin-top: 0.4rem; font-size: 0.85rem;">
+                      <div><strong>Error:</strong> {{ row.error_mensaje }}</div>
+                      @if (requestInfo(row); as info) {
+                        <div><strong>Contrato:</strong> {{ info.contrato_numero || '—' }}</div>
+                        <div><strong>Paciente:</strong> {{ info.paciente?.primerNombre }} {{ info.paciente?.primerApellido }} ({{ info.paciente?.numDocumentoIdentificacion }})</div>
+                        @if (info.tipo_cobro_usuario) {
+                          <div><strong>{{ info.tipo_cobro_usuario === 'copago' ? 'Copago' : 'Cuota moderadora' }}:</strong> {{ info.pago_usuario_monto | number }}</div>
+                        }
+                        @if (info.medicamentos?.length) {
+                          <div><strong>Medicamentos:</strong>
+                            <ul style="margin: 0.2rem 0 0 1.1rem;">
+                              @for (m of info.medicamentos; track m.codTecnologiaSalud) {
+                                <li>{{ m.nomTecnologiaSalud }} (CUM {{ m.codTecnologiaSalud }}) × {{ m.cantidadMedicamento }}</li>
+                              }
+                            </ul>
+                          </div>
+                        }
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         }
       </tbody>
@@ -94,10 +133,10 @@
           <p><strong>Estado:</strong> {{ documentosVista().paciente?.estado_dian }}</p>
           <div class="actions-cell" style="margin: 0.75rem 0;">
             @if (documentosVista().paciente?.pdf_base64) {
-              <a class="btn-action pdf" [href]="'data:application/pdf;base64,' + documentosVista().paciente.pdf_base64" target="_blank">Ver PDF</a>
+              <button class="btn-action pdf" (click)="abrirPdfBase64(documentosVista().paciente.pdf_base64)">Ver PDF</button>
             }
             @if (documentosVista().tirilla_pdf_base64) {
-              <a class="btn-action pdf" [href]="'data:application/pdf;base64,' + documentosVista().tirilla_pdf_base64" target="_blank">Ver tirilla</a>
+              <button class="btn-action pdf" (click)="abrirPdfBase64(documentosVista().tirilla_pdf_base64)">Ver tirilla</button>
             }
           </div>
           @if (documentosVista().notas?.length) {
