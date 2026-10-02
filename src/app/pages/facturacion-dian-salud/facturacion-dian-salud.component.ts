@@ -14,6 +14,19 @@ import { ApiService } from '../../core/api.service';
 export class FacturacionDianSaludComponent implements OnInit {
   private api = inject(ApiService);
 
+  /** Un data: URI gigante (PDF en base64) enlazado directo en [href] queda
+   *  en blanco en Chrome con bastante frecuencia — mismo patrón que ya usa
+   *  cartera-compra.component.ts en el front de Akribeia: armar un Blob real
+   *  y abrirlo con un object URL, que sí renderiza siempre. */
+  abrirPdfBase64(base64: string | undefined | null): void {
+    if (!base64) return;
+    try {
+      const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+    } catch { /* si falla, no hay mas que hacer aqui */ }
+  }
+
   readonly loading = signal(false);
   readonly saving = signal<number | null>(null);
   readonly message = signal('');
@@ -41,6 +54,37 @@ export class FacturacionDianSaludComponent implements OnInit {
     return row.modo !== 'nota_credito' && row.modo !== 'nota_debito';
   }
 
+  /** request_json es lo que se iba a mandar a AkribeIA cuando falló —
+   *  contrato, centro de costo/sede, paciente, medicamentos (CUM) y el
+   *  copago/cuota moderadora. Queda guardado tal cual para poder reintentar
+   *  sin tener que volver a digitar nada, y para mostrarlo en pantalla. */
+  requestInfo(row: any): any {
+    if (!row?.request_json) return null;
+    try { return typeof row.request_json === 'string' ? JSON.parse(row.request_json) : row.request_json; }
+    catch { return null; }
+  }
+
+  async reintentar(row: any) {
+    this.saving.set(row.id);
+    this.error.set('');
+    this.message.set('');
+    try {
+      const response = await this.api.post<{ success: boolean; data: any }>(
+        `/dispensacion-hs/salud/facturas/${row.id}/reintentar`, {}
+      );
+      if (response.data?.dian?.ok === false) {
+        this.error.set(response.data.dian.error || 'Siguió fallando — revisa el detalle del error.');
+      } else {
+        this.message.set('Factura enviada a la DIAN correctamente.');
+      }
+      await this.load();
+    } catch (err: any) {
+      this.error.set(err?.error?.message || 'No fue posible reintentar esta factura.');
+    } finally {
+      this.saving.set(null);
+    }
+  }
+
   async load() {
     this.loading.set(true);
     this.error.set('');
@@ -59,12 +103,12 @@ export class FacturacionDianSaludComponent implements OnInit {
   async verDocumentos(row: any) {
     this.error.set('');
     this.documentosVista.set(null);
-    this.documentosFacturaId = row.id_dispensacion_dian;
+    this.documentosFacturaId = row.id;
     this.showDocumentos.set(true);
     this.documentosLoading.set(true);
     try {
       const response = await this.api.get<{ success: boolean; data: any }>(
-        `/dispensacion-hs/salud/facturas/${row.id_dispensacion_dian}/documentos`
+        `/dispensacion-hs/salud/facturas/${row.id}/documentos`
       );
       this.documentosVista.set(response.data);
     } catch (err: any) {
@@ -86,11 +130,11 @@ export class FacturacionDianSaludComponent implements OnInit {
       return;
     }
     const motivo = prompt('Motivo de la nota crédito (opcional):', 'Anulación solicitada desde farmacia') || undefined;
-    this.saving.set(row.id_dispensacion_dian);
+    this.saving.set(row.id);
     this.error.set('');
     try {
       const response = await this.api.post<{ success: boolean; data: any }>(
-        `/dispensacion-hs/salud/facturas/${row.id_dispensacion_dian}/nota-credito`,
+        `/dispensacion-hs/salud/facturas/${row.id}/nota-credito`,
         { motivo }
       );
       this.message.set(`Nota crédito ${response.data.numero_nota} generada (DIAN: ${response.data.estado_dian}).`);
@@ -107,11 +151,11 @@ export class FacturacionDianSaludComponent implements OnInit {
       return;
     }
     const motivo = prompt('Motivo de la nota débito (opcional):', 'Ajuste solicitado desde farmacia') || undefined;
-    this.saving.set(row.id_dispensacion_dian);
+    this.saving.set(row.id);
     this.error.set('');
     try {
       const response = await this.api.post<{ success: boolean; data: any }>(
-        `/dispensacion-hs/salud/facturas/${row.id_dispensacion_dian}/nota-debito`,
+        `/dispensacion-hs/salud/facturas/${row.id}/nota-debito`,
         { motivo }
       );
       this.message.set(`Nota débito ${response.data.numero_nota} generada (DIAN: ${response.data.estado_dian}).`);
