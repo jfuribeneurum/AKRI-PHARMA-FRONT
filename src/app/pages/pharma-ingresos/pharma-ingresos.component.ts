@@ -16,6 +16,8 @@ import { UppercaseInputDirective } from '../../shared/uppercase-input.directive'
 export class PharmaIngresosComponent implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
+  // Mensaje cuando prefijo + número de factura ya está en otro ingreso.
+  readonly facturaDuplicada = signal('');
   readonly filterType = signal<'numero' | 'fecha' | 'laboratorio'>('numero');
   readonly modo = signal<'con_orden' | 'sin_orden' | null>(null);
   readonly cargandoOrdenes = signal(false);
@@ -906,6 +908,15 @@ export class PharmaIngresosComponent implements OnInit {
         this.error.set('Agrega al menos un item con cantidad.');
         return;
       }
+      const faltantesFactura = this.camposFacturaFaltantes();
+      if (faltantesFactura.length) {
+        this.error.set(`Faltan datos de la factura: ${faltantesFactura.join(', ')}.`);
+        return;
+      }
+      if (!(await this.verificarFactura())) {
+        this.error.set(this.facturaDuplicada());
+        return;
+      }
       if (!this.allItemsValidated()) {
         this.error.set('Aún falta diligenciar el cumplimiento de algunos medicamentos.');
         return;
@@ -919,6 +930,45 @@ export class PharmaIngresosComponent implements OnInit {
     }
   }
 
+  // Prefijo, número y fecha de factura son obligatorios en el ingreso Pharma
+  // (no en devoluciones ni en "Ingreso pedido", que usan el mismo endpoint
+  // sin datos de factura).
+  camposFacturaFaltantes(): string[] {
+    const { prefijo_factura, numero_factura, fecha_factura } = this.ingresoExtra;
+    const faltantes: string[] = [];
+    if (!String(prefijo_factura ?? '').trim()) faltantes.push('prefijo');
+    if (!(Number(numero_factura) > 0)) faltantes.push('número de factura');
+    if (!String(fecha_factura ?? '').trim()) faltantes.push('fecha de factura');
+    return faltantes;
+  }
+
+  // Prefijo + número de factura no se puede repetir entre ingresos. Se
+  // verifica al salir de cualquiera de los dos campos (aviso inmediato) y de
+  // nuevo al crear; el backend lo vuelve a validar al guardar. Devuelve false
+  // solo si la factura ya existe — un fallo de red no bloquea aquí.
+  async verificarFactura(): Promise<boolean> {
+    const prefijo = String(this.ingresoExtra.prefijo_factura ?? '').trim().toUpperCase();
+    const numero = String(this.ingresoExtra.numero_factura ?? '').trim();
+    if (!prefijo || !numero) {
+      this.facturaDuplicada.set('');
+      return true;
+    }
+    try {
+      const resp: any = await this.api.get(
+        `/ingresos/factura-disponible?prefijo=${encodeURIComponent(prefijo)}&numero=${encodeURIComponent(numero)}`
+      );
+      const data = resp?.data;
+      if (data && data.disponible === false) {
+        this.facturaDuplicada.set(data.message || `La factura ${prefijo}${numero} ya fue registrada en otro ingreso.`);
+        return false;
+      }
+      this.facturaDuplicada.set('');
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
   limpiar() {
     this.ingreso = this.emptyIngreso();
     this.factura = this.emptyFactura();
@@ -926,6 +976,7 @@ export class PharmaIngresosComponent implements OnInit {
     this.ocItems = [this.emptyOcItem()];
     this.ingresoExtra = this.emptyIngresoExtra();
     this.ocItemsOriginales = [];
+    this.facturaDuplicada.set('');
   }
 
   private ingresoConOrdenPayload() {

@@ -138,6 +138,19 @@ export class PharmaPurchaseOrderComponent implements OnInit {
     );
   }
 
+  // Nombre de la línea en el PDF de la orden de compra. El nombre HS ya trae
+  // la concentración ("SEMAGLUTIDA 14 MG TABLETA"), así que no se le vuelve a
+  // pegar al final. Solo si no hay nombre HS se agrega a la marca, para que
+  // dos dosis del mismo producto no salgan con el mismo nombre.
+  nombreItemOc(it: { nombre_medicamento_hs?: string | null; nombre_comercial?: string | null; concentracion?: string | null }): string {
+    const nombreHs = String(it.nombre_medicamento_hs ?? '').trim();
+    if (nombreHs) return nombreHs;
+    const comercial = String(it.nombre_comercial ?? '').trim();
+    if (!comercial) return '—';
+    const conc = String(it.concentracion ?? '').trim();
+    return conc ? `${comercial} ${conc}` : comercial;
+  }
+
   productoLabel(p: { nombre_medicamento_hs: string | null; nombre_comercial: string; concentracion: string; principio_activo?: string }): string {
     const base = `${p.nombre_medicamento_hs || p.nombre_comercial}${p.concentracion ? ' · ' + p.concentracion : ''}`;
     return p.principio_activo ? `${base} — ${p.principio_activo}` : base;
@@ -598,7 +611,7 @@ export class PharmaPurchaseOrderComponent implements OnInit {
 
     const filasHtml = items.map(it => `
       <tr>
-        <td>${it.nombre_medicamento_hs || it.nombre_comercial || '—'}${it.concentracion ? ' ' + it.concentracion : ''}</td>
+        <td>${this.nombreItemOc(it)}</td>
         <td>${it.laboratorio_nombre ?? '—'}</td>
         <td style="text-align:right;">${Number(it.cantidad ?? 0).toFixed(2)}</td>
         <td style="text-align:right;">${money(it.precio_unitario)}</td>

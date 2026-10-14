@@ -244,4 +244,84 @@ describe('PharmaIngresosComponent — agregar/quitar MX en ingreso con orden de 
     expect(api.post).not.toHaveBeenCalled();
     expect(component.error()).toContain('cumplimiento');
   });
+
+  it.each([
+    ['prefijo', { prefijo_factura: '  ' }],
+    ['número de factura', { numero_factura: null }],
+    ['fecha de factura', { fecha_factura: '' }],
+  ])('crearIngreso() no guarda nada si falta el %s de la factura', async (campo, cambio) => {
+    Object.assign((component as any).ingresoExtra, cambio);
+    (api.post as any).mockResolvedValue({});
+
+    await component.crearIngreso();
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(component.error()).toContain(campo);
+  });
+
+  it('crearIngreso() lista todos los datos de factura que faltan en un solo mensaje', async () => {
+    Object.assign((component as any).ingresoExtra, { prefijo_factura: '', numero_factura: null, fecha_factura: '' });
+
+    await component.crearIngreso();
+
+    expect(api.post).not.toHaveBeenCalled();
+    expect(component.error()).toBe('Faltan datos de la factura: prefijo, número de factura, fecha de factura.');
+  });
+
+  it('crearIngreso() no guarda si el prefijo + número de factura ya está en otro ingreso', async () => {
+    (api.get as any).mockResolvedValue({
+      data: { disponible: false, referencia: 'ING-0009', message: 'La factura FV1 ya fue registrada en el ingreso ING-0009.' }
+    });
+
+    await component.crearIngreso();
+
+    expect(api.get).toHaveBeenCalledWith('/ingresos/factura-disponible?prefijo=FV&numero=1');
+    expect(api.post).not.toHaveBeenCalled();
+    expect(component.error()).toBe('La factura FV1 ya fue registrada en el ingreso ING-0009.');
+  });
+
+  it('crearIngreso() guarda cuando la factura está disponible', async () => {
+    (api.get as any).mockResolvedValue({ data: { disponible: true } });
+    (api.post as any).mockResolvedValue({});
+
+    await component.crearIngreso();
+
+    expect(api.post).toHaveBeenCalledWith('/ingresos', expect.any(Object));
+  });
+
+  it('crearIngreso() muestra el mensaje del backend si otra persona registró la misma factura justo antes', async () => {
+    (api.get as any).mockResolvedValue({ data: { disponible: true } });
+    (api.post as any).mockRejectedValue({ error: { message: 'La factura FV1 ya fue registrada en el ingreso ING-0010.' } });
+
+    await component.crearIngreso();
+
+    expect(component.error()).toBe('La factura FV1 ya fue registrada en el ingreso ING-0010.');
+  });
+
+  it('verificarFactura() normaliza el prefijo a mayúsculas y muestra el aviso de duplicado', async () => {
+    (component as any).ingresoExtra.prefijo_factura = ' fv ';
+    (api.get as any).mockResolvedValue({ data: { disponible: false, message: 'La factura FV1 ya fue registrada en el ingreso ING-0009.' } });
+
+    const disponible = await component.verificarFactura();
+
+    expect(disponible).toBe(false);
+    expect(api.get).toHaveBeenCalledWith('/ingresos/factura-disponible?prefijo=FV&numero=1');
+    expect(component.facturaDuplicada()).toContain('ING-0009');
+  });
+
+  it('verificarFactura() no consulta mientras falte prefijo o número, y limpia el aviso', async () => {
+    component.facturaDuplicada.set('aviso viejo');
+    (component as any).ingresoExtra.numero_factura = null;
+
+    const disponible = await component.verificarFactura();
+
+    expect(disponible).toBe(true);
+    expect(api.get).not.toHaveBeenCalled();
+    expect(component.facturaDuplicada()).toBe('');
+  });
+
+  it('verificarFactura() no bloquea si la consulta falla por red (el backend valida al guardar)', async () => {
+    (api.get as any).mockRejectedValue(new Error('offline'));
+    await expect(component.verificarFactura()).resolves.toBe(true);
+  });
 });

@@ -1551,3 +1551,10 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Botón bloqueado por el control de doble clic (core/click-guard.ts) mientras
+   se procesa la acción. */
+.click-locked {
+  cursor: progress !important;
+  opacity: 0.7;
+}

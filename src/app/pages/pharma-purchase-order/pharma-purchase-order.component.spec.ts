@@ -221,3 +221,30 @@ describe('PharmaPurchaseOrderComponent — creación de orden de compra', () => 
     });
   });
 });
+
+describe('PharmaPurchaseOrderComponent — nombre de cada línea en el PDF de la OC', () => {
+  const component = new PharmaPurchaseOrderComponent(makeApiStub());
+
+  it('usa el nombre HS tal cual, sin volver a pegar la concentración al final', () => {
+    expect(component.nombreItemOc({
+      nombre_medicamento_hs: 'GLUCAGON 1 MG POLVO PARA RECONSTITUIR A SOLUCION INYECTABLE',
+      nombre_comercial: 'GLUCAGEN', concentracion: '1 MG'
+    })).toBe('GLUCAGON 1 MG POLVO PARA RECONSTITUIR A SOLUCION INYECTABLE');
+  });
+
+  it('distingue dos dosis del mismo genérico por el nombre HS', () => {
+    const a = component.nombreItemOc({ nombre_medicamento_hs: 'SEMAGLUTIDA 14 MG TABLETA', concentracion: '14 MG' });
+    const b = component.nombreItemOc({ nombre_medicamento_hs: 'SEMAGLUTIDA 7 MG TABLETA', concentracion: '7 MG' });
+    expect(a).toBe('SEMAGLUTIDA 14 MG TABLETA');
+    expect(b).toBe('SEMAGLUTIDA 7 MG TABLETA');
+  });
+
+  it('sin nombre HS usa la marca con su concentración para no confundir dosis', () => {
+    expect(component.nombreItemOc({ nombre_medicamento_hs: null, nombre_comercial: 'RYBELSUS', concentracion: '7 MG' })).toBe('RYBELSUS 7 MG');
+    expect(component.nombreItemOc({ nombre_medicamento_hs: '  ', nombre_comercial: 'RYBELSUS', concentracion: null })).toBe('RYBELSUS');
+  });
+
+  it('muestra un guion si no hay ningún nombre', () => {
+    expect(component.nombreItemOc({})).toBe('—');
+  });
+});
