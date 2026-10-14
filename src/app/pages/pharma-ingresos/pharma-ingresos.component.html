@@ -260,7 +260,7 @@
                 <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
                 <div class="po-section-title" style="margin-bottom:0.6rem; margin-top:0.85rem">Datos del ingreso</div>
                 <div class="ing-footer-grid">
-                  <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+                  <label>Prefijo<input [ngModel]="ingresoExtra.prefijo_factura" (ngModelChange)="ingresoExtra.prefijo_factura = ($event ?? '').toUpperCase()" placeholder="Ej: FV" maxlength="20" style="text-transform: uppercase"></label>
                   <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
                   <label>Fecha factura<input type="date" [(ngModel)]="ingresoExtra.fecha_factura"></label>
                 </div>
@@ -507,7 +507,7 @@
                 <button class="btn btn-outline" (click)="agregarItem()">+ Agregar item</button>
                 <div class="po-section-title" style="margin-bottom:0.6rem; margin-top:0.85rem">Datos del ingreso</div>
                 <div class="ing-footer-grid">
-                  <label>Prefijo<input [(ngModel)]="ingresoExtra.prefijo_factura" placeholder="Ej: FV" maxlength="20"></label>
+                  <label>Prefijo<input [ngModel]="ingresoExtra.prefijo_factura" (ngModelChange)="ingresoExtra.prefijo_factura = ($event ?? '').toUpperCase()" placeholder="Ej: FV" maxlength="20" style="text-transform: uppercase"></label>
                   <label>Número factura<input type="number" min="1" [(ngModel)]="ingresoExtra.numero_factura" placeholder="Ej: 1234"></label>
                   <label>Fecha factura<input type="date" [(ngModel)]="ingresoExtra.fecha_factura"></label>
                 </div>
