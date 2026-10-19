@@ -18,6 +18,13 @@ interface EntradaItem {
   fecha_vencimiento: string;
   cantidad: number;
   costo_unitario: number;
+  // Texto del buscador de la fila (lote existente o producto nuevo, según modo).
+  filtro?: string;
+}
+
+interface OpcionCombo {
+  id: number;
+  label: string;
 }
 
 @Component({
@@ -102,12 +109,73 @@ export class MovimientoEntradaComponent implements OnInit {
       modo: 'existente',
       id_lote: null, id_producto: null, nombre_producto: '',
       numero_lote: '', fecha_vencimiento: '',
-      cantidad: 1, costo_unitario: 0
+      cantidad: 1, costo_unitario: 0,
+      filtro: ''
     };
+  }
+
+  // Buscador por fila, igual al de MX en Orden de compra: cada fila tiene su
+  // propio texto de búsqueda; solo un dropdown abierto a la vez. Va con
+  // position:fixed porque la tabla vive en un contenedor con overflow-x:auto
+  // que recortaría un dropdown absoluto.
+  readonly comboOpenIndex = signal<number | null>(null);
+  readonly comboPos = signal<{ top: number; left: number; width: number } | null>(null);
+
+  loteLabel(i: any): string {
+    return `${i.nombre_comercial} · Lote ${i.numero_lote} · ${i.almacen} (actual: ${i.cantidad_disponible})`;
+  }
+
+  productoLabel(p: any): string {
+    return `${p.nombre_medicamento_hs || p.nombre_comercial} · SKU ${p.sku}`;
+  }
+
+  private opciones(item: EntradaItem): OpcionCombo[] {
+    return item.modo === 'existente'
+      ? this.allStock().map((i) => ({ id: i.id_lote, label: this.loteLabel(i) }))
+      : this.allProducts().map((p) => ({ id: p.id_producto, label: this.productoLabel(p) }));
+  }
+
+  opcionesFiltradas(item: EntradaItem): OpcionCombo[] {
+    const q = (item.filtro ?? '').trim().toLowerCase();
+    const all = this.opciones(item);
+    if (!q) return all;
+    return all.filter((o) => o.label.toLowerCase().includes(q));
+  }
+
+  seleccionId(item: EntradaItem): number | null {
+    return item.modo === 'existente' ? item.id_lote : item.id_producto;
+  }
+
+  abrirCombo(index: number, event: FocusEvent) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    this.comboPos.set({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    this.comboOpenIndex.set(index);
+  }
+
+  // Retraso antes de cerrar: el (mousedown) de la opción debe dispararse
+  // antes de que el (blur) del input cierre el dropdown. Si el texto no
+  // corresponde a una selección, se restaura la etiqueta de la elegida.
+  cerrarCombo(item: EntradaItem) {
+    setTimeout(() => {
+      this.comboOpenIndex.set(null);
+      const id = this.seleccionId(item);
+      item.filtro = this.opciones(item).find((o) => o.id === id)?.label ?? '';
+    }, 150);
+  }
+
+  seleccionarOpcion(item: EntradaItem, opcion: OpcionCombo) {
+    if (item.modo === 'existente') {
+      this.onLoteChange(item, String(opcion.id));
+    } else {
+      this.onProductoNuevoSelect(item, String(opcion.id));
+    }
+    item.filtro = opcion.label;
+    this.comboOpenIndex.set(null);
   }
 
   toggleModo(item: EntradaItem, modo: 'existente' | 'nuevo') {
     item.modo = modo;
+    item.filtro = '';
     item.id_lote = null;
     item.id_producto = null;
     item.nombre_producto = '';

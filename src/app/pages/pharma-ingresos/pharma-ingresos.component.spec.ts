@@ -245,8 +245,18 @@ describe('PharmaIngresosComponent — agregar/quitar MX en ingreso con orden de 
     expect(component.error()).toContain('cumplimiento');
   });
 
+  it('crearIngreso() guarda sin prefijo de factura (es opcional)', async () => {
+    (component as any).ingresoExtra.prefijo_factura = '';
+    (api.get as any).mockResolvedValue({ data: { disponible: true } });
+    (api.post as any).mockResolvedValue({});
+
+    await component.crearIngreso();
+
+    expect(api.get).toHaveBeenCalledWith('/ingresos/factura-disponible?prefijo=&numero=1');
+    expect(api.post).toHaveBeenCalledWith('/ingresos', expect.any(Object));
+  });
+
   it.each([
-    ['prefijo', { prefijo_factura: '  ' }],
     ['número de factura', { numero_factura: null }],
     ['fecha de factura', { fecha_factura: '' }],
   ])('crearIngreso() no guarda nada si falta el %s de la factura', async (campo, cambio) => {
@@ -265,7 +275,7 @@ describe('PharmaIngresosComponent — agregar/quitar MX en ingreso con orden de 
     await component.crearIngreso();
 
     expect(api.post).not.toHaveBeenCalled();
-    expect(component.error()).toBe('Faltan datos de la factura: prefijo, número de factura, fecha de factura.');
+    expect(component.error()).toBe('Faltan datos de la factura: número de factura, fecha de factura.');
   });
 
   it('crearIngreso() no guarda si el prefijo + número de factura ya está en otro ingreso', async () => {
@@ -309,7 +319,7 @@ describe('PharmaIngresosComponent — agregar/quitar MX en ingreso con orden de 
     expect(component.facturaDuplicada()).toContain('ING-0009');
   });
 
-  it('verificarFactura() no consulta mientras falte prefijo o número, y limpia el aviso', async () => {
+  it('verificarFactura() no consulta mientras falte el número, y limpia el aviso', async () => {
     component.facturaDuplicada.set('aviso viejo');
     (component as any).ingresoExtra.numero_factura = null;
 

@@ -930,13 +930,12 @@ export class PharmaIngresosComponent implements OnInit {
     }
   }
 
-  // Prefijo, número y fecha de factura son obligatorios en el ingreso Pharma
-  // (no en devoluciones ni en "Ingreso pedido", que usan el mismo endpoint
-  // sin datos de factura).
+  // Número y fecha de factura son obligatorios en el ingreso Pharma (no en
+  // devoluciones ni en "Ingreso pedido", que usan el mismo endpoint sin datos
+  // de factura). El prefijo es opcional.
   camposFacturaFaltantes(): string[] {
-    const { prefijo_factura, numero_factura, fecha_factura } = this.ingresoExtra;
+    const { numero_factura, fecha_factura } = this.ingresoExtra;
     const faltantes: string[] = [];
-    if (!String(prefijo_factura ?? '').trim()) faltantes.push('prefijo');
     if (!(Number(numero_factura) > 0)) faltantes.push('número de factura');
     if (!String(fecha_factura ?? '').trim()) faltantes.push('fecha de factura');
     return faltantes;
@@ -949,7 +948,7 @@ export class PharmaIngresosComponent implements OnInit {
   async verificarFactura(): Promise<boolean> {
     const prefijo = String(this.ingresoExtra.prefijo_factura ?? '').trim().toUpperCase();
     const numero = String(this.ingresoExtra.numero_factura ?? '').trim();
-    if (!prefijo || !numero) {
+    if (!numero) {
       this.facturaDuplicada.set('');
       return true;
     }

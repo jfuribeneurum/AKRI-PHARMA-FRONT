@@ -283,6 +283,45 @@ describe('MovimientoEntradaComponent', () => {
     });
   });
 
+  describe('buscador de producto/lote', () => {
+    const nuevaFila = (modo: 'existente' | 'nuevo') => ({ modo, id_lote: null, id_producto: null, nombre_producto: '', numero_lote: '', fecha_vencimiento: '', cantidad: 1, costo_unitario: 0, filtro: '' });
+
+    it('filtra los lotes existentes por el texto, sin distinguir mayúsculas', () => {
+      component.allStock.set([
+        { id_lote: 10, nombre_comercial: 'PARACETAMOL', numero_lote: 'A1', almacen: 'General', cantidad_disponible: 5 },
+        { id_lote: 11, nombre_comercial: 'INSULINA', numero_lote: 'B2', almacen: 'General', cantidad_disponible: 3 }
+      ]);
+      const item = nuevaFila('existente');
+      item.filtro = 'insu';
+
+      expect(component.opcionesFiltradas(item).map((o) => o.id)).toEqual([11]);
+    });
+
+    it('en modo nuevo filtra el catálogo completo de productos', () => {
+      component.allProducts.set([
+        { id_producto: 25, nombre_medicamento_hs: 'TRANEXAMICO', sku: 'T1' },
+        { id_producto: 26, nombre_comercial: 'GLUCOMETRO', sku: 'G1' }
+      ]);
+      const item = nuevaFila('nuevo');
+      item.filtro = 'gluco';
+
+      expect(component.opcionesFiltradas(item).map((o) => o.id)).toEqual([26]);
+    });
+
+    it('seleccionarOpcion() elige el lote, copia el costo y deja la etiqueta en el buscador', () => {
+      component.allStock.set([{ id_lote: 10, nombre_comercial: 'PARACETAMOL', numero_lote: 'A1', almacen: 'General', cantidad_disponible: 5, costo_unitario: 150 }]);
+      const item = nuevaFila('existente');
+      const [opcion] = component.opcionesFiltradas(item);
+
+      component.seleccionarOpcion(item, opcion);
+
+      expect(item.id_lote).toBe(10);
+      expect(item.costo_unitario).toBe(150);
+      expect(item.filtro).toBe(opcion.label);
+      expect(component.comboOpenIndex()).toBeNull();
+    });
+  });
+
   describe('cargarLookups', () => {
     it('carga bodegas desde /purchases/warehouses?scope=propia y tipos desde /parametros', async () => {
       (api.get as any).mockImplementation((path: string) => {

@@ -147,9 +147,13 @@
               <div class="hs-section-title">Datos de farmacia</div>
               <div class="form-grid form-grid-2">
                 <label style="grid-column: span 2">
-                  Nombre comercial <span class="field-own-badge">Tu catálogo</span>
-                  <input [(ngModel)]="form.nombre_comercial" placeholder="Nombre comercial o de marca">
-                  <span class="field-hint">Este nombre es el que quedará guardado en tu base de datos de farmacia. Puedes modificarlo libremente.</span>
+                  Descripción <span class="field-own-badge">Tu catálogo</span>
+                  <input [(ngModel)]="form.nombre_comercial" placeholder="Descripción del producto">
+                  <span class="field-hint">Esta descripción es la que quedará guardada en tu base de datos de farmacia. Puedes modificarla libremente.</span>
+                </label>
+                <label style="grid-column: span 2">
+                  Nombre comercial
+                  <input [(ngModel)]="form.nombre_marca" placeholder="Nombre comercial o de marca">
                 </label>
                 <label>
                   Laboratorio

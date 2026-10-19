@@ -78,22 +78,27 @@
                       <button type="button" class="btn secondary" style="padding:0.15rem 0.5rem; font-size:0.7rem;"
                               [class.active]="item.modo === 'nuevo'" (click)="toggleModo(item, 'nuevo')">+ Producto/lote nuevo</button>
                     </div>
-                    @if (item.modo === 'existente') {
-                      <select [ngModel]="item.id_lote" (ngModelChange)="onLoteChange(item, $event)">
-                        <option [ngValue]="null">-- Seleccionar producto/lote --</option>
-                        @for (i of allStock(); track i.id_lote) {
-                          <option [ngValue]="i.id_lote">
-                            {{ i.nombre_comercial }} · Lote {{ i.numero_lote }} · {{ i.almacen }} (actual: {{ i.cantidad_disponible }})
-                          </option>
-                        }
-                      </select>
-                    } @else {
-                      <select [ngModel]="item.id_producto" (ngModelChange)="onProductoNuevoSelect(item, $event)">
-                        <option [ngValue]="null">-- Seleccionar producto --</option>
-                        @for (p of allProducts(); track p.id_producto) {
-                          <option [ngValue]="p.id_producto">{{ p.nombre_medicamento_hs || p.nombre_comercial }} · SKU {{ p.sku }}</option>
-                        }
-                      </select>
+                    <div class="po-mx-combo">
+                      <input type="text" class="po-mx-combo__input" autocomplete="off"
+                             [placeholder]="item.modo === 'existente' ? '— Seleccionar producto/lote —' : '— Seleccionar producto —'"
+                             [(ngModel)]="item.filtro"
+                             (focus)="abrirCombo($index, $event)"
+                             (blur)="cerrarCombo(item)">
+                      @if (comboOpenIndex() === $index && comboPos(); as pos) {
+                        <div class="po-mx-combo__dropdown"
+                             [style.top.px]="pos.top" [style.left.px]="pos.left" [style.width.px]="pos.width">
+                          @for (o of opcionesFiltradas(item); track o.id) {
+                            <div class="po-mx-combo__row" [class.po-mx-combo__row--selected]="seleccionId(item) === o.id"
+                                 (mousedown)="seleccionarOpcion(item, o)">
+                              {{ o.label }}
+                            </div>
+                          } @empty {
+                            <div class="po-mx-combo__row po-mx-combo__row--empty">Sin resultados</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                    @if (item.modo === 'nuevo') {
                       @if (item.id_producto) {
                         <div style="display:flex; gap:0.4rem; margin-top:0.3rem;">
                           <input type="text" [(ngModel)]="item.numero_lote" placeholder="N° de lote (opcional)">

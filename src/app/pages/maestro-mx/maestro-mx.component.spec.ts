@@ -162,6 +162,41 @@ describe('MaestroMxComponent', () => {
     });
   });
 
+  // nombre_comercial se rotula "Descripción" (lo precarga HealthSphere) y
+  // nombre_marca es el nuevo "Nombre comercial": arranca vacío y HS no lo toca.
+  describe('nombre comercial (nombre_marca)', () => {
+    let api: ApiService;
+
+    beforeEach(() => {
+      api = makeApiStub();
+      component = new MaestroMxComponent(api);
+      (api.post as any).mockResolvedValue({ data: { id_producto: 1 } });
+      (component as any).load = vi.fn();
+    });
+
+    it('arranca vacío en un producto nuevo', () => {
+      expect((component as any).blankForm().nombre_marca).toBe('');
+    });
+
+    it('elegir un medicamento de HealthSphere llena la descripción pero no el nombre comercial', () => {
+      component.form = (component as any).blankForm();
+      component.selectHsMed({ id: 1, forma_farmaceutica: null, nombre: 'ABACAVIR 300 MG TABLETA' });
+
+      expect(component.form.nombre_comercial).toBe('ABACAVIR 300 MG TABLETA');
+      expect(component.form.nombre_marca).toBe('');
+    });
+
+    it('se envía en el payload, y vacío como null', async () => {
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG', nombre_marca: 'ZIAGEN' };
+      await component.create();
+      expect((api.post as any).mock.calls[0][1].nombre_marca).toBe('ZIAGEN');
+
+      component.form = { codigo_interno: 'MX01', nombre_comercial: 'ABACAVIR 300 MG', nombre_marca: '' };
+      await component.create();
+      expect((api.post as any).mock.calls[1][1].nombre_marca).toBeNull();
+    });
+  });
+
   // El nombre comercial es la marca propia de la farmacia y muchos MX no
   // tienen una: el producto se identifica por el nombre descriptivo de
   // HealthSphere. Guardar sin ese campo no debe bloquearse en el formulario,
